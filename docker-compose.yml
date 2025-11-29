@@ -1,0 +1,54 @@
+name: donfra
+
+services:
+  # ===== UI: nginx + 静态 Next 导出站 + 反向代理 =====
+  ui:
+    build:
+      context: ./donfra-ui 
+    image: donfra-ui:dev
+    # container_name 可以不写，让 compose 自己管理
+    container_name: donfra-ui
+    ports:
+      - "80:80"                      # 浏览器访问 http://localhost
+    depends_on:
+      - api
+      - ws
+    networks:
+      - donfra
+
+  # ===== API: Go 后端 =====
+  api:
+    build:
+      context: ./donfra-api         # 根据你实际路径改
+    image: donfra-api:dev
+    container_name: donfra-api
+    environment:
+      - ADDR=:8080
+      - PASSCODE=7777               
+      # - CORS_ORIGIN=http://localhost
+      # - BASE_URL=http://localhost
+    expose:
+      - "8080"                       # 只在 donfra 网络可见
+    # 如果你想从宿主机直接调试 API，可以加：
+    # ports:
+    #   - "8080:8080"
+    networks:
+      - donfra
+
+  # ===== WS: y-websocket 服务 =====
+  ws:
+    build:
+      context: ./donfra-ws  
+    image: donfra-ws:dev
+    container_name: donfra-ws
+    expose:
+      - "6789"
+    # 调试用也可以加：
+    # ports:
+    #   - "6789:6789"
+    networks:
+      - donfra
+
+networks:
+  donfra:
+    driver: bridge

@@ -1,0 +1,16 @@
+name: donfra
+
+services:
+  ui:
+    build: .
+    container_name: donfra-ui
+    ports:
+      - "80:80"   # 外面直接访问 http://localhost
+    # extra_hosts:
+      # - "host.docker.internal:host-gateway"  # 让 nginx 可以访问宿主机 8080、6789
+    networks:
+      - donfra
+
+networks:
+  donfra:
+    driver: bridge

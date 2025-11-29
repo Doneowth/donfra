@@ -1,0 +1,101 @@
+/* 页面容器全屏 */
+.coding-page { position: fixed; inset: 0; background: #0b0d0f; color: #e9e9e7; display: flex; flex-direction: column; }
+
+/* CodePad 根布局：上栏 + 主体 */
+.codepad-root { display: flex; flex-direction: column; width: 100%; height: 100%; }
+
+/* 顶部工具栏 */
+.codepad-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(10, 12, 14, 0.95); border-bottom: 1px solid rgba(169, 142, 100, 0.25); gap: 12px; }
+.codepad-toolbar .left { display: flex; align-items: baseline; gap: 8px; }
+.codepad-toolbar .brand { font-weight: 800; letter-spacing: .2em; color: #d5c3a1; }
+.codepad-toolbar .brand-sub { font-weight: 500; opacity: .72; }
+.codepad-toolbar .right { display: flex; gap: 8px; }
+.btn { height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid rgba(169, 142, 100, 0.35); background: rgba(25, 28, 32, 0.7); color: #e9e9e7; cursor: pointer; }
+.btn:hover { background: rgba(30, 34, 38, 0.85); }
+.btn[disabled] { opacity: .6; cursor: not-allowed; }
+.btn.run { border-color: rgba(124, 187, 115, .45); }
+.btn.danger { border-color: rgba(214, 105, 98, .45); }
+.btn.ghost { border-color: rgba(169,142,100,.25); }
+
+/* 主体两列：左编辑器，右终端（2:1） */
+.codepad-main { flex: 1; display: grid; grid-template-columns: 2fr 1fr; gap: 10px; padding: 10px; height: calc(100% - 56px); }
+@media (max-width: 1100px) { .codepad-main { grid-template-columns: 1fr; grid-template-rows: 2fr 1fr; } }
+
+/* 左侧编辑器面板 */
+.editor-pane { border: 1px solid rgba(169, 142, 100, 0.25); border-radius: 10px; overflow: hidden; background: #111416; }
+
+/* 右侧终端面板 */
+.terminal-pane { display: flex; flex-direction: column; border: 1px solid rgba(169, 142, 100, 0.25); border-radius: 10px; overflow: hidden; background: #111416; }
+.terminal-header { padding: 8px 12px; font-size: 13px; background: rgba(169,142,100,0.08); border-bottom: 1px solid rgba(169,142,100,0.2); letter-spacing: .05em; }
+.terminal-body { padding: 12px; overflow: auto; flex: 1; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 13px; line-height: 1.45; color: #dfe4e8; }
+.stream-title { margin: 6px 0 4px; opacity: .9; font-weight: 600; }
+.stream-title.ok { color: #b5d99c; }
+.stream-title.warn { color: #f5a97f; }
+.stream { white-space: pre-wrap; margin: 0; }
+.stream.error { color: #f1c0a8; }
+.empty { opacity: .6; }
+
+/* Lobby（沿用你之前的风格） */
+.lobby-root { width: 100%; height: 100%; display: grid; place-items: center; }
+.lobby-card { width: min(820px, 90vw); background: rgba(17, 20, 22, 0.9); border: 1px solid rgba(169,142,100,0.25); border-radius: 12px; padding: 18px; }
+.lobby-head { display:flex; gap:8px; align-items: baseline; margin-bottom: 14px; }
+.section-title { margin: 6px 0 10px; font-weight: 600; }
+.row.gap-12 { display:flex; gap:12px; }
+.input { height: 36px; padding: 0 12px; width: 280px; border-radius: 8px; border: 1px solid rgba(169,142,100,0.35); background: rgba(25,28,32,0.7); color: #e9e9e7; outline: none; }
+.btn-elegant, .btn-ghost { height: 36px; padding: 0 12px; border-radius: 8px; cursor: pointer; border: 1px solid rgba(169,142,100,0.35); background: rgba(25,28,32,0.7); color: #e9e9e7; }
+.btn-ghost { background: transparent; }
+.share-line { margin-top: 10px; font-size: 13px; }
+.share-url { padding: 2px 6px; border-radius: 6px; background: rgba(169,142,100,0.08); border: 1px solid rgba(169,142,100,0.25); }
+.hint { margin-top: 10px; color: #d0b273; font-size: 13px; }
+/* y-monaco 默认会根据 awareness.user.color / colorLight 设置颜色
+   我们在此仅增强下显示效果，不改变逻辑 */
+
+.yRemoteSelection {
+  border-radius: 2px;
+}
+
+.yRemoteSelectionHead {
+  border-left-width: 2px !important; /* 更清晰的光标线 */
+  box-shadow: 0 0 0 1px rgba(0,0,0,.15);
+}
+
+.yRemoteSelectionHeadLabel {
+  color: #fff !important;
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+  padding: 1px 6px !important;
+  border-radius: 4px !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,.25);
+  transform: translateY(-2px);
+}
+/* 在线协作者列表（工具栏右侧） */
+.peers { display: flex; align-items: center; gap: 8px; margin-right: 8px; }
+.peer { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; opacity: .9; }
+.peer .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 1px rgba(0,0,0,.25); }
+
+
+
+/* —— 通用增强：确保远端装饰不被主题层压住 —— */
+.editor-pane .monaco-editor .yRemoteSelection {
+  border-radius: 2px;
+  position: relative;
+  z-index: 11;
+  pointer-events: none;
+  mix-blend-mode: normal !important;
+}
+.editor-pane .monaco-editor .yRemoteSelectionHead {
+  border-left-width: 2px !important;
+  position: relative;
+  z-index: 12;
+}
+.editor-pane .monaco-editor .yRemoteSelectionHeadLabel {
+  color: #fff !important;
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+  padding: 1px 6px !important;
+  border-radius: 4px !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,.25);
+  transform: translateY(-2px);
+  position: relative;
+  z-index: 13;
+}

@@ -1,0 +1,25 @@
+# Binaries and build output
+/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Logs and coverage
+*.log
+coverage.out
+.cache/*
+
+# IDE/editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Env/config
+.env
+.env.local
+.DS_Store

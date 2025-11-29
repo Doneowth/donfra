@@ -1,0 +1,71 @@
+# ================================
+# 📦 Node & Next.js
+# ================================
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+.yarn-cache/
+.yarnrc.yml
+.cache/
+.next/
+dist/
+build/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+pnpm-lock.yaml
+
+# Next.js static export output
+out/
+# 你可以注释掉上面这一行来提交 out/ 到 nginx-only repo
+
+# Local environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ================================
+# 🧰 Editor & OS junk
+# ================================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ================================
+# 🐳 Docker
+# ================================
+# Build cache layers
+**/.dockerignore
+**/Dockerfile.old
+**/docker-compose.override.yml
+**/tmp/
+**/cache/
+**/logs/
+**/pid/
+docker-data/
+*.pid
+*.seed
+*.bak
+*.tmp
+
+# ================================
+# 🕸 Nginx / Deployment
+# ================================
+/etc/nginx/*
+!/default.conf
+!/nginx.conf
+*.crt
+*.key
+
+# ================================
+# 🎥 Media & Large Assets
+# ================================
+# Ignore all large binar
