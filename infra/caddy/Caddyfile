@@ -1,0 +1,3 @@
+donfra.dev {
+    reverse_proxy donfra-ui:80
+}
