@@ -65,3 +65,7 @@ services:
 networks:
   donfra:
     driver: bridge
+
+volumes:
+  caddy_data: {}
+  caddy_config: {}
