@@ -29,11 +29,12 @@ async function getJSON<T>(path: string): Promise<T> {
 
 export const api = {
   room: {
-    init: (passcode: string) =>
-      postJSON<{ inviteUrl: string }>("/room/init", { passcode }),
+    init: (passcode: string, size: number) =>
+      postJSON<{ inviteUrl: string; token?: string }>("/room/init", { passcode, size }),
     join: (token: string) => postJSON<{ status: string }>("/room/join", { token }),
     close: () => postJSON<{ open: boolean }>("/room/close", {}),
-    status: () => getJSON<{ open: boolean }>("/room/status"),
+    status: () =>
+      getJSON<{ open: boolean; inviteLink?: string; headcount?: number; limit?: number }>("/room/status"),
   },
   run: {
     python: (code: string) =>

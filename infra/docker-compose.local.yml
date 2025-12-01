@@ -27,8 +27,10 @@ services:
       - PASSCODE=7777               
       # - CORS_ORIGIN=http://localhost
       # - BASE_URL=http://localhost
-    expose:
-      - "8080"                      
+    # expose:
+    #   - "8080"
+    ports:
+      - "8080:8080"            
     networks:
       - donfra-local
 
@@ -38,8 +40,12 @@ services:
       context: ../donfra-ws  
     image: donfra-ws:dev
     container_name: donfra-ws
-    expose:
-      - "6789"
+    # expose:
+    #   - "6789"
+    environment:
+      - ROOM_UPDATE_URL=http://api:8080/api/room/update-people
+    ports:
+      - "6789:6789"
     networks:
       - donfra-local
 

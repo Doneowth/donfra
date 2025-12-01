@@ -19,6 +19,7 @@ func New(roomSvc *room.Service) *Handlers {
 
 type initReq struct {
 	Passcode string `json:"passcode"`
+	Size     int    `json:"size"`
 }
 type initResp struct {
 	InviteURL string `json:"inviteUrl"`
@@ -31,7 +32,7 @@ func (h *Handlers) RoomInit(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
-	url, token, err := h.roomSvc.Init(strings.TrimSpace(req.Passcode))
+	url, token, err := h.roomSvc.Init(strings.TrimSpace(req.Passcode), req.Size)
 	if err != nil {
 		httputil.WriteError(w, http.StatusConflict, err.Error())
 		return
@@ -42,6 +43,8 @@ func (h *Handlers) RoomInit(w http.ResponseWriter, r *http.Request) {
 type statusResp struct {
 	Open       bool   `json:"open"`
 	InviteLink string `json:"inviteLink,omitempty"`
+	Headcount  int    `json:"headcount,omitempty"`
+	Limit      int    `json:"limit,omitempty"`
 }
 
 func (h *Handlers) RoomStatus(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +52,12 @@ func (h *Handlers) RoomStatus(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteError(w, http.StatusInternalServerError, "invite link is empty while room is open")
 		return
 	}
-	httputil.WriteJSON(w, http.StatusOK, statusResp{Open: h.roomSvc.IsOpen(), InviteLink: h.roomSvc.InviteLink()})
+	httputil.WriteJSON(w, http.StatusOK, statusResp{
+		Open:       h.roomSvc.IsOpen(),
+		InviteLink: h.roomSvc.InviteLink(),
+		Headcount:  h.roomSvc.Headcount(),
+		Limit:      h.roomSvc.Limit(),
+	})
 }
 
 type joinReq struct {
@@ -73,6 +81,12 @@ func (h *Handlers) RoomJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	limit := h.roomSvc.Limit()
+	if h.roomSvc.Headcount() >= limit {
+		httputil.WriteError(w, http.StatusForbidden, "room is full at the configured limit")
+		return
+	}
+
 	http.SetCookie(w, &http.Cookie{Name: "room_access", Value: "1", Path: "/", MaxAge: 86400, SameSite: http.SameSiteLaxMode, HttpOnly: false, Secure: false})
 	httputil.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
@@ -83,4 +97,23 @@ func (h *Handlers) RoomClose(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, statusResp{Open: h.roomSvc.IsOpen()})
+}
+
+func (h *Handlers) RoomUpdatePeople(w http.ResponseWriter, r *http.Request) {
+	// Accept JSON body: { "headcount": <int> }
+	var req struct {
+		Headcount int `json:"headcount"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.WriteError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	if err := h.roomSvc.UpdateHeadcount(req.Headcount); err != nil {
+		httputil.WriteError(w, http.StatusInternalServerError, "failed to update headcount")
+		return
+	}
+
+	// Return current headcount as confirmation
+	httputil.WriteJSON(w, http.StatusOK, map[string]interface{}{"people": req.Headcount})
 }

@@ -44,6 +44,43 @@ setInterval(() => {
     http: `http://localhost:${port}`
   }
   console.log(`${new Date().toISOString()} Stats: ${JSON.stringify(stats)}`)
+  // If the number of connections changed since last check, POST headcount to API
+  if (typeof global.__lastConns === 'undefined') global.__lastConns = -1
+  if (conns !== global.__lastConns) {
+    global.__lastConns = conns
+    const updateUrl = process.env.ROOM_UPDATE_URL || 'http://localhost:8080/api/room/update-people'
+    try {
+      const payload = JSON.stringify({ headcount: conns })
+      const u = new URL(updateUrl)
+      const options = {
+        hostname: u.hostname,
+        port: u.port || (u.protocol === 'https:' ? 443 : 80),
+        path: u.pathname + (u.search || ''),
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload)
+        }
+      }
+
+      const reqLib = u.protocol === 'https:' ? https : http
+      const req = reqLib.request(options, res => {
+        let body = ''
+        res.setEncoding('utf8')
+        res.on('data', chunk => { body += chunk })
+        res.on('end', () => {
+          console.log(`${new Date().toISOString()} Posted headcount ${conns} to ${updateUrl}: ${body}`)
+        })
+      })
+      req.on('error', err => {
+        console.error(`${new Date().toISOString()} Error posting to ${updateUrl}: ${err.message}`)
+      })
+      req.write(payload)
+      req.end()
+    } catch (err) {
+      console.error(`${new Date().toISOString()} Error building request for ${updateUrl}: ${err.message}`)
+    }
+  }
 }, 3000)
 
 server.listen(port, '0.0.0.0')

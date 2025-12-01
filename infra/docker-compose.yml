@@ -39,10 +39,7 @@ services:
       # - CORS_ORIGIN=http://localhost
       # - BASE_URL=http://localhost
     expose:
-      - "8080"                       # 只在 donfra 网络可见
-    # 如果你想从宿主机直接调试 API，可以加：
-    # ports:
-    #   - "8080:8080"
+      - "8080"                
     networks:
       - donfra
 
@@ -54,9 +51,8 @@ services:
     container_name: donfra-ws
     expose:
       - "6789"
-    # 调试用也可以加：
-    # ports:
-    #   - "6789:6789"
+    environment:
+      - ROOM_UPDATE_URL=http://api:8080/api/room/update-people
     networks:
       - donfra
 
