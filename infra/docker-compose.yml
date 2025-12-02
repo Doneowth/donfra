@@ -36,6 +36,8 @@ services:
     environment:
       - ADDR=:8080
       - PASSCODE=7777               
+      - ADMIN_PASS=7777
+      - JWT_SECRET=don-secret
       # - CORS_ORIGIN=http://localhost
       # - BASE_URL=http://localhost
     expose:

@@ -5,10 +5,13 @@ console.log("NEXT_PUBLIC_API_BASE_URL =", process.env.NEXT_PUBLIC_API_BASE_URL);
 
 type JsonBody = Record<string, any>;
 
-async function postJSON<T>(path: string, body: JsonBody): Promise<T> {
+async function postJSON<T>(path: string, body: JsonBody, token?: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     credentials: "include", // 关键：让后端能设置/带上 cookie
     body: JSON.stringify(body),
   });
@@ -32,12 +35,15 @@ export const api = {
     init: (passcode: string, size: number) =>
       postJSON<{ inviteUrl: string; token?: string }>("/room/init", { passcode, size }),
     join: (token: string) => postJSON<{ status: string }>("/room/join", { token }),
-    close: () => postJSON<{ open: boolean }>("/room/close", {}),
+    close: (token?: string) => postJSON<{ open: boolean }>("/room/close", {}, token),
     status: () =>
       getJSON<{ open: boolean; inviteLink?: string; headcount?: number; limit?: number }>("/room/status"),
   },
   run: {
     python: (code: string) =>
       postJSON<{ stdout: string; stderr: string }>("/room/run", { code }),
+  },
+  admin: {
+    login: (password: string) => postJSON<{ token: string }>("/admin/login", { password }),
   },
 };

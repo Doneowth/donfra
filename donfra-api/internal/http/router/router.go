@@ -7,12 +7,13 @@ import (
 	"github.com/go-chi/cors"
 
 	"donfra-api/internal/config"
+	"donfra-api/internal/domain/auth"
 	"donfra-api/internal/domain/room"
 	"donfra-api/internal/http/handlers"
 	"donfra-api/internal/http/middleware"
 )
 
-func New(cfg config.Config, roomSvc *room.Service) http.Handler {
+func New(cfg config.Config, roomSvc *room.Service, authSvc *auth.AuthService) http.Handler {
 	root := chi.NewRouter()
 	root.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:7777", "http://97.107.136.151:80"},
@@ -28,8 +29,9 @@ func New(cfg config.Config, roomSvc *room.Service) http.Handler {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	h := handlers.New(roomSvc)
+	h := handlers.New(roomSvc, authSvc)
 	v1 := chi.NewRouter()
+	v1.Post("/admin/login", h.AdminLogin)
 	v1.Post("/room/init", h.RoomInit)
 	v1.Get("/room/status", h.RoomStatus)
 	v1.Post("/room/join", h.RoomJoin)

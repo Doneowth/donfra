@@ -132,13 +132,12 @@ export default function CodePad({ onExit }: Props) {
   }, []);
 
   const exit = async () => {
-    try { await api.room.close();} catch {} // 忽略错误
-    // 3) 断开本地协作连接，释放资源
+    // 断开本地协作连接，释放资源
     try { providerRef.current?.destroy?.(); } catch {}
     try { bindingRef.current?.destroy?.(); } catch {}
     try { ydocRef.current?.destroy?.(); } catch {}
 
-    // 4) 回到上层 / 关闭页面（保持你现有逻辑）
+    // 回到上层 / 关闭页面（保持你现有逻辑）
     onExit?.();
   };
 
@@ -378,7 +377,7 @@ export default function CodePad({ onExit }: Props) {
           <button className="btn run" onClick={run} disabled={running} title="Run (Ctrl/Cmd+Enter)">
             {running ? "Running…" : "Run"}
           </button>
-          <button className="btn danger" onClick={exit}>Exit</button>
+          <button className="btn danger" onClick={exit}>Quit</button>
         </div>
       </div>
 

@@ -121,7 +121,7 @@ export default function CodingPage() {
 
   const onExit = () => {
     document.cookie = `room_access=; Path=/; Max-Age=0; SameSite=Lax`;
-    setPhase("lobby"); setInviteUrl(""); setInitPass(""); setRoomOpen(true);
+    window.location.href = "/";
   };
 
   if (phase === "pad") {

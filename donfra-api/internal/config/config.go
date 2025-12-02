@@ -7,6 +7,8 @@ type Config struct {
 	Passcode   string
 	BaseURL    string
 	CORSOrigin string
+	AdminPass  string
+	JWTSecret  string
 }
 
 func getenv(k, def string) string {
@@ -22,5 +24,7 @@ func Load() Config {
 		Passcode:   getenv("PASSCODE", "7777"),
 		BaseURL:    getenv("BASE_URL", ""),
 		CORSOrigin: getenv("CORS_ORIGIN", "http://localhost:3000"),
+		AdminPass:  getenv("ADMIN_PASS", "admin"),
+		JWTSecret:  getenv("JWT_SECRET", "donfra-secret"),
 	}
 }

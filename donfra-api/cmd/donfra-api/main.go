@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"donfra-api/internal/config"
+	"donfra-api/internal/domain/auth"
 	"donfra-api/internal/domain/room"
 	"donfra-api/internal/http/router"
 )
@@ -15,7 +16,8 @@ func main() {
 
 	store := room.NewMemoryStore()
 	roomSvc := room.NewService(store, cfg.Passcode, cfg.BaseURL)
-	r := router.New(cfg, roomSvc)
+	authSvc := auth.NewAuthService(cfg.AdminPass, cfg.JWTSecret)
+	r := router.New(cfg, roomSvc, authSvc)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
