@@ -48,7 +48,7 @@ function LibraryInner() {
   return (
     <main style={{ padding: "32px", fontFamily: "sans-serif", color: "#eee", background: "#0b0c0c", minHeight: "100vh" }}>
       <h1 style={{ marginBottom: 12 }}>Lesson Library</h1>
-      <p style={{ color: "#ccc", marginBottom: 16 }}>Click a slug to open the lesson detail page.</p>
+      <p style={{ color: "#ccc", marginBottom: 16 }}>Click a lesson to open its detail page.</p>
 
       <section style={{ marginBottom: 24 }}>
         {loadingList && <div>Loading lessons…</div>}
@@ -58,7 +58,7 @@ function LibraryInner() {
             <thead>
               <tr style={{ textAlign: "left", borderBottom: "1px solid #444" }}>
                 <th style={{ padding: "8px 6px", width: "80px" }}>ID</th>
-                <th style={{ padding: "8px 6px" }}>Slug</th>
+                <th style={{ padding: "8px 6px" }}>Title</th>
               </tr>
             </thead>
             <tbody>
@@ -70,7 +70,7 @@ function LibraryInner() {
                       onClick={() => router.push(`/library/${lesson.Slug}`)}
                       style={{ background: "none", border: "none", color: "#f4d18c", cursor: "pointer", textDecoration: "underline", fontSize: 15 }}
                     >
-                      {lesson.Slug}
+                      {lesson.Title || lesson.Slug}
                     </button>
                   </td>
                 </tr>
