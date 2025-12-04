@@ -147,6 +147,11 @@ func (h *Handlers) RoomUpdatePeople(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !h.roomSvc.IsOpen() {
+		httputil.WriteError(w, http.StatusConflict, "cannot update headcount while room not open")
+		return
+	}
+
 	if err := h.roomSvc.UpdateHeadcount(req.Headcount); err != nil {
 		httputil.WriteError(w, http.StatusInternalServerError, "failed to update headcount")
 		return
