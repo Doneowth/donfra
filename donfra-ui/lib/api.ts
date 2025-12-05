@@ -51,6 +51,26 @@ export const api = {
       getJSON<Array<{ slug: string; title: string; markdown: string; excalidraw: any; createdAt: string; updatedAt: string; isPublished: boolean }>>("/lessons"),
     get: (slug: string) =>
       getJSON<{ slug: string; title: string; markdown: string; excalidraw: any; createdAt: string; updatedAt: string; isPublished: boolean }>(`/lessons/${slug}`),
+    create: (data: { slug: string; title: string; markdown: string; excalidraw: any; isPublished?: boolean }, token: string) =>
+      fetch(`${API_BASE}/lessons`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          Slug: data.slug,
+          Title: data.title,
+          Markdown: data.markdown,
+          Excalidraw: data.excalidraw,
+          IsPublished: data.isPublished ?? true,
+        }),
+      }).then(async (res) => {
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+        return body;
+      }),
     update: (slug: string, data: { title?: string; markdown?: string; excalidraw?: any }, token: string) =>
       fetch(`${API_BASE}/lessons/${slug}`, {
         method: "PATCH",

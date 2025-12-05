@@ -28,8 +28,13 @@ function LibraryInner() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("admin_token");
+      setIsAdmin(Boolean(token));
+    }
     (async () => {
       try {
         const res = await fetch(`${API_ROOT}/lessons`);
@@ -49,6 +54,24 @@ function LibraryInner() {
     <main style={{ padding: "32px", fontFamily: "sans-serif", color: "#eee", background: "#0b0c0c", minHeight: "100vh" }}>
       <h1 style={{ marginBottom: 12 }}>Lesson Library</h1>
       <p style={{ color: "#ccc", marginBottom: 16 }}>Click a lesson to open its detail page.</p>
+      {isAdmin && (
+        <div style={{ marginBottom: 16 }}>
+          <button
+            onClick={() => router.push("/library/create")}
+            style={{
+              padding: "8px 14px",
+              borderRadius: 6,
+              border: "1px solid #f4d18c",
+              background: "transparent",
+              color: "#f4d18c",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Create lesson
+          </button>
+        </div>
+      )}
 
       <section style={{ marginBottom: 24 }}>
         {loadingList && <div>Loading lessons…</div>}
