@@ -9,6 +9,7 @@ RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 # ===== build =====
 FROM node:20-alpine AS build
 WORKDIR /app
+ENV NODE_OPTIONS="--max_old_space_size=4096"
 ARG NEXT_PUBLIC_API_BASE_URL
 ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
 ARG API_PROXY_TARGET
@@ -24,7 +25,6 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-ENV NODE_OPTIONS="--max_old_space_size=4096"
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 
