@@ -89,5 +89,17 @@ export const api = {
         if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
         return body;
       }),
+    delete: (slug: string, token: string) =>
+      fetch(`${API_BASE}/lessons/${slug}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+      }).then(async (res) => {
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+        return body;
+      }),
   },
 };

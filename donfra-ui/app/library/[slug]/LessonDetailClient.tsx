@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import ReactMarkdown, {
   type Components as MarkdownComponents,
 } from "react-markdown";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, api } from "@/lib/api";
 
 type Lesson = {
   ID: number;
@@ -133,11 +133,15 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
   const [error, setError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [canRenderDiagram, setCanRenderDiagram] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const token = localStorage.getItem("admin_token");
     setIsAdmin(Boolean(token));
+    setToken(token);
     setCanRenderDiagram(true);
   }, []);
 
@@ -248,7 +252,7 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
           </p>
 
           {isAdmin && (
-            <div style={{ marginBottom: 12 }}>
+            <div style={{ marginBottom: 12, display: "flex", gap: 10 }}>
               <button
                 onClick={() => router.push(`/library/${lesson.Slug}/edit`)}
                 style={{
@@ -263,7 +267,42 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
               >
                 Edit lesson
               </button>
+              <button
+                onClick={async () => {
+                  if (!token) {
+                    setActionError("Admin token missing. Please login.");
+                    return;
+                  }
+                  if (!window.confirm("Delete this lesson? This cannot be undone.")) return;
+                  try {
+                    setBusy(true);
+                    setActionError(null);
+                    await api.study.delete(lesson.Slug, token);
+                    router.push("/library");
+                  } catch (err: any) {
+                    setActionError(err?.message || "Failed to delete lesson");
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+                disabled={busy}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 6,
+                  border: "1px solid #f26b6b",
+                  background: "#2a0f0f",
+                  color: "#f88",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  opacity: busy ? 0.7 : 1,
+                }}
+              >
+                {busy ? "Deleting…" : "Delete"}
+              </button>
             </div>
+          )}
+          {actionError && (
+            <div style={{ color: "#f88", marginBottom: 12 }}>{actionError}</div>
           )}
 
           {/* Markdown 内容 */}
@@ -320,23 +359,6 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
             )}
           </div>
 
-          {/* 新增空白画布 */}
-          {/* <div style={{ marginTop: 18 }}>
-            <h4 style={{ margin: "0 0 8px 0", color: "#ddd" }}>New Blank Canvas</h4>
-            <div
-              style={{
-                position: "relative",
-                border: "1px solid #1c1f1e",
-                borderRadius: 8,
-                overflow: "hidden",
-                background: "#1a1d1c",
-                minHeight: 360,
-                height: 420,
-              }}
-            >
-              <Excalidraw/>
-            </div> */}
-          {/* </div> */}
         </div>
 
       )}
