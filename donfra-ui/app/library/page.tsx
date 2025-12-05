@@ -12,7 +12,7 @@ type Lesson = {
   Excalidraw?: any;
 };
 
-const API_ROOT = API_BASE || "http://localhost/api";
+const API_ROOT = API_BASE || "/api";
 
 export default function LibraryPage() {
   return (

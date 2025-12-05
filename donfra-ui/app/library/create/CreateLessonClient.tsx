@@ -23,7 +23,7 @@ const EMPTY_EXCALIDRAW = {
   version: 2,
   source: "https://excalidraw.com",
   elements: [] as any[],
-  appState: {},
+  appState: { collaborators: new Map() },
   files: {},
 };
 
@@ -47,12 +47,16 @@ export default function CreateLessonClient() {
 
   const sanitizeExcalidraw = (raw: any) => {
     if (!raw || typeof raw !== "object") return { ...EMPTY_EXCALIDRAW };
+    const appState = raw.appState || {};
     return {
       type: "excalidraw",
       version: raw.version ?? 2,
       source: raw.source ?? "https://excalidraw.com",
       elements: Array.isArray(raw.elements) ? raw.elements : [],
-      appState: { ...(raw.appState || {}) },
+      appState: {
+        ...appState,
+        collaborators: appState.collaborators instanceof Map ? appState.collaborators : new Map(),
+      },
       files: { ...(raw.files || {}) },
     };
   };

@@ -39,18 +39,19 @@ services:
     networks:
       - donfra-local
 
-  # ===== UI: nginx + 静态 Next 导出站 + 反向代理 =====
+  # ===== UI: Next SSR app =====
   ui:
     build:
       context: ../donfra-ui 
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api}
-        NEXT_PUBLIC_WS_BASE_URL: ${NEXT_PUBLIC_WS_BASE_URL:-/ws}
+        NEXT_PUBLIC_COLLAB_WS: ${NEXT_PUBLIC_COLLAB_WS:-ws://localhost:6789/yjs}
+        API_PROXY_TARGET: ${API_PROXY_TARGET:-http://api:8080}
+        WS_PROXY_TARGET: ${WS_PROXY_TARGET:-http://ws:6789}
     image: donfra-ui:dev
-    # container_name 可以不写，让 compose 自己管理
     container_name: donfra-ui
     ports:
-      - "80:80"               
+      - "80:3000"
     depends_on:
       api:
         condition: service_started

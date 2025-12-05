@@ -14,7 +14,7 @@ type Lesson = {
   Excalidraw?: any;
 };
 
-const API_ROOT = API_BASE || "http://localhost:8080/api";
+const API_ROOT = API_BASE || "/api";
 
 const Excalidraw = dynamic(() => import("@excalidraw/excalidraw").then((mod) => mod.Excalidraw), {
   ssr: false,
@@ -35,7 +35,7 @@ const EMPTY_EXCALIDRAW: ExcalidrawData = {
   version: 2,
   source: "https://excalidraw.com",
   elements: [],
-  appState: {},
+  appState: { collaborators: new Map() },
   files: {},
 };
 
@@ -53,12 +53,16 @@ export default function EditLessonClient({ slug }: { slug: string }) {
 
   const sanitizeExcalidraw = (raw: any): ExcalidrawData => {
     if (!raw || typeof raw !== "object") return { ...EMPTY_EXCALIDRAW };
+    const appState = raw.appState || {};
     return {
       type: "excalidraw",
       version: raw.version ?? 2,
       source: raw.source ?? "https://excalidraw.com",
       elements: Array.isArray(raw.elements) ? raw.elements : [],
-      appState: { ...(raw.appState || {}) },
+      appState: {
+        ...appState,
+        collaborators: appState.collaborators instanceof Map ? appState.collaborators : new Map(),
+      },
       files: { ...(raw.files || {}) },
     };
   };

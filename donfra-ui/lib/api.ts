@@ -1,6 +1,6 @@
 // lib/api.ts
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://api:8080/api";
-console.log("NEXT_PUBLIC_API_BASE_URL =", process.env.NEXT_PUBLIC_API_BASE_URL);
+// Prefer same-origin proxy (/api) so both browser + SSR hit the backend via the reverse proxy.
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api";
 
 
 type JsonBody = Record<string, any>;

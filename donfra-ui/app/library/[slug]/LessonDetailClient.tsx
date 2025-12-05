@@ -16,7 +16,7 @@ type Lesson = {
   Excalidraw?: any;
 };
 
-const API_ROOT = API_BASE || "http://localhost:8080/api";
+const API_ROOT = API_BASE || "/api";
 
 const Excalidraw = dynamic(
   () => import("@excalidraw/excalidraw").then((mod) => mod.Excalidraw),
@@ -36,6 +36,7 @@ const EMPTY_EXCALIDRAW = {
     gridStep: 5,
     gridModeEnabled: false,
     viewBackgroundColor: "#ffffff",
+    collaborators: new Map(),
   },
   files: {},
 };
@@ -161,9 +162,15 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
             excaliData = null;
           }
         }
+        const appState = excaliData?.appState || {};
+        // Excalidraw expects Map for collaborators; ensure shape to avoid runtime errors.
+        const normalizedAppState = {
+          ...appState,
+          collaborators: appState?.collaborators instanceof Map ? appState.collaborators : new Map(),
+        };
         const normalizedExcalidraw =
           excaliData && typeof excaliData === "object"
-            ? excaliData
+            ? { ...excaliData, appState: normalizedAppState }
             : EMPTY_EXCALIDRAW;
 
         setLesson({

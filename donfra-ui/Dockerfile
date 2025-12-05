@@ -1,33 +1,37 @@
 # syntax=docker/dockerfile:1.6
 
-# ===== deps/build =====
+# ===== deps =====
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+# ===== build =====
 FROM node:20-alpine AS build
 WORKDIR /app
-
-# Build-time env for Next (pass via --build-arg or compose build args)
 ARG NEXT_PUBLIC_API_BASE_URL
 ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
-
-COPY package.json ./
-RUN npm install
-
-COPY . .
+ARG API_PROXY_TARGET
+ENV API_PROXY_TARGET=${API_PROXY_TARGET}
+ARG WS_PROXY_TARGET
+ENV WS_PROXY_TARGET=${WS_PROXY_TARGET}
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_ENV=production
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
 RUN npm run build
 
-# ===== serve =====
-FROM nginx:alpine
-WORKDIR /usr/share/nginx/html
+# ===== run (SSR) =====
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
 
-# 1. 拷贝静态站点
-COPY --from=build /app/out ./
+# Use Next standalone output for smaller runtime image
+COPY --from=build /app/public ./public
+COPY --from=build /app/.next/standalone ./
+COPY --from=build /app/.next/static ./.next/static
+COPY --from=build /app/next.config.js ./next.config.js
 
-# 2. 删掉默认站点配置，避免和我们自己的 nginx.conf 冲突
-RUN rm /etc/nginx/conf.d/default.conf
-
-# 3. 拷贝你自己的 nginx.conf
-COPY nginx.conf /etc/nginx/nginx.conf
-
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 3000
+CMD ["node", "server.js"]
