@@ -6,7 +6,7 @@
 
 :root {
   --bg:#0B0C0C;
-  --hero-grad: radial-gradient(1200px 700px at 20% 10%, rgba(18,60,42,0.65) 0%, rgba(18,60,42,0.0) 60%), linear-gradient(180deg, #0B2A1E 0%, #123C2A 60%, #0B0C0C 100%);
+  --hero-grad: radial-gradient(1200px 700px at 20% 10%, rgba(20,40,38,0.45) 0%, rgba(20,40,38,0.0) 60%), linear-gradient(180deg, #0F1815 0%, #15201B 60%, #0B0C0C 100%);
   --panel:#0F1211; --panel-deeper:#0D100F;
   --line:rgba(192,192,192,0.22);
   --brass:#A98E64; --ink:#E9E9E7; --ink-strong:#F5F5F3; --ink-soft:#CFCFCA; --ink-mid:#B9B9B4;
@@ -92,9 +92,9 @@ body{
   width:100%;
   height:100%;
   object-fit:cover;
-  opacity:0.22;
+  opacity:0.18;
   z-index:0;
-  filter:brightness(0.6) contrast(1.1) saturate(0.9);
+  filter:brightness(0.65) contrast(1.05) saturate(0.75);
 }
 .hero-overlay-grid,
 .hero-vignette,
@@ -179,7 +179,7 @@ body{
   width:100%;
   z-index:1000;
   backdrop-filter:blur(10px);
-  background:linear-gradient(180deg,#16221C 0%,rgba(11,12,12,0.95) 100%);
+  background:linear-gradient(180deg,#121816 0%,rgba(11,12,12,0.94) 100%);
   border-bottom:1px solid rgba(169,142,100,0.35);
   box-shadow:0 6px 16px rgba(0,0,0,0.45);
 }

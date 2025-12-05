@@ -51,64 +51,92 @@ function LibraryInner() {
   }, []);
 
   return (
-    <main style={{ padding: "32px", fontFamily: "sans-serif", color: "#eee", background: "#0b0c0c", minHeight: "100vh" }}>
-      <h1 style={{ marginBottom: 12 }}>Lesson Library</h1>
-      <p style={{ color: "#ccc", marginBottom: 16 }}>Click a lesson to open its detail page.</p>
-      {isAdmin && (
-        <div style={{ marginBottom: 16 }}>
-          <button
-            onClick={() => router.push("/library/create")}
-            style={{
-              padding: "8px 14px",
-              borderRadius: 6,
-              border: "1px solid #f4d18c",
-              background: "transparent",
-              color: "#f4d18c",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            Create lesson
-          </button>
+    <main className="admin-shell" style={{ paddingTop: 100 }}>
+      <video
+        className="admin-hero-video"
+        autoPlay
+        loop
+        muted
+        playsInline
+      >
+        <source src="/defender.mp4" type="video/mp4" />
+      </video>
+      <div className="admin-vignette" />
+      <div className="admin-bg-grid" />
+      <div className="admin-wrapper">
+        <div className="admin-headline">
+          <p className="eyebrow">Study Library</p>
+          <h1>Lessons</h1>
+          <p className="lede">Browse all lessons. Admins can create and edit entries.</p>
         </div>
-      )}
 
-      <section style={{ marginBottom: 24 }}>
-        {loadingList && <div>Loading lessons…</div>}
-        {listError && <div style={{ color: "#f88" }}>{listError}</div>}
-        {!loadingList && !listError && (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ textAlign: "left", borderBottom: "1px solid #444" }}>
-                <th style={{ padding: "8px 6px", width: "80px" }}>ID</th>
-                <th style={{ padding: "8px 6px" }}>Title</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lessons.map((lesson) => (
-                <tr key={lesson.Slug} style={{ borderBottom: "1px solid #222" }}>
-                  <td style={{ padding: "8px 6px", color: "#aaa" }}>{lesson.ID}</td>
-                  <td style={{ padding: "8px 6px" }}>
-                    <button
-                      onClick={() => router.push(`/library/${lesson.Slug}`)}
-                      style={{ background: "none", border: "none", color: "#f4d18c", cursor: "pointer", textDecoration: "underline", fontSize: 15 }}
-                    >
-                      {lesson.Title || lesson.Slug}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {lessons.length === 0 && (
-                <tr>
-                  <td colSpan={2} style={{ padding: "8px 6px", color: "#aaa" }}>
-                    No lessons found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        {isAdmin && (
+          <div style={{ marginBottom: 16 }}>
+            <button
+              onClick={() => router.push("/library/create")}
+              style={{
+                padding: "10px 16px",
+                borderRadius: 10,
+                border: "1px solid rgba(169,142,100,0.35)",
+                background: "rgba(169,142,100,0.08)",
+                color: "#f4d18c",
+                cursor: "pointer",
+                fontWeight: 700,
+              }}
+            >
+              Create lesson
+            </button>
+          </div>
         )}
-      </section>
+
+        <section
+          className="admin-card"
+          style={{ padding: 18, backdropFilter: "blur(4px)", background: "rgba(26,33,30,0.65)" }}
+        >
+          {loadingList && <div style={{ color: "#ccc" }}>Loading lessons…</div>}
+          {listError && <div style={{ color: "#f88" }}>{listError}</div>}
+          {!loadingList && !listError && (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ textAlign: "left", borderBottom: "1px solid rgba(169,142,100,0.25)" }}>
+                  <th style={{ padding: "10px 6px", width: "80px" }}>ID</th>
+                  <th style={{ padding: "10px 6px" }}>Title</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lessons.map((lesson) => (
+                  <tr key={lesson.Slug} style={{ borderBottom: "1px solid rgba(169,142,100,0.1)" }}>
+                    <td style={{ padding: "10px 6px", color: "#c8c1b4" }}>{lesson.ID}</td>
+                    <td style={{ padding: "10px 6px" }}>
+                      <button
+                        onClick={() => router.push(`/library/${lesson.Slug}`)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#f4d18c",
+                          cursor: "pointer",
+                          textDecoration: "underline",
+                          fontSize: 15,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {lesson.Title || lesson.Slug}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {lessons.length === 0 && (
+                  <tr>
+                    <td colSpan={2} style={{ padding: "10px 6px", color: "#aaa" }}>
+                      No lessons found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </section>
+      </div>
     </main>
   );
 }

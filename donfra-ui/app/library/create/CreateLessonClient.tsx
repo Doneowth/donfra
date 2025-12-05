@@ -92,11 +92,15 @@ export default function CreateLessonClient() {
   return (
     <main
       style={{
-        padding: "32px",
+        padding: "24px 28px",
         fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
         color: "#eee",
         background: "#0b0c0c",
         minHeight: "100vh",
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
       }}
     >
       <div style={{ marginBottom: 10, color: "#ccc" }}>
@@ -121,12 +125,16 @@ export default function CreateLessonClient() {
         style={{
           border: "1px solid #333",
           borderRadius: 8,
-          padding: 16,
+          padding: 20,
           background: "#0f1211",
-          maxWidth: 720,
+          width: "100%",
+          flex: 1,
+          display: "grid",
+          gridTemplateColumns: "1fr",
+          gap: 14,
         }}
       >
-        <div style={{ marginBottom: 12 }}>
+        <div>
           <label style={{ display: "block", color: "#ccc", marginBottom: 6 }}>Title</label>
           <input
             value={title}
@@ -142,7 +150,7 @@ export default function CreateLessonClient() {
           />
         </div>
 
-        <div style={{ marginBottom: 12 }}>
+        <div>
           <label style={{ display: "block", color: "#ccc", marginBottom: 6 }}>Slug</label>
           <input
             value={slug}
@@ -158,12 +166,12 @@ export default function CreateLessonClient() {
           />
         </div>
 
-        <div style={{ marginBottom: 12 }}>
+        <div>
           <label style={{ display: "block", color: "#ccc", marginBottom: 6 }}>Markdown</label>
           <textarea
             value={markdown}
             onChange={(e) => setMarkdown(e.target.value)}
-            rows={10}
+            rows={18}
             style={{
               width: "100%",
               padding: "10px 12px",
@@ -176,7 +184,7 @@ export default function CreateLessonClient() {
           />
         </div>
 
-        <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <input
             id="isPublished"
             type="checkbox"
@@ -187,7 +195,7 @@ export default function CreateLessonClient() {
           <label htmlFor="isPublished" style={{ color: "#ccc" }}>Published</label>
         </div>
 
-        <div style={{ marginBottom: 16 }}>
+        <div>
           <h4 style={{ margin: "0 0 8px 0", color: "#ddd" }}>Diagram</h4>
           <div
             style={{
@@ -197,7 +205,7 @@ export default function CreateLessonClient() {
               overflow: "hidden",
               background: "#1a1d1c",
               minHeight: 320,
-              height: 400,
+              height: 520,
             }}
           >
             <Excalidraw
