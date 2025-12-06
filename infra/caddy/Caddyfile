@@ -17,3 +17,7 @@ donfra.dev www.donfra.dev {
 library.donfra.dev {
     redir https://donfra.dev/library{uri} permanent
 }
+
+coding.donfra.dev {
+    redir https://donfra.dev/coding{uri} permanent
+}
