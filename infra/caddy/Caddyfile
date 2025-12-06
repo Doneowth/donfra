@@ -13,3 +13,7 @@ donfra.dev www.donfra.dev {
 
     reverse_proxy http://ui:3000
 }
+
+library.donfra.dev {
+    redir https://donfra.dev/library{uri} permanent
+}
