@@ -79,8 +79,8 @@ localdev-restart-ui: localdev-down-ui localdev-up-ui
 
 docker-build-ui:
 	@echo "Building UI container"
-	docker build -t doneowth/donfra-ui:1.0.1 .
+	cd donfra-ui ; docker build -t doneowth/donfra-ui:1.0.2 .
 
 docker-push-ui:
 	@echo "Pushing UI container to Docker Hub"
-	docker push doneowth/donfra-ui:1.0.1
+	cd donfra-ui ; docker push doneowth/donfra-ui:1.0.2
