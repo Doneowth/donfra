@@ -29,13 +29,6 @@ func NewAuthService(adminPass, jwtSecret string) *AuthService {
 	}
 }
 
-type Claims struct {
-	jwt.RegisteredClaims
-}
-
-// GetSubject satisfies jwt.Claims and allows callers to read the subject without casting.
-func (c Claims) GetSubject() (string, error) { return c.Subject, nil }
-
 // IssueAdminToken verifies the provided dashboard password and returns a signed JWT
 // with subject "admin". The token uses HS256 and is valid for 5 minutes.
 // The token is entirely stateless; the server later validates it by verifying the

@@ -11,20 +11,12 @@ import (
 	"donfra-api/internal/pkg/httputil"
 )
 
-type runReq struct {
-	Code string `json:"code"`
-}
-type runResp struct {
-	Stdout string `json:"stdout"`
-	Stderr string `json:"stderr"`
-}
-
 func (h *Handlers) RunCode(w http.ResponseWriter, r *http.Request) {
 	if !h.roomSvc.IsOpen() {
 		httputil.WriteError(w, http.StatusForbidden, "room is not open")
 		return
 	}
-	var req runReq
+	var req run.ExecutionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httputil.WriteError(w, http.StatusBadRequest, "invalid JSON body")
 		return
@@ -35,14 +27,14 @@ func (h *Handlers) RunCode(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	stdout, stderr, err := run.RunPython(ctx, req.Code)
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			httputil.WriteJSON(w, http.StatusOK, runResp{Stdout: stdout, Stderr: "Execution timed out"})
+	result := run.RunPython(ctx, req.Code)
+	if result.Error != nil {
+		if errors.Is(result.Error, context.DeadlineExceeded) {
+			httputil.WriteJSON(w, http.StatusOK, run.ExecutionResponse{Stdout: result.Stdout, Stderr: "Execution timed out"})
 			return
 		}
-		httputil.WriteJSON(w, http.StatusOK, runResp{Stdout: stdout, Stderr: stderr})
+		httputil.WriteJSON(w, http.StatusOK, run.ExecutionResponse{Stdout: result.Stdout, Stderr: result.Stderr})
 		return
 	}
-	httputil.WriteJSON(w, http.StatusOK, runResp{Stdout: stdout, Stderr: stderr})
+	httputil.WriteJSON(w, http.StatusOK, run.ExecutionResponse{Stdout: result.Stdout, Stderr: result.Stderr})
 }
