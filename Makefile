@@ -3,6 +3,9 @@ SHELL := /bin/zsh
 # Path to the compose file used for local development
 COMPOSE_FILE ?= infra/docker-compose.local.yml
 
+# UI Image Tag
+UI_IMAGE_TAG ?= 1.0.3
+
 # Allow overriding compose command (support `docker-compose` or `docker compose`)
 DOCKER_COMPOSE ?= docker-compose
 
@@ -79,8 +82,8 @@ localdev-restart-ui: localdev-down-ui localdev-up-ui
 
 docker-build-ui:
 	@echo "Building UI container"
-	cd donfra-ui ; docker build -t doneowth/donfra-ui:1.0.2 .
+	cd donfra-ui ; docker build -t doneowth/donfra-ui:$(UI_IMAGE_TAG) .
 
 docker-push-ui:
 	@echo "Pushing UI container to Docker Hub"
-	cd donfra-ui ; docker push doneowth/donfra-ui:1.0.2
+	cd donfra-ui ; docker push doneowth/donfra-ui:$(UI_IMAGE_TAG)
