@@ -1,5 +1,6 @@
 "use client";
 
+import "./CodePad.css";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { api } from "@/lib/api";
