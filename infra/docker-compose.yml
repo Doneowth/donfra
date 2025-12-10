@@ -59,7 +59,7 @@ services:
 
   # ===== UI: Next SSR app =====
   ui:
-    image: doneowth/donfra-ui:latest
+    image: doneowth/donfra-ui:1.0.4
     container_name: donfra-ui
     environment:
       - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-/api}
