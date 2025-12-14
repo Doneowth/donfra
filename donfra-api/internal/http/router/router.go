@@ -24,6 +24,7 @@ func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, auth
 		AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:7777", "http://97.107.136.151:80"},
 		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Content-Type", "X-CSRF-Token", "Authorization"},
+		ExposedHeaders:   []string{"X-Request-Id"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
