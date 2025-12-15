@@ -15,11 +15,11 @@ services:
       - DATABASE_URL=postgres://donfra:arfnod@donfra-db:5432/donfra_study?sslmode=disable
       - JAEGER_ENDPOINT=jaeger:4318
       - REDIS_ADDR=redis:6379
-      - USE_REDIS=true  # 12-Factor App: local environment matches production
+      - USE_REDIS=true # 12-Factor App: local environment matches production
       # - CORS_ORIGIN=http://localhost
       # - BASE_URL=http://localhost
-    # expose:
-    #   - "8080"
+      # expose:
+      #   - "8080"
     ports:
       - "8080:8080"
     depends_on:
@@ -32,22 +32,24 @@ services:
   # ===== WS: y-websocket 服务 =====
   ws:
     build:
-      context: ../donfra-ws  
+      context: ../donfra-ws
     image: donfra-ws:dev
     container_name: donfra-ws
     # expose:
     #   - "6789"
     environment:
-      - ROOM_UPDATE_URL=http://api:8080/api/room/update-people
+      - REDIS_URL=redis://redis:6379
     ports:
       - "6789:6789"
+    depends_on:
+      - redis
     networks:
       - donfra-local
 
   # ===== UI: Next SSR app =====
   ui:
     build:
-      context: ../donfra-ui 
+      context: ../donfra-ui
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api}
         NEXT_PUBLIC_COLLAB_WS: ${NEXT_PUBLIC_COLLAB_WS:-ws://localhost:6789/yjs}
@@ -87,9 +89,9 @@ services:
     environment:
       - COLLECTOR_OTLP_ENABLED=true
     ports:
-      - "16686:16686"  # Jaeger UI
-      - "4318:4318"    # OTLP HTTP receiver
-      - "14268:14268"  # Jaeger collector HTTP
+      - "16686:16686" # Jaeger UI
+      - "4318:4318" # OTLP HTTP receiver
+      - "14268:14268" # Jaeger collector HTTP
     networks:
       - donfra-local
 
@@ -105,7 +107,7 @@ services:
     networks:
       - donfra-local
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
       timeout: 3s
       retries: 5
