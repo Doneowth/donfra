@@ -80,8 +80,8 @@ async function publishHeadcount(count) {
   }
 
   try {
-    await redisPublisher.publish('room:state:headcount', count.toString())
-    console.log(`${new Date().toISOString()} Published headcount ${count} to Redis channel 'room:state:headcount'`)
+    await redisPublisher.publish('room:chan:headcount', count.toString())
+    console.log(`${new Date().toISOString()} Published headcount ${count} to Redis channel 'room:chan:headcount'`)
   } catch (err) {
     console.error(`${new Date().toISOString()} Error publishing headcount to Redis:`, err)
   }

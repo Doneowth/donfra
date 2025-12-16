@@ -26,7 +26,7 @@ func NewHeadcountSubscriber(client *redis.Client, repo Repository) *HeadcountSub
 // Start begins listening for headcount updates on the Redis Pub/Sub channel.
 // This should be called in a goroutine as it blocks until the context is cancelled.
 func (s *HeadcountSubscriber) Start(ctx context.Context) error {
-	pubsub := s.client.Subscribe(ctx, "room:state:headcount")
+	pubsub := s.client.Subscribe(ctx, "room:chan:headcount")
 	defer pubsub.Close()
 
 	// Wait for subscription confirmation
@@ -34,7 +34,7 @@ func (s *HeadcountSubscriber) Start(ctx context.Context) error {
 		return err
 	}
 
-	log.Println("[pubsub] Subscribed to room:state:headcount channel")
+	log.Println("[pubsub] Subscribed to room:chan:headcount channel")
 
 	// Listen for messages
 	ch := pubsub.Channel()
