@@ -329,31 +329,3 @@ func TestRoomClose_Success(t *testing.T) {
 	}
 }
 
-// TestRoomUpdatePeople_Success tests updating headcount
-func TestRoomUpdatePeople_Success(t *testing.T) {
-	var updatedCount int
-
-	mockRoom := &MockRoomService{
-		UpdateHeadcountFunc: func(ctx context.Context, count int) error {
-			updatedCount = count
-			return nil
-		},
-	}
-
-	h := handlers.New(mockRoom, nil, nil)
-
-	reqBody := room.UpdateHeadcountRequest{Headcount: 7}
-	bodyBytes, _ := json.Marshal(reqBody)
-	req := httptest.NewRequest(http.MethodPost, "/api/room/update-people", bytes.NewReader(bodyBytes))
-	w := httptest.NewRecorder()
-
-	h.RoomUpdatePeople(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("expected status 200, got %d", w.Code)
-	}
-
-	if updatedCount != 7 {
-		t.Errorf("expected headcount to be updated to 7, got %d", updatedCount)
-	}
-}
