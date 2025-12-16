@@ -41,8 +41,9 @@ func main() {
 
 	// Initialize room repository (Redis or Memory)
 	var roomRepo room.Repository
+	var redisClient *redis.Client
 	if cfg.UseRedis && cfg.RedisAddr != "" {
-		redisClient := redis.NewClient(&redis.Options{
+		redisClient = redis.NewClient(&redis.Options{
 			Addr: cfg.RedisAddr,
 		})
 		// Test Redis connection
@@ -59,6 +60,20 @@ func main() {
 	roomSvc := room.NewService(roomRepo, cfg.Passcode, cfg.BaseURL)
 	authSvc := auth.NewAuthService(cfg.AdminPass, cfg.JWTSecret)
 	studySvc := study.NewService(conn)
+
+	// Start Redis Pub/Sub subscriber for headcount updates (if using Redis)
+	var subCancel context.CancelFunc
+	if redisClient != nil {
+		subCtx, cancel := context.WithCancel(context.Background())
+		subCancel = cancel
+		subscriber := room.NewHeadcountSubscriber(redisClient, roomRepo)
+		go func() {
+			if err := subscriber.Start(subCtx); err != nil && err != context.Canceled {
+				log.Printf("[pubsub] subscriber error: %v", err)
+			}
+		}()
+	}
+
 	r := router.New(cfg, roomSvc, studySvc, authSvc)
 
 	srv := &http.Server{
@@ -82,11 +97,23 @@ func main() {
 
 	log.Println("[donfra-api] shutting down gracefully...")
 
+	// Cancel Redis Pub/Sub subscriber if running
+	if subCancel != nil {
+		subCancel()
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatalf("server forced to shutdown: %v", err)
+	}
+
+	// Close Redis connection if open
+	if redisClient != nil {
+		if err := redisClient.Close(); err != nil {
+			log.Printf("[donfra-api] error closing Redis: %v", err)
+		}
 	}
 
 	log.Println("[donfra-api] server exited")

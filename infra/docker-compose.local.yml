@@ -32,15 +32,17 @@ services:
   # ===== WS: y-websocket 服务 =====
   ws:
     build:
-      context: ../donfra-ws  
+      context: ../donfra-ws
     image: donfra-ws:dev
     container_name: donfra-ws
     # expose:
     #   - "6789"
     environment:
-      - ROOM_UPDATE_URL=http://api:8080/api/room/update-people
+      - REDIS_ADDR=redis:6379
     ports:
       - "6789:6789"
+    depends_on:
+      - redis
     networks:
       - donfra-local
 

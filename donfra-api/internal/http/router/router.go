@@ -41,7 +41,7 @@ func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, auth
 	v1.Post("/room/init", h.RoomInit)
 	v1.Get("/room/status", h.RoomStatus)
 	v1.Post("/room/join", h.RoomJoin)
-	v1.Post("/room/update-people", h.RoomUpdatePeople)
+	// Removed: /room/update-people - now using Redis Pub/Sub for headcount updates
 	v1.Post("/room/close", h.RoomClose)
 	v1.Post("/room/run", h.RunCode)
 

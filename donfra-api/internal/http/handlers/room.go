@@ -75,18 +75,5 @@ func (h *Handlers) RoomClose(w http.ResponseWriter, r *http.Request) {
 	httputil.WriteJSON(w, http.StatusOK, room.StatusResponse{Open: h.roomSvc.IsOpen(ctx)})
 }
 
-func (h *Handlers) RoomUpdatePeople(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	var req room.UpdateHeadcountRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httputil.WriteError(w, http.StatusBadRequest, "invalid JSON body")
-		return
-	}
-
-	if err := h.roomSvc.UpdateHeadcount(ctx, req.Headcount); err != nil {
-		httputil.WriteError(w, http.StatusInternalServerError, "failed to update headcount")
-		return
-	}
-
-	httputil.WriteJSON(w, http.StatusOK, room.UpdateHeadcountResponse{Headcount: req.Headcount})
-}
+// RoomUpdatePeople has been removed - headcount is now updated via Redis Pub/Sub
+// The WebSocket server publishes headcount changes, and the API subscribes to them
