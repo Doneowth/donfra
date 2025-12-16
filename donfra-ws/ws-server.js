@@ -4,7 +4,6 @@
  */
 const WebSocket = require('ws')
 const http = require('http')
-const https = require('https')
 const StaticServer = require('node-static').Server
 const ywsUtils = require('y-websocket/bin/utils')
 const setupWSConnection = ywsUtils.setupWSConnection
@@ -15,14 +14,53 @@ const redis = require('redis')
 
 const production = process.env.PRODUCTION != null
 const port = process.env.PORT || 6789
+const redisAddr = process.env.REDIS_ADDR || 'localhost:6379'
 
 const staticServer = nostatic ? null : new StaticServer('../', { cache: production ? 3600 : false, gzip: production })
+
+// Initialize Redis publisher client
+let redisPublisher = null
+let redisConnected = false
+
+async function initRedis() {
+  try {
+    const [host, portStr] = redisAddr.split(':')
+    redisPublisher = redis.createClient({
+      socket: {
+        host: host,
+        port: parseInt(portStr || '6379', 10)
+      }
+    })
+
+    redisPublisher.on('error', (err) => {
+      console.error(`${new Date().toISOString()} Redis error:`, err)
+      redisConnected = false
+    })
+
+    redisPublisher.on('connect', () => {
+      console.log(`${new Date().toISOString()} Redis publisher connected to ${redisAddr}`)
+      redisConnected = true
+    })
+
+    await redisPublisher.connect()
+  } catch (err) {
+    console.error(`${new Date().toISOString()} Failed to initialize Redis:`, err)
+    redisPublisher = null
+    redisConnected = false
+  }
+}
+
+// Initialize Redis on startup
+initRedis().catch(err => {
+  console.error(`${new Date().toISOString()} Redis initialization failed:`, err)
+})
 
 const server = http.createServer((request, response) => {
   if (request.url === '/health') {
     response.writeHead(200, { 'Content-Type': 'application/json' })
     response.end(JSON.stringify({
-      response: 'ok'
+      response: 'ok',
+      redis: redisConnected
     }))
     return
   }
@@ -34,7 +72,22 @@ wss.on('connection', (conn, req) => {
   setupWSConnection(conn, req, { gc: req.url.slice(1) !== 'ws/prosemirror-versions' })
 })
 
-// log some stats
+// Publish headcount updates to Redis Pub/Sub
+async function publishHeadcount(count) {
+  if (!redisPublisher || !redisConnected) {
+    console.warn(`${new Date().toISOString()} Redis not connected, skipping headcount publish`)
+    return
+  }
+
+  try {
+    await redisPublisher.publish('room:state:headcount', count.toString())
+    console.log(`${new Date().toISOString()} Published headcount ${count} to Redis channel 'room:state:headcount'`)
+  } catch (err) {
+    console.error(`${new Date().toISOString()} Error publishing headcount to Redis:`, err)
+  }
+}
+
+// Monitor connection count and publish changes
 setInterval(() => {
   let conns = 0
   docs.forEach(doc => { conns += doc.conns.size })
@@ -46,33 +99,23 @@ setInterval(() => {
   }
   console.log(`${new Date().toISOString()} Stats: ${JSON.stringify(stats)}`)
 
-  // If the number of connections changes since last check, publish redis key
+  // Publish headcount changes to Redis Pub/Sub
   if (typeof global.__lastConns === 'undefined') global.__lastConns = -1
-  if (conns !== global.__lastConns && process.env.REDIS_URL) {
+  if (conns !== global.__lastConns) {
     global.__lastConns = conns
-    try {
-      const publisher = redis.createClient({ url: process.env.REDIS_URL })
-      publisher.on('error', err => console.error('Redis Client Error', err))
-
-      publisher.connect().then(() => {
-        // Store the headcount as a Redis key so it can be retrieved with GET.
-        publisher.set('room:state:headcount', conns.toString()).then(() => {
-          console.log(`${new Date().toISOString()} Set redis headcount to ${conns}`)
-          publisher.quit()
-        }).catch(err => {
-          console.error(`${new Date().toISOString()} Error setting redis headcount: ${err.message}`)
-          publisher.quit()
-        })
-      }).catch(err => {
-        console.error(`${new Date().toISOString()} Error connecting to redis: ${err.message}`)
-      })
-    } catch (err) {
-      console.error(`${new Date().toISOString()} Error updating redis headcount: ${err.message}`)
-    }
+    publishHeadcount(conns)
   }
-
 }, 3000)
 
 server.listen(port, '0.0.0.0')
 
 console.log(`Listening to http://localhost:${port} (${production ? 'production + ' : ''} ${nostatic ? 'no static content' : 'serving static content'})`)
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log(`${new Date().toISOString()} SIGTERM received, closing Redis connection...`)
+  if (redisPublisher) {
+    await redisPublisher.quit()
+  }
+  process.exit(0)
+})

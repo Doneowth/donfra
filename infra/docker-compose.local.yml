@@ -38,7 +38,7 @@ services:
     # expose:
     #   - "6789"
     environment:
-      - REDIS_URL=redis://redis:6379
+      - REDIS_ADDR=redis:6379
     ports:
       - "6789:6789"
     depends_on:
