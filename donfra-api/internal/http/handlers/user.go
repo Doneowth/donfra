@@ -175,3 +175,47 @@ func (h *Handlers) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		"token": token,
 	})
 }
+
+// UpdatePassword handles password update requests.
+// POST /api/auth/update-password
+// Requires authentication middleware.
+func (h *Handlers) UpdatePassword(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Extract user ID from context
+	userID, ok := ctx.Value("user_id").(uint)
+	if !ok {
+		httputil.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	// Parse request body
+	var req struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.WriteError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	// Update password
+	err := h.userSvc.UpdatePassword(ctx, userID, req.CurrentPassword, req.NewPassword)
+	if err != nil {
+		switch {
+		case errors.Is(err, user.ErrIncorrectPassword):
+			httputil.WriteError(w, http.StatusUnauthorized, err.Error())
+		case errors.Is(err, user.ErrPasswordTooShort):
+			httputil.WriteError(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, user.ErrUserNotFound):
+			httputil.WriteError(w, http.StatusNotFound, "user not found")
+		default:
+			httputil.WriteError(w, http.StatusInternalServerError, "failed to update password")
+		}
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"message": "password updated successfully",
+	})
+}

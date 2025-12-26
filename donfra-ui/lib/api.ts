@@ -114,5 +114,15 @@ export const api = {
       getJSON<{ user: { id: number; email: string; username: string; role: string; isActive: boolean; createdAt: string } }>("/auth/me"),
     refresh: () =>
       postJSON<{ token: string }>("/auth/refresh", {}),
+    updatePassword: (currentPassword: string, newPassword: string) =>
+      postJSON<{ message: string }>("/auth/update-password", { current_password: currentPassword, new_password: newPassword }),
+  },
+  interview: {
+    init: () =>
+      postJSON<{ room_id: string; invite_link: string; message: string }>("/interview/init", {}),
+    close: (roomId: string) =>
+      postJSON<{ message: string }>("/interview/close", { room_id: roomId }),
+    getMyRooms: () =>
+      getJSON<{ rooms: Array<{ id: number; room_id: string; owner_id: number; headcount: number; code_snapshot: string; invite_link: string; created_at: string; updated_at: string }> }>("/interview/my-rooms"),
   },
 };

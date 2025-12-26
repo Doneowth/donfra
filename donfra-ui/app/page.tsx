@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
 import SignInModal from "@/components/auth/SignInModal";
@@ -9,6 +10,7 @@ import SignUpModal from "@/components/auth/SignUpModal";
 export default function Home() {
   useEffect(() => { document.body.style.margin = "0"; }, []);
 
+  const router = useRouter();
   const { user, logout } = useAuth();
   const [showSignIn, setShowSignIn] = useState(false);
   const [showSignUp, setShowSignUp] = useState(false);
@@ -55,6 +57,9 @@ export default function Home() {
                       <p className="user-email">{user.email}</p>
                       <p className="user-role">{user.role}</p>
                     </div>
+                    <button className="dropdown-item" onClick={() => { router.push("/user"); setShowUserMenu(false); }}>
+                      Profile
+                    </button>
                     <button className="dropdown-item" onClick={handleLogout}>
                       Sign Out
                     </button>

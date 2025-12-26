@@ -27,6 +27,7 @@ type Service interface {
 	CloseRoom(ctx context.Context, roomID string, userID uint) error
 	GetRoomByID(ctx context.Context, roomID string) (*InterviewRoom, error)
 	UpdateHeadcount(ctx context.Context, roomID string, headcount int) error
+	GetActiveRoomsByOwner(ctx context.Context, ownerID uint) ([]*InterviewRoom, error)
 }
 
 // service implements Service interface
@@ -159,6 +160,15 @@ func (s *service) GetRoomByID(ctx context.Context, roomID string) (*InterviewRoo
 // UpdateHeadcount updates the participant count for a room
 func (s *service) UpdateHeadcount(ctx context.Context, roomID string, headcount int) error {
 	return s.repo.UpdateHeadcount(ctx, roomID, headcount)
+}
+
+// GetActiveRoomsByOwner retrieves all active rooms owned by a user
+func (s *service) GetActiveRoomsByOwner(ctx context.Context, ownerID uint) ([]*InterviewRoom, error) {
+	rooms, err := s.repo.GetAllActiveByOwnerID(ctx, ownerID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get active rooms: %w", err)
+	}
+	return rooms, nil
 }
 
 // generateRoomID generates a random room ID

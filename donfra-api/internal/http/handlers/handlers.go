@@ -46,6 +46,7 @@ type UserService interface {
 	GetUserByEmail(ctx context.Context, email string) (*user.User, error)
 	GetJWTSecret() string
 	GetJWTExpiry() int
+	UpdatePassword(ctx context.Context, userID uint, currentPassword, newPassword string) error
 }
 
 // InterviewService defines the interface for interview room operations.
@@ -55,6 +56,7 @@ type InterviewService interface {
 	CloseRoom(ctx context.Context, roomID string, userID uint) error
 	GetRoomByID(ctx context.Context, roomID string) (*interview.InterviewRoom, error)
 	UpdateHeadcount(ctx context.Context, roomID string, headcount int) error
+	GetActiveRoomsByOwner(ctx context.Context, ownerID uint) ([]*interview.InterviewRoom, error)
 }
 
 // Handlers holds all service dependencies for HTTP handlers.

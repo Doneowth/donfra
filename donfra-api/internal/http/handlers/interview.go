@@ -162,3 +162,34 @@ func (h *Handlers) CloseInterviewRoomHandler(w http.ResponseWriter, r *http.Requ
 		Message: "Room closed successfully",
 	})
 }
+
+// GetMyRoomsHandler handles GET /api/interview/my-rooms
+// Returns all active rooms owned by the authenticated user
+func (h *Handlers) GetMyRoomsHandler(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.StartSpan(r.Context(), "handler.GetMyRooms")
+	defer span.End()
+
+	if h.interviewSvc == nil {
+		httputil.WriteError(w, http.StatusInternalServerError, "interview service unavailable")
+		return
+	}
+
+	// Get user ID from context (set by RequireAuth middleware)
+	userID, ok := ctx.Value("user_id").(uint)
+	if !ok {
+		httputil.WriteError(w, http.StatusUnauthorized, "user authentication required")
+		return
+	}
+
+	// Get all active rooms for this user
+	rooms, err := h.interviewSvc.GetActiveRoomsByOwner(ctx, userID)
+	if err != nil {
+		tracing.RecordError(span, err)
+		httputil.WriteError(w, http.StatusInternalServerError, "failed to get rooms")
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"rooms": rooms,
+	})
+}

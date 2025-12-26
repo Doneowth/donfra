@@ -20,6 +20,8 @@ var (
 	ErrInvalidCredentials = errors.New("invalid email or password")
 	// ErrUserInactive is returned when attempting to login with an inactive account.
 	ErrUserInactive = errors.New("account is inactive")
+	// ErrIncorrectPassword is returned when the current password is incorrect.
+	ErrIncorrectPassword = errors.New("current password is incorrect")
 )
 
 // Email validation regex (simple version)
@@ -165,4 +167,40 @@ func (s *Service) GetJWTSecret() string {
 // GetJWTExpiry returns the JWT expiry duration in hours.
 func (s *Service) GetJWTExpiry() int {
 	return s.jwtExpiry
+}
+
+// UpdatePassword updates a user's password after verifying the current password.
+func (s *Service) UpdatePassword(ctx context.Context, userID uint, currentPassword, newPassword string) error {
+	// Fetch the user
+	user, err := s.repo.FindByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return ErrUserNotFound
+	}
+
+	// Verify current password
+	if err := VerifyPassword(user.Password, currentPassword); err != nil {
+		return ErrIncorrectPassword
+	}
+
+	// Validate new password
+	if len(newPassword) < 8 {
+		return ErrPasswordTooShort
+	}
+
+	// Hash new password
+	hashedPassword, err := HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+
+	// Update password in database
+	user.Password = hashedPassword
+	if err := s.repo.Update(ctx, user); err != nil {
+		return err
+	}
+
+	return nil
 }

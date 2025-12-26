@@ -11,6 +11,7 @@ function InterviewContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [roomId, setRoomId] = useState<string>("");
+  const [isOwner, setIsOwner] = useState<boolean>(false);
 
   useEffect(() => {
     const joinRoom = async () => {
@@ -41,6 +42,16 @@ function InterviewContent() {
 
         const data = await response.json();
         setRoomId(data.room_id);
+
+        // Check if current user is the room owner (admin)
+        try {
+          const userResponse = await api.auth.me();
+          setIsOwner(userResponse.user.role === "admin");
+        } catch (err) {
+          console.log("[Interview] Could not fetch user info, assuming non-owner");
+          setIsOwner(false);
+        }
+
         setLoading(false);
       } catch (err: any) {
         console.error("Error joining room:", err);
@@ -52,9 +63,21 @@ function InterviewContent() {
     joinRoom();
   }, [searchParams]);
 
-  const handleExit = useCallback(() => {
+  const handleExit = useCallback(async () => {
+    // If user is the room owner (admin), close the room before exiting
+    if (roomId && isOwner) {
+      try {
+        await api.interview.close(roomId);
+        console.log(`[Interview] Room ${roomId} closed by owner`);
+      } catch (err) {
+        console.error("[Interview] Error closing room:", err);
+        // Continue to exit even if close fails
+      }
+    } else if (roomId) {
+      console.log(`[Interview] User leaving room ${roomId} (room will remain open)`);
+    }
     router.push("/");
-  }, [router]);
+  }, [router, roomId, isOwner]);
 
   if (loading) {
     return (

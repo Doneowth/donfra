@@ -48,6 +48,7 @@ func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, auth
 	// ===== User Routes (Protected) =====
 	v1.With(middleware.RequireAuth(userSvc)).Get("/auth/me", h.GetCurrentUser)
 	v1.With(middleware.RequireAuth(userSvc)).Post("/auth/refresh", h.RefreshToken)
+	v1.With(middleware.RequireAuth(userSvc)).Post("/auth/update-password", h.UpdatePassword)
 
 	// ===== Admin Routes =====
 	v1.Post("/admin/login", h.AdminLogin)
@@ -76,6 +77,7 @@ func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, auth
 	v1.With(middleware.RequireAuth(userSvc)).Post("/interview/init", h.InitInterviewRoomHandler)
 	v1.Post("/interview/join", h.JoinInterviewRoomHandler) // Public: anyone with invite token can join
 	v1.With(middleware.RequireAuth(userSvc)).Post("/interview/close", h.CloseInterviewRoomHandler)
+	v1.With(middleware.RequireAuth(userSvc)).Get("/interview/my-rooms", h.GetMyRoomsHandler)
 
 	root.Mount("/api/v1", v1)
 	root.Mount("/api", v1)
