@@ -45,7 +45,7 @@ export default function Home() {
 
             {user ? (
               <div className="user-menu">
-                <span className="user-welcome">     Welcome,</span>
+                <span className="user-welcome">Welcome,</span>
                 <button className="user-button" onClick={() => setShowUserMenu(!showUserMenu)}>
                   {user.username || user.email}
                 </button>
