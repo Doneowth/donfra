@@ -41,6 +41,7 @@ export default function Home() {
           </div>
           <nav className="nav">
             <a href="#top">Home</a>
+            <a href="/library">Library</a>
             <a href="#pipeline">Mission Path</a>
             <a href="#stories">Stories</a>
             <a href="#contact">Contact</a>

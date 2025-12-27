@@ -161,3 +161,24 @@ jaeger-hash-password:
 	@echo "Generate password hash for Caddy Basic Auth:"
 	@echo "Enter your password when prompted:"
 	@docker run --rm -it caddy:2 caddy hash-password
+
+# ===== Database Backup & Restore Commands =====
+
+db-backup:
+	@echo "📦 Creating database backup..."
+	@./backup-db.sh
+
+db-restore:
+	@echo "🔄 Restoring database from backup..."
+	@echo "Usage: make db-restore BACKUP_FILE=./db-backups/donfra_backup_YYYYMMDD_HHMMSS.sql"
+	@if [ -z "$(BACKUP_FILE)" ]; then \
+		echo ""; \
+		echo "Available backups:"; \
+		ls -lh ./db-backups/*.sql 2>/dev/null || echo "No backups found"; \
+		exit 1; \
+	fi
+	@./restore-db.sh $(BACKUP_FILE)
+
+db-list-backups:
+	@echo "Available database backups:"
+	@ls -lh ./db-backups/*.sql 2>/dev/null || echo "No backups found"
