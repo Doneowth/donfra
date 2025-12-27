@@ -59,6 +59,14 @@ export default function CodingPage() {
           await api.room.join(inviteToken);
           if (!cancelled) {
             persistToken(inviteToken);
+            // Extract room_id from URL if present (it should be in invite URL)
+            if (typeof window !== "undefined") {
+              const urlParams = new URLSearchParams(window.location.search);
+              const urlRoomId = urlParams.get("room_id");
+              if (urlRoomId) {
+                console.log("[Coding] Joining room with room_id:", urlRoomId);
+              }
+            }
             setPhase("pad"); setBusy(false); return;
           }
         }
@@ -100,19 +108,31 @@ export default function CodingPage() {
       if (res.token) {
         setJoinToken(res.token);
         persistToken(res.token);
+        // Auto-join after creating room using room_id
+        if (res.roomId) {
+          await joinByToken(res.token, res.roomId);
+        }
       }
     } catch (e: any) {
       setHint(e?.message || "Initialization failed."); setTimeout(() => setHint(""), 1500);
     } finally { setBusy(false); }
   };
 
-  const joinByToken = async (token?: string) => {
+  const joinByToken = async (token?: string, roomIdParam?: string) => {
     const t = (token ?? joinToken).trim();
     if (!t) { setHint("Invite token required."); setTimeout(() => setHint(""), 1200); return; }
     try {
       setBusy(true); setHint("");
       await api.room.join(t);
       persistToken(t);
+
+      // Update URL with room_id if provided (for proper Yjs sync)
+      if (roomIdParam && typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.set("room_id", roomIdParam);
+        window.history.replaceState({}, "", url.toString());
+      }
+
       setPhase("pad");
     } catch (e: any) {
       setHint(e?.message || "Join failed."); setTimeout(() => setHint(""), 1500);

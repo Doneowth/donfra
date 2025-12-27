@@ -5,6 +5,7 @@ import (
 
 	"donfra-api/internal/domain/auth"
 	"donfra-api/internal/domain/interview"
+	"donfra-api/internal/domain/room"
 	"donfra-api/internal/domain/study"
 	"donfra-api/internal/domain/user"
 )
@@ -13,6 +14,7 @@ import (
 type RoomService interface {
 	Init(ctx context.Context, passcode string, size int) (inviteURL string, token string, err error)
 	IsOpen(ctx context.Context) bool
+	GetStatus(ctx context.Context) (*room.RoomState, error)
 	InviteLink(ctx context.Context) string
 	Headcount(ctx context.Context) int
 	Limit(ctx context.Context) int

@@ -2,13 +2,12 @@ package interview
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -171,13 +170,10 @@ func (s *service) GetActiveRoomsByOwner(ctx context.Context, ownerID uint) ([]*I
 	return rooms, nil
 }
 
-// generateRoomID generates a random room ID
+// generateRoomID generates a random room ID using UUID v4
 func generateRoomID() (string, error) {
-	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
+	id := uuid.New()
+	return id.String(), nil
 }
 
 // InviteTokenClaims represents the JWT claims for interview room invite tokens

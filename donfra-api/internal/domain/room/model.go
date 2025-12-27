@@ -3,6 +3,7 @@ package room
 // RoomState represents the current state of the room.
 type RoomState struct {
 	Open        bool
+	RoomID      string
 	InviteToken string
 	Headcount   int
 	Limit       int
@@ -17,12 +18,14 @@ type InitRequest struct {
 // InitResponse represents the response after initializing a room.
 type InitResponse struct {
 	InviteURL string `json:"inviteUrl"`
+	RoomID    string `json:"roomId"`
 	Token     string `json:"token,omitempty"`
 }
 
 // StatusResponse represents the current room status.
 type StatusResponse struct {
 	Open       bool   `json:"open"`
+	RoomID     string `json:"roomId,omitempty"`
 	InviteLink string `json:"inviteLink,omitempty"`
 	Headcount  int    `json:"headcount,omitempty"`
 	Limit      int    `json:"limit,omitempty"`

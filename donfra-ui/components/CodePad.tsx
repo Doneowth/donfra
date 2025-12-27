@@ -166,10 +166,13 @@ export default function CodePad({ onExit, roomId }: Props) {
 
     // 协作地址/房间
     const params = new URLSearchParams(window.location.search);
-    // Use roomId prop if provided (for interview rooms), otherwise fall back to URL param or default
-    const roomName = roomId || params.get("invite") || "default-room";
+    // Use roomId prop if provided (for interview rooms), otherwise use room_id from URL params
+    // This ensures all users in the same room connect to the same Yjs document
+    const roomName = roomId || params.get("room_id") || "default-room";
     // Ensure collabURL is a string: prefer env var, otherwise derive a sensible fallback from current origin
     const collabURL = process.env.NEXT_PUBLIC_COLLAB_WS ?? `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/yjs`;
+
+    console.log('[CodePad] Room configuration:', { roomName, roomId, urlRoomId: params.get("room_id") });
 
     // 创建 Doc / Provider
     // The WebsocketProvider sends the roomName in the URL path (e.g., ws://host/yjs/room-id)

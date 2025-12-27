@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 // Service handles room business logic (validation, token generation, URL building).
@@ -50,6 +52,9 @@ func (s *Service) Init(ctx context.Context, pass string, size int) (inviteURL st
 		limit = 2
 	}
 
+	// Generate unique room ID
+	roomID := uuid.New().String()
+
 	// Generate cryptographically secure invite token
 	token, err = s.generateToken()
 	if err != nil {
@@ -59,6 +64,7 @@ func (s *Service) Init(ctx context.Context, pass string, size int) (inviteURL st
 	// Create new state
 	newState := &RoomState{
 		Open:        true,
+		RoomID:      roomID,
 		InviteToken: token,
 		Headcount:   0,
 		Limit:       limit,
@@ -70,7 +76,7 @@ func (s *Service) Init(ctx context.Context, pass string, size int) (inviteURL st
 	}
 
 	// Build invite URL
-	inviteURL = s.buildInviteURL(token)
+	inviteURL = s.buildInviteURL(roomID, token)
 
 	return inviteURL, token, nil
 }
@@ -95,7 +101,7 @@ func (s *Service) InviteLink(ctx context.Context) string {
 	if err != nil || !state.Open {
 		return ""
 	}
-	return s.buildInviteURL(state.InviteToken)
+	return s.buildInviteURL(state.RoomID, state.InviteToken)
 }
 
 // Validate checks if the given token matches the room's invite token and room is open.
@@ -156,8 +162,8 @@ func (s *Service) generateToken() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-// buildInviteURL constructs the full invite URL with token and role.
-func (s *Service) buildInviteURL(token string) string {
+// buildInviteURL constructs the full invite URL with room_id, token and role.
+func (s *Service) buildInviteURL(roomID, token string) string {
 	baseURL := strings.TrimRight(s.baseURL, "/")
-	return fmt.Sprintf("%s/coding?invite=%s&role=agent", baseURL, token)
+	return fmt.Sprintf("%s/coding?room_id=%s&invite=%s&role=agent", baseURL, roomID, token)
 }

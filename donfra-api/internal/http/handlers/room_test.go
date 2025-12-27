@@ -81,6 +81,10 @@ func (m *MockRoomService) UpdateHeadcount(ctx context.Context, count int) error 
 	return nil
 }
 
+func (m *MockRoomService) GetStatus(ctx context.Context) (*room.RoomState, error) {
+	return nil, nil
+}
+
 // TestRoomInit_Success tests successful room initialization
 func TestRoomInit_Success(t *testing.T) {
 	mockRoom := &MockRoomService{

@@ -20,7 +20,15 @@ func (h *Handlers) RoomInit(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteError(w, http.StatusConflict, err.Error())
 		return
 	}
-	httputil.WriteJSON(w, http.StatusOK, room.InitResponse{InviteURL: url, Token: token})
+
+	// Get room state to retrieve room_id
+	state, err := h.roomSvc.GetStatus(r.Context())
+	if err != nil {
+		httputil.WriteError(w, http.StatusInternalServerError, "failed to get room state")
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, room.InitResponse{InviteURL: url, RoomID: state.RoomID, Token: token})
 }
 
 func (h *Handlers) RoomStatus(w http.ResponseWriter, r *http.Request) {
@@ -29,8 +37,16 @@ func (h *Handlers) RoomStatus(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteError(w, http.StatusInternalServerError, "invite link is empty while room is open")
 		return
 	}
+
+	state, err := h.roomSvc.GetStatus(ctx)
+	if err != nil {
+		httputil.WriteError(w, http.StatusInternalServerError, "failed to get room state")
+		return
+	}
+
 	httputil.WriteJSON(w, http.StatusOK, room.StatusResponse{
 		Open:       h.roomSvc.IsOpen(ctx),
+		RoomID:     state.RoomID,
 		InviteLink: h.roomSvc.InviteLink(ctx),
 		Headcount:  h.roomSvc.Headcount(ctx),
 		Limit:      h.roomSvc.Limit(ctx),
@@ -75,5 +91,3 @@ func (h *Handlers) RoomClose(w http.ResponseWriter, r *http.Request) {
 	httputil.WriteJSON(w, http.StatusOK, room.StatusResponse{Open: h.roomSvc.IsOpen(ctx)})
 }
 
-// RoomUpdatePeople has been removed - headcount is now updated via Redis Pub/Sub
-// The WebSocket server publishes headcount changes, and the API subscribes to them
