@@ -9,6 +9,7 @@ import (
 	"donfra-api/internal/config"
 	"donfra-api/internal/domain/auth"
 	"donfra-api/internal/domain/interview"
+	"donfra-api/internal/domain/livekit"
 	"donfra-api/internal/domain/room"
 	"donfra-api/internal/domain/study"
 	"donfra-api/internal/domain/user"
@@ -16,14 +17,14 @@ import (
 	"donfra-api/internal/http/middleware"
 )
 
-func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, authSvc *auth.AuthService, userSvc *user.Service, interviewSvc interview.Service) http.Handler {
+func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, authSvc *auth.AuthService, userSvc *user.Service, interviewSvc interview.Service, livekitSvc *livekit.Service) http.Handler {
 	root := chi.NewRouter()
 
 	// Tracing middleware (must be first to capture all requests)
 	root.Use(middleware.Tracing("donfra-api"))
 
 	root.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:7777", "http://97.107.136.151:80"},
+		AllowedOrigins:   []string{"http://localhost", "http://localhost:3000", "http://localhost:7777", "http://donfra.local", "http://97.107.136.151:80"},
 		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Content-Type", "X-CSRF-Token", "Authorization"},
 		ExposedHeaders:   []string{"X-Request-Id"},
@@ -37,7 +38,7 @@ func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, auth
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	h := handlers.New(roomSvc, studySvc, authSvc, userSvc, interviewSvc)
+	h := handlers.New(roomSvc, studySvc, authSvc, userSvc, interviewSvc, livekitSvc)
 	v1 := chi.NewRouter()
 
 	// ===== User Authentication Routes (Public) =====
@@ -78,6 +79,13 @@ func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, auth
 	v1.Post("/interview/join", h.JoinInterviewRoomHandler) // Public: anyone with invite token can join
 	v1.With(middleware.RequireAuth(userSvc)).Post("/interview/close", h.CloseInterviewRoomHandler)
 	v1.With(middleware.RequireAuth(userSvc)).Get("/interview/my-rooms", h.GetMyRoomsHandler)
+
+	// ===== LiveKit Live Streaming Routes =====
+	// Admin only: create and end sessions
+	v1.With(middleware.RequireAdminUser(authSvc, userSvc)).Post("/live/create", h.CreateLiveSession)
+	v1.With(middleware.RequireAdminUser(authSvc, userSvc)).Post("/live/end", h.EndLiveSession)
+	// Public: anyone can join with session ID
+	v1.Post("/live/join", h.JoinLiveSession)
 
 	root.Mount("/api/v1", v1)
 	root.Mount("/api", v1)

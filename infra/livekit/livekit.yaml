@@ -1,0 +1,25 @@
+port: 7880
+bind_addresses:
+  - "0.0.0.0"
+
+rtc:
+  port_range_start: 50000
+  port_range_end: 50020
+  use_external_ip: false
+  # 禁用STUN服务器（本地开发）
+  stun_servers: []
+
+keys:
+  # 开发环境密钥 (生产环境务必更换!) - 至少32字符
+  devkeydevkeydevkeydevkeydevkeydevkey: APISECRETdevkeyAPISECRETdevkeyAPISECRETdevkey
+
+# 房间配置
+room:
+  auto_create: true
+  empty_timeout: 300  # 5分钟无人自动关闭
+  max_participants: 100
+
+# 日志配置
+logging:
+  level: info
+  sample: false

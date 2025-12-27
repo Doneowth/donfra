@@ -81,7 +81,7 @@ func TestListLessons_AsAdmin(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(nil, mockStudy, nil, nil, nil)
+	h := handlers.New(nil, mockStudy, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons", nil)
 	// Simulate OptionalAdmin middleware setting admin context
@@ -115,7 +115,7 @@ func TestListLessons_AsRegularUser(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(nil, mockStudy, nil, nil, nil)
+	h := handlers.New(nil, mockStudy, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons", nil)
 	// No admin flag in context (regular user)
@@ -147,7 +147,7 @@ func TestListLessons_DatabaseError(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(nil, mockStudy, nil, nil, nil)
+	h := handlers.New(nil, mockStudy, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons", nil)
 	w := httptest.NewRecorder()
@@ -176,7 +176,7 @@ func TestGetLessonBySlug_Published(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(nil, mockStudy, nil, nil, nil)
+	h := handlers.New(nil, mockStudy, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons/test-lesson", nil)
 
@@ -214,7 +214,7 @@ func TestGetLessonBySlug_UnpublishedAsRegularUser(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(nil, mockStudy, nil, nil, nil)
+	h := handlers.New(nil, mockStudy, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons/unpublished", nil)
 
@@ -247,7 +247,7 @@ func TestGetLessonBySlug_UnpublishedAsAdmin(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(nil, mockStudy, nil, nil, nil)
+	h := handlers.New(nil, mockStudy, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons/unpublished", nil)
 
@@ -277,7 +277,7 @@ func TestGetLessonBySlug_NotFound(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(nil, mockStudy, nil, nil, nil)
+	h := handlers.New(nil, mockStudy, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons/nonexistent", nil)
 

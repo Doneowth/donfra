@@ -5,6 +5,7 @@ import (
 
 	"donfra-api/internal/domain/auth"
 	"donfra-api/internal/domain/interview"
+	"donfra-api/internal/domain/livekit"
 	"donfra-api/internal/domain/room"
 	"donfra-api/internal/domain/study"
 	"donfra-api/internal/domain/user"
@@ -61,6 +62,13 @@ type InterviewService interface {
 	GetActiveRoomsByOwner(ctx context.Context, ownerID uint) ([]*interview.InterviewRoom, error)
 }
 
+// LiveKitService defines the interface for LiveKit live streaming operations.
+type LiveKitService interface {
+	CreateSession(ctx context.Context, title string, ownerName string) (*livekit.CreateSessionResponse, error)
+	JoinSession(ctx context.Context, sessionID, userName string, isHost bool) (*livekit.JoinSessionResponse, error)
+	EndSession(ctx context.Context, sessionID string) (*livekit.EndSessionResponse, error)
+}
+
 // Handlers holds all service dependencies for HTTP handlers.
 type Handlers struct {
 	roomSvc      RoomService
@@ -68,15 +76,17 @@ type Handlers struct {
 	authSvc      AuthService
 	userSvc      UserService
 	interviewSvc InterviewService
+	livekitSvc   LiveKitService
 }
 
 // New creates a new Handlers instance with the given services.
-func New(roomSvc RoomService, studySvc StudyService, authSvc AuthService, userSvc UserService, interviewSvc InterviewService) *Handlers {
+func New(roomSvc RoomService, studySvc StudyService, authSvc AuthService, userSvc UserService, interviewSvc InterviewService, livekitSvc LiveKitService) *Handlers {
 	return &Handlers{
 		roomSvc:      roomSvc,
 		studySvc:     studySvc,
 		authSvc:      authSvc,
 		userSvc:      userSvc,
 		interviewSvc: interviewSvc,
+		livekitSvc:   livekitSvc,
 	}
 }

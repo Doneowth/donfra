@@ -16,6 +16,10 @@ services:
       - JAEGER_ENDPOINT=jaeger:4318
       - REDIS_ADDR=redis:6379
       - USE_REDIS=true # 12-Factor App: local environment matches production
+      - LIVEKIT_API_KEY=devkeydevkeydevkeydevkeydevkeydevkey
+      - LIVEKIT_API_SECRET=APISECRETdevkeyAPISECRETdevkeyAPISECRETdevkey
+      - LIVEKIT_SERVER_URL=ws://livekit:7880
+      - LIVEKIT_PUBLIC_URL=ws://localhost:7880
       # - CORS_ORIGIN=http://localhost
       # - BASE_URL=http://localhost
       # expose:
@@ -52,9 +56,11 @@ services:
       context: ../donfra-ui
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api}
-        NEXT_PUBLIC_COLLAB_WS: ${NEXT_PUBLIC_COLLAB_WS:-ws://localhost:6789/yjs}
+        NEXT_PUBLIC_API_DIRECT_URL: ${NEXT_PUBLIC_API_DIRECT_URL:-http://localhost:8080/api}
+        NEXT_PUBLIC_COLLAB_WS: ${NEXT_PUBLIC_COLLAB_WS:-/yjs}
         API_PROXY_TARGET: ${API_PROXY_TARGET:-http://api:8080}
         WS_PROXY_TARGET: ${WS_PROXY_TARGET:-http://ws:6789}
+        LIVEKIT_PROXY_TARGET: ${LIVEKIT_PROXY_TARGET:-http://livekit:7880}
     image: donfra-ui:dev
     container_name: donfra-ui
     ports:
@@ -113,6 +119,23 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  # ===== LiveKit: Real-time Audio/Video Server =====
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: donfra-livekit
+    command: --config /etc/livekit.yaml --node-ip 127.0.0.1
+    environment:
+      - NODE_IP=127.0.0.1
+    ports:
+      - "7880:7880"      # HTTP/WebSocket
+      - "7881:7881"      # TURN/TCP
+      - "50000-50020:50000-50020/udp"  # RTC ports
+    volumes:
+      - ./livekit/livekit.yaml:/etc/livekit.yaml:ro
+    networks:
+      - donfra-local
+    restart: unless-stopped
 
 networks:
   donfra-local:

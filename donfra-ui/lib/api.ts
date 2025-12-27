@@ -1,5 +1,5 @@
 // lib/api.ts
-// Prefer same-origin proxy (/api) so both browser + SSR hit the backend via the reverse proxy.
+// Use proxy for both browser and SSR to maintain same-origin for cookies
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api";
 
 
@@ -124,5 +124,13 @@ export const api = {
       postJSON<{ message: string }>("/interview/close", { room_id: roomId }),
     getMyRooms: () =>
       getJSON<{ rooms: Array<{ id: number; room_id: string; owner_id: number; headcount: number; code_snapshot: string; invite_link: string; created_at: string; updated_at: string }> }>("/interview/my-rooms"),
+  },
+  live: {
+    create: (title: string, ownerName: string) =>
+      postJSON<{ session_id: string; server_url: string; host_token: string; created_at: string; message: string }>("/live/create", { title, owner_name: ownerName }),
+    join: (sessionId: string, userName: string, isHost: boolean = false) =>
+      postJSON<{ session_id: string; access_token: string; server_url: string; role: string; can_publish: boolean; can_subscribe: boolean; message: string }>("/live/join", { session_id: sessionId, user_name: userName, is_host: isHost }),
+    end: (sessionId: string) =>
+      postJSON<{ session_id: string; ended_at: string; message: string }>("/live/end", { session_id: sessionId }),
   },
 };
