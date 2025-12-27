@@ -13,6 +13,7 @@ import (
 	"donfra-api/internal/domain/auth"
 	"donfra-api/internal/domain/db"
 	"donfra-api/internal/domain/interview"
+	"donfra-api/internal/domain/livekit"
 	"donfra-api/internal/domain/room"
 	"donfra-api/internal/domain/study"
 	"donfra-api/internal/domain/user"
@@ -73,6 +74,10 @@ func main() {
 	interviewSvc := interview.NewService(interviewRepo, cfg.JWTSecret, cfg.BaseURL)
 	log.Println("[donfra-api] interview room service initialized")
 
+	// Initialize LiveKit service (use PublicURL for client connections)
+	livekitSvc := livekit.NewService(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret, cfg.LiveKitPublicURL)
+	log.Println("[donfra-api] livekit service initialized")
+
 	// Start Redis Pub/Sub subscriber for headcount updates (if using Redis)
 	var subCancel context.CancelFunc
 	if redisClient != nil {
@@ -86,7 +91,7 @@ func main() {
 		}()
 	}
 
-	r := router.New(cfg, roomSvc, studySvc, authSvc, userSvc, interviewSvc)
+	r := router.New(cfg, roomSvc, studySvc, authSvc, userSvc, interviewSvc, livekitSvc)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,

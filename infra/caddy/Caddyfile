@@ -11,6 +11,15 @@ donfra.dev www.donfra.dev {
         reverse_proxy http://ws:6789
     }
 
+    # LiveKit WebSocket and HTTP traffic
+    handle /livekit/* {
+        uri strip_prefix /livekit
+        reverse_proxy http://livekit:7880 {
+            header_up Host {upstream_hostport}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
     # Jaeger UI (consider adding basic auth for production)
     handle /jaeger/* {
         uri strip_prefix /jaeger

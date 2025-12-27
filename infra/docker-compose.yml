@@ -36,6 +36,10 @@ services:
       - JAEGER_ENDPOINT=jaeger:4318
       - REDIS_ADDR=redis:6379
       - USE_REDIS=true # Use Redis in production for multi-instance support
+      - LIVEKIT_API_KEY=devkeydevkeydevkeydevkeydevkeydevkey
+      - LIVEKIT_API_SECRET=APISECRETdevkeyAPISECRETdevkeyAPISECRETdevkey
+      - LIVEKIT_SERVER_URL=ws://livekit:7880
+      - LIVEKIT_PUBLIC_URL=/livekit
       # - CORS_ORIGIN=http://localhost
       # - BASE_URL=http://localhost
     expose:
@@ -44,6 +48,7 @@ services:
       - donfra-db
       - jaeger
       - redis
+      - livekit
     networks:
       - donfra
 
@@ -71,6 +76,7 @@ services:
       - NEXT_PUBLIC_COLLAB_WS=${NEXT_PUBLIC_COLLAB_WS:-/yjs}
       - API_PROXY_TARGET=${API_PROXY_TARGET:-http://api:8080}
       - WS_PROXY_TARGET=${WS_PROXY_TARGET:-http://ws:6789}
+      - LIVEKIT_PROXY_TARGET=${LIVEKIT_PROXY_TARGET:-http://livekit:7880}
     expose:
       - "3000"
     depends_on:
@@ -129,6 +135,26 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  # ===== LiveKit: Real-time Audio/Video Server =====
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: donfra-livekit
+    command: --config /etc/livekit.yaml
+    expose:
+      - "7880"       # HTTP/WebSocket (internal only, proxied by Caddy)
+    ports:
+      - "50000-50020:50000-50020/udp"  # RTC ports (must be directly exposed)
+    volumes:
+      - ./livekit/livekit.yaml:/etc/livekit.yaml:ro
+    networks:
+      - donfra
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:7880"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 networks:
   donfra:
