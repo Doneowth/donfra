@@ -5,18 +5,30 @@ donfra.dev www.donfra.dev {
 
     handle /ws/* {
         reverse_proxy http://ws:6789 {
+            # Enable WebSocket upgrades
+            header_up Upgrade {>Upgrade}
+            header_up Connection {>Connection}
             transport http {
-                # Enable WebSocket upgrades for collaborative editing
+                # Disable compression for WebSocket
                 compression off
+                # Keep connections alive
+                keepalive 90s
+                keepalive_idle_conns 10
             }
         }
     }
 
     handle /yjs* {
         reverse_proxy http://ws:6789 {
+            # Enable WebSocket upgrades
+            header_up Upgrade {>Upgrade}
+            header_up Connection {>Connection}
             transport http {
-                # Enable WebSocket upgrades for Yjs sync
+                # Disable compression for WebSocket
                 compression off
+                # Keep connections alive
+                keepalive 90s
+                keepalive_idle_conns 10
             }
         }
     }

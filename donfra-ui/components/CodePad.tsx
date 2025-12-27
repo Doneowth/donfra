@@ -265,11 +265,14 @@ export default function CodePad({ onExit, roomId }: Props) {
 
     // Monitor doc updates (low-level Yjs updates)
     doc.on('update', (update: Uint8Array, origin: any) => {
-      console.log('[CodePad] 🔄 Doc update received:', {
-        updateSize: update.length,
-        origin: origin?.constructor?.name || 'unknown',
-        isLocal: origin === doc,
-        ytextContent: ytext.toString()
+      const isFromProvider = origin === provider;
+      const isLocal = origin === binding || origin === doc;
+      console.log('[CodePad] 🔄 Doc update:', {
+        size: update.length,
+        source: isFromProvider ? 'WebSocket' : (isLocal ? 'Local' : 'Unknown'),
+        yjsLines: ytext.toString().split('\n').length,
+        monacoLines: editor.getValue().split('\n').length,
+        match: ytext.toString() === editor.getValue()
       });
     });
 
@@ -299,9 +302,9 @@ export default function CodePad({ onExit, roomId }: Props) {
 
     if (!model) return;
 
-    // IMPORTANT: Pass awareness to MonacoBinding to enable remote cursor/selection rendering
-    // The binding will automatically create decorations for remote users
-    // Note: Default content initialization moved to 'sync' event handler to avoid race conditions
+    // CRITICAL: Create MonacoBinding immediately to ensure bidirectional sync
+    // MonacoBinding handles both local->Yjs and Yjs->Monaco synchronization
+    // If we delay this, local edits won't propagate to Yjs properly
     const binding = new YMonacoNS!.MonacoBinding(
       ytext,
       model,
@@ -311,24 +314,45 @@ export default function CodePad({ onExit, roomId }: Props) {
 
     console.log('[CodePad] MonacoBinding created with awareness. Current awareness states:', awareness.getStates().size);
 
-    // === DEBUG: Monitor Yjs text changes ===
+    // === DEBUG: Monitor sync issues (only log when out of sync) ===
+    let lastYjsContent = ytext.toString();
     ytext.observe((event: any) => {
-      console.log('[CodePad] 📝 Yjs text changed:', {
-        delta: event.delta,
-        currentYjsText: ytext.toString(),
-        currentMonacoText: editor.getValue(),
-        match: ytext.toString() === editor.getValue()
-      });
+      const currentYjs = ytext.toString();
+      const currentMonaco = editor.getValue();
+      const match = currentYjs === currentMonaco;
+
+      if (!match) {
+        console.error('[CodePad] ❌ SYNC MISMATCH after Yjs change!', {
+          delta: event.delta,
+          yjsLines: currentYjs.split('\n').length,
+          monacoLines: currentMonaco.split('\n').length,
+          yjsLength: currentYjs.length,
+          monacoLength: currentMonaco.length,
+          yjsPreview: currentYjs.slice(0, 100),
+          monacoPreview: currentMonaco.slice(0, 100)
+        });
+      }
+      lastYjsContent = currentYjs;
     });
 
-    // === DEBUG: Monitor Monaco model changes ===
-    model.onDidChangeContent((e: any) => {
-      console.log('[CodePad] 🖊️  Monaco content changed:', {
-        changes: e.changes,
-        currentMonacoText: editor.getValue(),
-        currentYjsText: ytext.toString(),
-        match: ytext.toString() === editor.getValue()
-      });
+    // Monitor Monaco changes for debugging
+    let lastMonacoContent = editor.getValue();
+    model.onDidChangeContent(() => {
+      const currentMonaco = editor.getValue();
+      const currentYjs = ytext.toString();
+      const match = currentYjs === currentMonaco;
+
+      if (!match) {
+        console.error('[CodePad] ❌ SYNC MISMATCH after Monaco change!', {
+          monacoLines: currentMonaco.split('\n').length,
+          yjsLines: currentYjs.split('\n').length,
+          monacoLength: currentMonaco.length,
+          yjsLength: currentYjs.length,
+          lastMonacoLength: lastMonacoContent.length,
+          lastYjsLength: lastYjsContent.length
+        });
+      }
+      lastMonacoContent = currentMonaco;
     });
 
     // 共享输出 Map
@@ -347,6 +371,24 @@ export default function CodePad({ onExit, roomId }: Props) {
     ydocRef.current = doc;
     providerRef.current = provider;
     bindingRef.current = binding;
+
+    // Periodic sync check (every 3 seconds)
+    const syncCheckInterval = setInterval(() => {
+      const currentYjs = ytext.toString();
+      const currentMonaco = editor.getValue();
+      const match = currentYjs === currentMonaco;
+
+      if (!match) {
+        console.error('[CodePad] 🚨 PERIODIC SYNC CHECK FAILED!', {
+          yjsLines: currentYjs.split('\n').length,
+          monacoLines: currentMonaco.split('\n').length,
+          wsConnected: provider.wsconnected,
+          docClientId: doc.clientID
+        });
+      }
+    }, 3000);
+
+    cleanupFnsRef.current.push(() => clearInterval(syncCheckInterval));
 
     // === DEBUG: Expose debug utilities to window for manual inspection ===
     if (typeof window !== 'undefined') {
@@ -383,14 +425,44 @@ export default function CodePad({ onExit, roomId }: Props) {
             ytext.insert(0, currentText);
           });
           console.log('Sync forced. Check with yjsDebug.checkSync()');
+        },
+        syncYjsToMonaco: () => {
+          console.log('Forcing Yjs -> Monaco sync...');
+          const yjsText = ytext.toString();
+          editor.setValue(yjsText);
+          console.log('Monaco updated from Yjs. Check with yjsDebug.checkSync()');
+        },
+        compareContents: () => {
+          const monacoText = editor.getValue();
+          const yjsText = ytext.toString();
+          const monacoLines = monacoText.split('\n');
+          const yjsLines = yjsText.split('\n');
+
+          console.log('=== Line-by-line comparison ===');
+          console.log('Total lines - Monaco:', monacoLines.length, 'Yjs:', yjsLines.length);
+
+          const maxLines = Math.max(monacoLines.length, yjsLines.length);
+          for (let i = 0; i < maxLines; i++) {
+            const monacoLine = monacoLines[i] || '<missing>';
+            const yjsLine = yjsLines[i] || '<missing>';
+            if (monacoLine !== yjsLine) {
+              console.log(`Line ${i + 1} DIFFERS:`);
+              console.log('  Monaco:', monacoLine);
+              console.log('  Yjs   :', yjsLine);
+            }
+          }
+
+          return { monacoLines: monacoLines.length, yjsLines: yjsLines.length };
         }
       };
       console.log('[CodePad] 🐛 Debug utilities exposed to window.yjsDebug');
       console.log('Available commands:');
-      console.log('  - window.yjsDebug.checkSync()     // Check if Yjs and Monaco are in sync');
-      console.log('  - window.yjsDebug.getYjsText()    // Get Yjs text content');
-      console.log('  - window.yjsDebug.getMonacoText() // Get Monaco text content');
-      console.log('  - window.yjsDebug.forceSync()     // Force Monaco content into Yjs');
+      console.log('  - window.yjsDebug.checkSync()        // Check if Yjs and Monaco are in sync');
+      console.log('  - window.yjsDebug.compareContents()  // Compare line-by-line differences');
+      console.log('  - window.yjsDebug.forceSync()        // Force Monaco -> Yjs sync');
+      console.log('  - window.yjsDebug.syncYjsToMonaco()  // Force Yjs -> Monaco sync');
+      console.log('  - window.yjsDebug.getYjsText()       // Get Yjs text content');
+      console.log('  - window.yjsDebug.getMonacoText()    // Get Monaco text content');
     }
   }, [run, clearOutput, applyOutputsFromY, roomId]);
 
