@@ -241,8 +241,36 @@ export default function CodePad({ onExit, roomId }: Props) {
       }
     });
 
+    // Track if we've done initial sync
+    let hasInitialSynced = false;
+
     provider.on('sync', (isSynced: boolean) => {
-      console.log('[CodePad] Sync status:', isSynced ? '✅ synced' : '⏳ syncing...');
+      console.log('[CodePad] Sync status:', isSynced ? '✅ synced' : '⏳ syncing...', {
+        isSynced,
+        wsConnected: provider.wsconnected,
+        docClientId: doc.clientID,
+        ytextLength: ytext.toString().length,
+        ytextContent: ytext.toString()
+      });
+
+      // Only initialize default content after first sync completes
+      if (isSynced && !hasInitialSynced) {
+        hasInitialSynced = true;
+        if (ytext.length === 0) {
+          ytext.insert(0, "print('hello from CodePad')\n");
+          console.log('[CodePad] Initialized empty Yjs document with default content after sync');
+        }
+      }
+    });
+
+    // Monitor doc updates (low-level Yjs updates)
+    doc.on('update', (update: Uint8Array, origin: any) => {
+      console.log('[CodePad] 🔄 Doc update received:', {
+        updateSize: update.length,
+        origin: origin?.constructor?.name || 'unknown',
+        isLocal: origin === doc,
+        ytextContent: ytext.toString()
+      });
     });
 
     // Monitor connection errors
@@ -273,6 +301,7 @@ export default function CodePad({ onExit, roomId }: Props) {
 
     // IMPORTANT: Pass awareness to MonacoBinding to enable remote cursor/selection rendering
     // The binding will automatically create decorations for remote users
+    // Note: Default content initialization moved to 'sync' event handler to avoid race conditions
     const binding = new YMonacoNS!.MonacoBinding(
       ytext,
       model,
@@ -282,132 +311,25 @@ export default function CodePad({ onExit, roomId }: Props) {
 
     console.log('[CodePad] MonacoBinding created with awareness. Current awareness states:', awareness.getStates().size);
 
-    // === (A) 为每位协作者注入“按 clientId 的颜色样式”（兼容类后缀 & data-clientid） ===
-    const styleElId = `y-remote-style-${roomName}`;
-    let styleEl = document.getElementById(styleElId) as HTMLStyleElement | null;
-    if (!styleEl) {
-      styleEl = document.createElement("style");
-      styleEl.id = styleElId;
-      document.head.appendChild(styleEl);
-    }
-    const toLight = (c: string) => {
-      if (!c) return "rgba(0,0,0,.18)";
-      if (c.startsWith("hsl")) return c.replace(")", " / .22)");
-      if (c.startsWith("#") && c.length === 7) return `${c}38`; // 22% 透明
-      if (c.startsWith("#") && c.length === 9) return c;
-      return "rgba(0,0,0,.18)";
-    };
-    const selFor = (clientId: number) => {
-      const root = `.editor-pane .monaco-editor`;
-      return {
-        head: `${root} .yRemoteSelectionHead-${clientId}`,
-        body: `${root} .yRemoteSelection-${clientId}`,
-        headLabel: `${root} .yRemoteSelectionHead-${clientId} .yRemoteSelectionHeadLabel`,
-      };
-    };
-    const applyClientStyles = () => {
-      const states = awareness.getStates() as Map<number, any>;
-      const localClientId = doc.clientID; // Get local client ID to exclude from styling
-      const rules: string[] = [];
-      states.forEach((s, clientId) => {
-        // Skip styling for local user to avoid cursor duplication
-        if (clientId === localClientId) {
-          console.log('[CodePad] Skipping cursor styling for local client:', clientId);
-          return;
-        }
-
-        const base = s?.user?.color || `hsl(${clientId % 360} 70% 55%)`;
-        const light = s?.user?.colorLight || toLight(base);
-        const S = selFor(clientId);
-        rules.push(`
-          ${S.head} {
-            border-left-color: ${base} !important;
-            border-left-width: 3px !important;
-            border-left-style: solid !important;
-            z-index: 12 !important;
-            position: relative !important;
-            animation: cursor-blink-${clientId} 1s ease-in-out infinite !important;
-          }
-          ${S.body} {
-            background: ${light} !important;
-            mix-blend-mode: normal !important;
-            z-index: 11 !important;
-            position: relative !important;
-            pointer-events: none !important;
-            border: 1px solid ${base}40 !important;
-          }
-          ${S.headLabel} {
-            background-color: ${base} !important;
-            color: #fff !important;
-            font-size: 12px !important;
-            font-weight: 600 !important;
-            line-height: 1.5 !important;
-            padding: 2px 8px !important;
-            border-radius: 4px !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,.3) !important;
-            z-index: 13 !important;
-            position: relative !important;
-          }
-          @keyframes cursor-blink-${clientId} {
-            0%, 49% { opacity: 1; }
-            50%, 100% { opacity: 0.6; }
-          }
-        `);
+    // === DEBUG: Monitor Yjs text changes ===
+    ytext.observe((event: any) => {
+      console.log('[CodePad] 📝 Yjs text changed:', {
+        delta: event.delta,
+        currentYjsText: ytext.toString(),
+        currentMonacoText: editor.getValue(),
+        match: ytext.toString() === editor.getValue()
       });
+    });
 
-      styleEl!.textContent = rules.join("\n");
-    };
-    applyClientStyles();
-    const onAwarenessColorChange = () => applyClientStyles();
-    awareness.on("change", onAwarenessColorChange);
-    cleanupFnsRef.current.push(() => awareness.off("change", onAwarenessColorChange));
-
-    // === (B) 强制把“名字”写入每个远端光标的标签（不同版本有时不自动渲染） ===
-    const parseClientId = (el: Element | null): number | null => {
-      if (!el) return null;
-      const idAttr = (el as HTMLElement).dataset?.clientid;
-      if (idAttr && /^\d+$/.test(idAttr)) return Number(idAttr);
-      const m = el.className.match(/(?:^|\s)yRemoteSelectionHead-(\d+)(?:\s|$)/);
-      return m ? Number(m[1]) : null;
-    };
-    const updateCursorLabels = () => {
-      const dom = editor.getDomNode();
-      if (!dom) return;
-      const states = awareness.getStates() as Map<number, any>;
-
-      // Debug: Log all cursor head elements
-      const allHeads = dom.querySelectorAll('[class*="yRemoteSelectionHead"]');
-      if (allHeads.length > 0) {
-        console.log('[CodePad] Cursor elements in DOM:', Array.from(allHeads).map(el => ({
-          className: el.className,
-          clientId: parseClientId(el),
-          hasLabel: el.querySelector('.yRemoteSelectionHeadLabel') !== null
-        })));
-      }
-
-      const labels = dom.querySelectorAll(".yRemoteSelectionHeadLabel");
-      labels.forEach((labelEl) => {
-        const head = (labelEl as HTMLElement).closest(".yRemoteSelectionHead") as HTMLElement | null;
-        const cid = parseClientId(head);
-        if (cid == null) return;
-        const u = states.get(cid)?.user;
-        const name = u?.name || `User-${cid}`;
-        if ((labelEl as HTMLElement).textContent !== name) {
-          (labelEl as HTMLElement).textContent = name;
-        }
+    // === DEBUG: Monitor Monaco model changes ===
+    model.onDidChangeContent((e: any) => {
+      console.log('[CodePad] 🖊️  Monaco content changed:', {
+        changes: e.changes,
+        currentMonacoText: editor.getValue(),
+        currentYjsText: ytext.toString(),
+        match: ytext.toString() === editor.getValue()
       });
-    };
-    updateCursorLabels();
-    const domNode = editor.getDomNode();
-    let mo: MutationObserver | null = null;
-    if (domNode) {
-      mo = new MutationObserver(() => updateCursorLabels());
-      mo.observe(domNode, { childList: true, subtree: true });
-    }
-    const onAwarenessNameChange = () => updateCursorLabels();
-    awareness.on("change", onAwarenessNameChange);
-    cleanupFnsRef.current.push(() => awareness.off("change", onAwarenessNameChange));
-    cleanupFnsRef.current.push(() => { try { mo?.disconnect(); } catch {} });
+    });
 
     // 共享输出 Map
     const yOutputs = doc.getMap<any>("outputs");
@@ -425,6 +347,51 @@ export default function CodePad({ onExit, roomId }: Props) {
     ydocRef.current = doc;
     providerRef.current = provider;
     bindingRef.current = binding;
+
+    // === DEBUG: Expose debug utilities to window for manual inspection ===
+    if (typeof window !== 'undefined') {
+      (window as any).yjsDebug = {
+        checkSync: () => {
+          const monacoText = editor.getValue();
+          const yjsText = ytext.toString();
+          const match = monacoText === yjsText;
+          console.log('=== Yjs <-> Monaco Sync Check ===');
+          console.log('Monaco text length:', monacoText.length);
+          console.log('Yjs text length:', yjsText.length);
+          console.log('Content match:', match);
+          console.log('WebSocket connected:', provider.wsconnected);
+          console.log('Doc clientID:', doc.clientID);
+          console.log('Awareness states:', Array.from(awareness.getStates().entries()));
+          if (!match) {
+            console.log('--- Monaco content ---');
+            console.log(monacoText);
+            console.log('--- Yjs content ---');
+            console.log(yjsText);
+          }
+          return { match, monacoText, yjsText, wsConnected: provider.wsconnected };
+        },
+        getYjsText: () => ytext.toString(),
+        getMonacoText: () => editor.getValue(),
+        getProvider: () => provider,
+        getDoc: () => doc,
+        getAwareness: () => awareness,
+        forceSync: () => {
+          console.log('Forcing Monaco -> Yjs sync...');
+          const currentText = editor.getValue();
+          doc.transact(() => {
+            ytext.delete(0, ytext.length);
+            ytext.insert(0, currentText);
+          });
+          console.log('Sync forced. Check with yjsDebug.checkSync()');
+        }
+      };
+      console.log('[CodePad] 🐛 Debug utilities exposed to window.yjsDebug');
+      console.log('Available commands:');
+      console.log('  - window.yjsDebug.checkSync()     // Check if Yjs and Monaco are in sync');
+      console.log('  - window.yjsDebug.getYjsText()    // Get Yjs text content');
+      console.log('  - window.yjsDebug.getMonacoText() // Get Monaco text content');
+      console.log('  - window.yjsDebug.forceSync()     // Force Monaco content into Yjs');
+    }
   }, [run, clearOutput, applyOutputsFromY, roomId]);
 
   // 卸载清理
@@ -480,7 +447,6 @@ export default function CodePad({ onExit, roomId }: Props) {
             height="100%"
             defaultLanguage="python"
             theme="vs-dark"
-            defaultValue={"print('hello from CodePad')\n"}
             onMount={onMount}
             options={editorOptions}
           />

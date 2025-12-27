@@ -72,10 +72,22 @@ const roomConnectionCounts = new Map()
 
 wss.on('connection', (conn, req) => {
   // Extract room_id from URL path (y-websocket sends room name in path)
-  // URL format: /room-id (UUID format after our changes)
-  const docName = req.url.slice(1).split('?')[0] || 'default-room'
+  // URL format can be:
+  //   - /yjs/room-id (from Caddy proxy without strip_prefix)
+  //   - /room-id (direct connection or with strip_prefix)
+  let docName = req.url.slice(1).split('?')[0] || 'default-room'
 
-  console.log(`[${new Date().toISOString()}] 🔗 New connection to room: ${docName}`)
+  // Remove /yjs prefix if present (handle both proxy scenarios)
+  if (docName.startsWith('yjs/')) {
+    docName = docName.slice(4) // Remove 'yjs/' prefix
+  }
+
+  // Fallback to default if empty after stripping
+  if (!docName || docName === '') {
+    docName = 'default-room'
+  }
+
+  console.log(`[${new Date().toISOString()}] 🔗 New connection to room: ${docName} (raw URL: ${req.url})`)
 
   // Track initial connection count
   const currentCount = roomConnectionCounts.get(docName) || 0
