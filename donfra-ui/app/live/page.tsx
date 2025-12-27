@@ -119,6 +119,15 @@ function LivePageContent() {
         padding: "20px",
         position: "relative",
       }}>
+        <video
+          className="hero-video"
+          autoPlay
+          loop
+          muted
+          playsInline
+        >
+          <source src="/1200rr.mp4" type="video/mp4" />
+        </video>
         <div className="hero-overlay-grid" />
         <div className="hero-vignette" />
 
