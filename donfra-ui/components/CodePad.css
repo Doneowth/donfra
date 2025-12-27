@@ -155,6 +155,27 @@
   width: 100%;
 }
 
+/* ===== Y-Monaco Cursor Styles ===== */
+/* Note: Cursor styles are dynamically injected in CodePad.tsx via applyClientStyles()
+   This section only contains base styles that won't conflict with injected CSS */
+
+/* Ensure cursor elements are properly positioned */
+.yRemoteSelectionHead {
+  position: absolute;
+}
+
+.yRemoteSelection {
+  position: absolute;
+}
+
+/* Base label positioning - colors/background will be overridden by injected CSS */
+.yRemoteSelectionHeadLabel {
+  position: absolute;
+  white-space: nowrap;
+  user-select: none;
+  pointer-events: none;
+}
+
 /* ===== Terminal Pane ===== */
 .terminal-pane {
   display: flex;

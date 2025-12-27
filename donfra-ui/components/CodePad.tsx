@@ -172,7 +172,13 @@ export default function CodePad({ onExit, roomId }: Props) {
     // Ensure collabURL is a string: prefer env var, otherwise derive a sensible fallback from current origin
     const collabURL = process.env.NEXT_PUBLIC_COLLAB_WS ?? `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/yjs`;
 
-    console.log('[CodePad] Room configuration:', { roomName, roomId, urlRoomId: params.get("room_id") });
+    console.log('[CodePad] Room configuration:', {
+      roomName,
+      roomId,
+      urlRoomId: params.get("room_id"),
+      fullURL: window.location.href,
+      collabURL
+    });
 
     // 创建 Doc / Provider
     // The WebsocketProvider sends the roomName in the URL path (e.g., ws://host/yjs/room-id)
@@ -180,6 +186,8 @@ export default function CodePad({ onExit, roomId }: Props) {
     const doc = new YNS!.Doc();
     const ytext = doc.getText("monaco");
     const provider = new YWebsocketNS!.WebsocketProvider(collabURL, roomName, doc, { connect: true });
+
+    console.log('[CodePad] WebSocket provider created, connecting to:', `${collabURL}/${roomName}`);
     const awareness = provider.awareness;
 
     // Get real username from backend (if user is authenticated)
@@ -226,10 +234,24 @@ export default function CodePad({ onExit, roomId }: Props) {
     // Monitor WebSocket connection status
     provider.on('status', (event: any) => {
       console.log('[CodePad] WebSocket status changed:', event.status);
+      if (event.status === 'disconnected') {
+        console.warn('[CodePad] ⚠️ WebSocket disconnected! Will attempt to reconnect...');
+      } else if (event.status === 'connected') {
+        console.log('[CodePad] ✅ WebSocket connected successfully');
+      }
     });
 
     provider.on('sync', (isSynced: boolean) => {
-      console.log('[CodePad] Sync status:', isSynced ? 'synced' : 'syncing');
+      console.log('[CodePad] Sync status:', isSynced ? '✅ synced' : '⏳ syncing...');
+    });
+
+    // Monitor connection errors
+    provider.on('connection-error', (event: any) => {
+      console.error('[CodePad] ❌ WebSocket connection error:', event);
+    });
+
+    provider.on('connection-close', (event: any) => {
+      console.warn('[CodePad] 🔌 WebSocket connection closed:', event);
     });
 
     // 在线同伴列表
@@ -285,8 +307,15 @@ export default function CodePad({ onExit, roomId }: Props) {
     };
     const applyClientStyles = () => {
       const states = awareness.getStates() as Map<number, any>;
+      const localClientId = doc.clientID; // Get local client ID to exclude from styling
       const rules: string[] = [];
       states.forEach((s, clientId) => {
+        // Skip styling for local user to avoid cursor duplication
+        if (clientId === localClientId) {
+          console.log('[CodePad] Skipping cursor styling for local client:', clientId);
+          return;
+        }
+
         const base = s?.user?.color || `hsl(${clientId % 360} 70% 55%)`;
         const light = s?.user?.colorLight || toLight(base);
         const S = selFor(clientId);
@@ -345,6 +374,17 @@ export default function CodePad({ onExit, roomId }: Props) {
       const dom = editor.getDomNode();
       if (!dom) return;
       const states = awareness.getStates() as Map<number, any>;
+
+      // Debug: Log all cursor head elements
+      const allHeads = dom.querySelectorAll('[class*="yRemoteSelectionHead"]');
+      if (allHeads.length > 0) {
+        console.log('[CodePad] Cursor elements in DOM:', Array.from(allHeads).map(el => ({
+          className: el.className,
+          clientId: parseClientId(el),
+          hasLabel: el.querySelector('.yRemoteSelectionHeadLabel') !== null
+        })));
+      }
+
       const labels = dom.querySelectorAll(".yRemoteSelectionHeadLabel");
       labels.forEach((labelEl) => {
         const head = (labelEl as HTMLElement).closest(".yRemoteSelectionHead") as HTMLElement | null;

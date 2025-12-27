@@ -4,11 +4,21 @@ donfra.dev www.donfra.dev {
     }
 
     handle /ws/* {
-        reverse_proxy http://ws:6789
+        reverse_proxy http://ws:6789 {
+            transport http {
+                # Enable WebSocket upgrades for collaborative editing
+                compression off
+            }
+        }
     }
 
     handle /yjs* {
-        reverse_proxy http://ws:6789
+        reverse_proxy http://ws:6789 {
+            transport http {
+                # Enable WebSocket upgrades for Yjs sync
+                compression off
+            }
+        }
     }
 
     # LiveKit WebSocket and HTTP traffic
