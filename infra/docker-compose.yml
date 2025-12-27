@@ -39,7 +39,7 @@ services:
       - LIVEKIT_API_KEY=devkeydevkeydevkeydevkeydevkeydevkey
       - LIVEKIT_API_SECRET=APISECRETdevkeyAPISECRETdevkeyAPISECRETdevkey
       - LIVEKIT_SERVER_URL=ws://livekit:7880
-      - LIVEKIT_PUBLIC_URL=/livekit
+      - LIVEKIT_PUBLIC_URL=wss://donfra.dev/livekit
       # - CORS_ORIGIN=http://localhost
       # - BASE_URL=http://localhost
     expose:

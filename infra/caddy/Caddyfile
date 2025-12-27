@@ -15,8 +15,10 @@ donfra.dev www.donfra.dev {
     handle /livekit/* {
         uri strip_prefix /livekit
         reverse_proxy http://livekit:7880 {
-            header_up Host {upstream_hostport}
-            header_up X-Forwarded-Proto {scheme}
+            transport http {
+                # Enable WebSocket upgrades
+                compression off
+            }
         }
     }
 
