@@ -86,7 +86,8 @@ body{
 }
 
 /* ======= MP4 background ======= */
-.hero .hero-video{
+.hero .hero-video,
+.hero-alt .hero-video{
   position:absolute;
   inset:0;
   width:100%;
