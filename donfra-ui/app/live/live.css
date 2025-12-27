@@ -1,0 +1,88 @@
+/* ===== Live Streaming Page Styles ===== */
+
+.live-page {
+  min-height: 100vh;
+}
+
+.live-hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+}
+
+.live-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 40px;
+  max-width: 480px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.live-title {
+  text-align: center;
+  margin-bottom: 32px;
+  color: var(--brass);
+}
+
+/* ===== Tab Navigation ===== */
+.live-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.live-tab {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 14px;
+  border-bottom: 2px solid transparent;
+  color: var(--ink-soft);
+  transition: all 0.2s ease;
+}
+
+.live-tab.active {
+  border-bottom-color: var(--brass);
+  color: var(--brass);
+}
+
+.live-tab:hover:not(.active) {
+  color: var(--ink);
+}
+
+/* ===== Error Message ===== */
+.live-error {
+  background: rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  color: #ef4444;
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* ===== Button States ===== */
+.btn-elegant.btn-full {
+  width: 100%;
+  margin-top: 8px;
+  justify-content: center;
+}
+
+.btn-elegant:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

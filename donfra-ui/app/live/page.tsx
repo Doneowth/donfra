@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { api } from "@/lib/api";
+import "./live.css";
 
 const LiveRoom = dynamic(() => import("@/components/LiveRoom"), {
   ssr: false,
@@ -109,108 +110,39 @@ function LivePageContent() {
   }
 
   return (
-    <div className="app-root" style={{ minHeight: "100vh" }}>
-      {/* Hero Background */}
-      <div className="hero-alt" style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "20px",
-        position: "relative",
-      }}>
-        <video
-          className="hero-video"
-          autoPlay
-          loop
-          muted
-          playsInline
-        >
+    <div className="app-root live-page">
+      <div className="hero-alt live-hero">
+        <video className="hero-video" autoPlay loop muted playsInline>
           <source src="/1200rr.mp4" type="video/mp4" />
         </video>
         <div className="hero-overlay-grid" />
         <div className="hero-vignette" />
 
-        <div style={{
-          background: "var(--panel)",
-          border: "1px solid var(--line)",
-          borderRadius: "8px",
-          padding: "40px",
-          maxWidth: "480px",
-          width: "100%",
-          position: "relative",
-          zIndex: 1,
-        }}>
-          <h1 className="display h2" style={{
-            textAlign: "center",
-            marginBottom: "32px",
-            color: "var(--brass)",
-          }}>
+        <div className="live-panel">
+          <h1 className="display h2 live-title">
             Live Stream
           </h1>
 
-        <div style={{
-          display: "flex",
-          gap: "10px",
-          marginBottom: "24px",
-          borderBottom: "1px solid var(--line)",
-        }}>
-          <button
-            onClick={() => setMode("create")}
-            style={{
-              flex: 1,
-              padding: "12px",
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              fontFamily: "Rajdhani, sans-serif",
-              fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-              fontSize: "14px",
-              borderBottom: mode === "create" ? "2px solid var(--brass)" : "2px solid transparent",
-              color: mode === "create" ? "var(--brass)" : "var(--ink-soft)",
-              transition: "all 0.2s ease",
-            }}
-          >
-            Create Session
-          </button>
-          <button
-            onClick={() => setMode("join")}
-            style={{
-              flex: 1,
-              padding: "12px",
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              fontFamily: "Rajdhani, sans-serif",
-              fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-              fontSize: "14px",
-              borderBottom: mode === "join" ? "2px solid var(--brass)" : "2px solid transparent",
-              color: mode === "join" ? "var(--brass)" : "var(--ink-soft)",
-              transition: "all 0.2s ease",
-            }}
-          >
-            Join Session
-          </button>
-        </div>
-
-        {error && (
-          <div style={{
-            background: "rgba(220, 38, 38, 0.1)",
-            border: "1px solid rgba(220, 38, 38, 0.3)",
-            color: "#ef4444",
-            padding: "12px 16px",
-            borderRadius: "10px",
-            marginBottom: "20px",
-            fontSize: "13px",
-            fontFamily: "IBM Plex Mono, monospace",
-          }}>
-            {error}
+          <div className="live-tabs">
+            <button
+              onClick={() => setMode("create")}
+              className={`live-tab ${mode === "create" ? "active" : ""}`}
+            >
+              Create Session
+            </button>
+            <button
+              onClick={() => setMode("join")}
+              className={`live-tab ${mode === "join" ? "active" : ""}`}
+            >
+              Join Session
+            </button>
           </div>
-        )}
+
+          {error && (
+            <div className="live-error">
+              {error}
+            </div>
+          )}
 
         {mode === "create" ? (
           <form onSubmit={handleCreateSession}>
@@ -245,14 +177,7 @@ function LivePageContent() {
             <button
               type="submit"
               disabled={loading}
-              className="btn-elegant"
-              style={{
-                width: "100%",
-                marginTop: "8px",
-                justifyContent: "center",
-                opacity: loading ? 0.6 : 1,
-                cursor: loading ? "not-allowed" : "pointer",
-              }}
+              className="btn-elegant btn-full"
             >
               {loading ? "Creating..." : "Create & Start Streaming"}
             </button>
@@ -290,14 +215,7 @@ function LivePageContent() {
             <button
               type="submit"
               disabled={loading}
-              className="btn-elegant"
-              style={{
-                width: "100%",
-                marginTop: "8px",
-                justifyContent: "center",
-                opacity: loading ? 0.6 : 1,
-                cursor: loading ? "not-allowed" : "pointer",
-              }}
+              className="btn-elegant btn-full"
             >
               {loading ? "Joining..." : "Join Session"}
             </button>
