@@ -241,6 +241,34 @@ export default function CodePad({ onExit, roomId }: Props) {
       }
     });
 
+    // 在线同伴列表
+    const applyPeers = () => {
+      const states = Array.from(awareness.getStates().values())
+        .map((s: any) => s?.user)
+        .filter(Boolean) as Peer[];
+      setPeers(states);
+      console.log('[CodePad] Awareness states updated. Total peers:', states.length, states);
+    };
+    awareness.on("change", applyPeers);
+    applyPeers();
+    cleanupFnsRef.current.push(() => awareness.off("change", applyPeers));
+
+    // 绑定 Monaco（把 awareness 传入，让 y-monaco 渲染光标/选区/标签）
+    const model = editor.getModel();
+
+    if (!model) return;
+
+    // CRITICAL: Create MonacoBinding FIRST before setting up event listeners
+    // This ensures all event handlers have access to the binding reference
+    const binding = new YMonacoNS!.MonacoBinding(
+      ytext,
+      model,
+      new Set([editor]),
+      awareness
+    );
+
+    console.log('[CodePad] MonacoBinding created with awareness. Current awareness states:', awareness.getStates().size);
+
     // Track if we've done initial sync
     let hasInitialSynced = false;
 
@@ -264,6 +292,7 @@ export default function CodePad({ onExit, roomId }: Props) {
     });
 
     // Monitor doc updates (low-level Yjs updates)
+    // Now 'binding' is defined, so we can properly detect update origins
     doc.on('update', (update: Uint8Array, origin: any) => {
       const isFromProvider = origin === provider;
       const isLocal = origin === binding || origin === doc;
@@ -284,35 +313,6 @@ export default function CodePad({ onExit, roomId }: Props) {
     provider.on('connection-close', (event: any) => {
       console.warn('[CodePad] 🔌 WebSocket connection closed:', event);
     });
-
-    // 在线同伴列表
-    const applyPeers = () => {
-      const states = Array.from(awareness.getStates().values())
-        .map((s: any) => s?.user)
-        .filter(Boolean) as Peer[];
-      setPeers(states);
-      console.log('[CodePad] Awareness states updated. Total peers:', states.length, states);
-    };
-    awareness.on("change", applyPeers);
-    applyPeers();
-    cleanupFnsRef.current.push(() => awareness.off("change", applyPeers));
-
-    // 绑定 Monaco（把 awareness 传入，让 y-monaco 渲染光标/选区/标签）
-    const model = editor.getModel();
-
-    if (!model) return;
-
-    // CRITICAL: Create MonacoBinding immediately to ensure bidirectional sync
-    // MonacoBinding handles both local->Yjs and Yjs->Monaco synchronization
-    // If we delay this, local edits won't propagate to Yjs properly
-    const binding = new YMonacoNS!.MonacoBinding(
-      ytext,
-      model,
-      new Set([editor]),
-      awareness
-    );
-
-    console.log('[CodePad] MonacoBinding created with awareness. Current awareness states:', awareness.getStates().size);
 
     // === DEBUG: Monitor sync issues (only log when out of sync) ===
     let lastYjsContent = ytext.toString();
