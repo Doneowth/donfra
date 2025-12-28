@@ -1,4 +1,4 @@
-SHELL := /bin/zsh
+SHELL := /usr/bin/env bash
 
 # Path to the compose file used for local development
 COMPOSE_FILE ?= infra/docker-compose.local.yml
@@ -23,6 +23,7 @@ PROD = $(DOCKER_COMPOSE) -f $(PROD_COMPOSE_FILE)
 .PHONY: localdev-up-redis localdev-restart-redis localdev-logs-redis
 .PHONY: prod-up prod-down prod-restart prod-logs prod-ps
 .PHONY: jaeger-ui jaeger-logs jaeger-hash-password
+.PHONY: db-backup db-restore db-restore-latest db-list-backups
 
 
 localdev-up:
@@ -165,20 +166,37 @@ jaeger-hash-password:
 # ===== Database Backup & Restore Commands =====
 
 db-backup:
-	@echo "📦 Creating database backup..."
-	@./backup-db.sh
+	@echo "📦 Creating database snapshot backup..."
+	@chmod +x ./infra/db/backup-db.sh
+	@./infra/db/backup-db.sh
 
 db-restore:
-	@echo "🔄 Restoring database from backup..."
-	@echo "Usage: make db-restore BACKUP_FILE=./db-backups/donfra_backup_YYYYMMDD_HHMMSS.sql"
+	@echo "🔄 Restoring database from snapshot..."
+	@chmod +x ./infra/db/restore-db.sh
 	@if [ -z "$(BACKUP_FILE)" ]; then \
 		echo ""; \
-		echo "Available backups:"; \
-		ls -lh ./db-backups/*.sql 2>/dev/null || echo "No backups found"; \
+		echo "Usage: make db-restore BACKUP_FILE=./db-backups/donfra_backup_YYYYMMDD_HHMMSS.sql"; \
+		echo ""; \
+		echo "Available backups (newest first):"; \
+		ls -lht ./db-backups/*.sql 2>/dev/null | head -10 || echo "No backups found"; \
+		echo ""; \
+		echo "Quick restore latest: make db-restore-latest"; \
 		exit 1; \
 	fi
-	@./restore-db.sh $(BACKUP_FILE)
+	@./infra/db/restore-db.sh $(BACKUP_FILE)
+
+db-restore-latest:
+	@echo "🔄 Restoring from latest backup snapshot..."
+	@chmod +x ./infra/db/restore-db.sh
+	@LATEST=$$(ls -t ./db-backups/donfra_backup_*.sql 2>/dev/null | head -1); \
+	if [ -z "$$LATEST" ]; then \
+		echo "❌ No backups found!"; \
+		echo "Create a backup first with: make db-backup"; \
+		exit 1; \
+	fi; \
+	echo "Latest backup: $$LATEST"; \
+	./infra/db/restore-db.sh "$$LATEST"
 
 db-list-backups:
-	@echo "Available database backups:"
-	@ls -lh ./db-backups/*.sql 2>/dev/null || echo "No backups found"
+	@echo "📋 Available database snapshots (newest first):"
+	@ls -lht ./db-backups/*.sql 2>/dev/null | head -10 || echo "No backups found"

@@ -82,7 +82,14 @@ func (m *MockRoomService) UpdateHeadcount(ctx context.Context, count int) error 
 }
 
 func (m *MockRoomService) GetStatus(ctx context.Context) (*room.RoomState, error) {
-	return nil, nil
+	// Return a default room state with a fake room ID
+	return &room.RoomState{
+		Open:        m.IsOpenFunc != nil && m.IsOpenFunc(ctx),
+		RoomID:      "test-room-id-12345",
+		InviteToken: "",
+		Headcount:   0,
+		Limit:       10,
+	}, nil
 }
 
 // TestRoomInit_Success tests successful room initialization

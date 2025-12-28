@@ -2,6 +2,7 @@ package room_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"donfra-api/internal/domain/room"
@@ -24,10 +25,16 @@ func TestRoomService_Init_Success(t *testing.T) {
 		t.Error("expected token to be generated")
 	}
 
-	// 验证：invite URL 包含 baseURL 和 token
-	expectedURL := "http://localhost:3000/coding?invite=" + token + "&role=agent"
-	if url != expectedURL {
-		t.Errorf("expected URL '%s', got '%s'", expectedURL, url)
+	// 验证：invite URL 包含 baseURL, room_id, token 和 role
+	// URL format: http://localhost:3000/coding?room_id=<uuid>&invite=<token>&role=agent
+	if !strings.Contains(url, "http://localhost:3000/coding?room_id=") {
+		t.Errorf("expected URL to start with 'http://localhost:3000/coding?room_id=', got '%s'", url)
+	}
+	if !strings.Contains(url, "&invite="+token) {
+		t.Errorf("expected URL to contain '&invite=%s', got '%s'", token, url)
+	}
+	if !strings.Contains(url, "&role=agent") {
+		t.Errorf("expected URL to contain '&role=agent', got '%s'", url)
 	}
 
 	// 验证：房间状态正确
@@ -206,14 +213,20 @@ func TestRoomService_InviteLink(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// 验证：invite link 格式正确
-	expectedLink := "http://localhost:3000/coding?invite=" + token + "&role=agent"
-	if svc.InviteLink(ctx) != expectedLink {
-		t.Errorf("expected invite link '%s', got '%s'", expectedLink, svc.InviteLink(ctx))
+	// 验证：invite link 包含必要组件
+	inviteLink := svc.InviteLink(ctx)
+	if !strings.Contains(inviteLink, "http://localhost:3000/coding?room_id=") {
+		t.Errorf("expected invite link to start with 'http://localhost:3000/coding?room_id=', got '%s'", inviteLink)
+	}
+	if !strings.Contains(inviteLink, "&invite="+token) {
+		t.Errorf("expected invite link to contain '&invite=%s', got '%s'", token, inviteLink)
+	}
+	if !strings.Contains(inviteLink, "&role=agent") {
+		t.Errorf("expected invite link to contain '&role=agent', got '%s'", inviteLink)
 	}
 
 	// 验证：与 Init 返回的 URL 一致
-	if svc.InviteLink(ctx) != url {
-		t.Error("expected invite link to match URL returned by Init")
+	if inviteLink != url {
+		t.Errorf("expected invite link to match URL returned by Init\nInviteLink: %s\nURL: %s", inviteLink, url)
 	}
 }
