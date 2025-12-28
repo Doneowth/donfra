@@ -155,9 +155,57 @@
   width: 100%;
 }
 
-/* ===== Y-Monaco Cursor Styles ===== */
-/* y-monaco handles all cursor/selection rendering automatically via MonacoBinding.
-   No custom styles needed - the library manages colors, labels, and positioning. */
+/* ===== Y-Monaco Remote Cursor & Selection Styles ===== */
+/* y-monaco creates decorations with class names but doesn't provide default styles.
+   Colors and usernames are injected dynamically via JavaScript. */
+
+/* Remote user selection background (color set via JS) */
+.yRemoteSelection {
+  opacity: 1;  /* Opacity controlled via rgba in JS */
+}
+
+/* Remote user cursor vertical line (color set via JS) */
+.yRemoteSelectionHead {
+  position: relative;
+  border-left-width: 2px;
+  border-left-style: solid;
+  margin-left: -1px;
+  pointer-events: none;
+}
+
+/* Cursor label with username (content and color set via JS) */
+.yRemoteSelectionHead::after {
+  position: absolute;
+  top: -1.3em;
+  left: -2px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  color: white;
+  font-size: 11px;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1000;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+
+  /* Start at 0.25 opacity, stay for 1s, then fade out completely */
+  opacity: 0.25;
+  animation: fadeOutLabel 1.2s ease-out forwards;
+}
+
+@keyframes fadeOutLabel {
+  0%, 83% { opacity: 0.25; }   /* Semi-transparent for 1 second */
+  100% { opacity: 0; }          /* Fade out completely */
+}
+
+/* Show label on hover (override animation) */
+.yRemoteSelectionHead:hover::after,
+.editor-pane:hover .yRemoteSelectionHead::after {
+  opacity: 0.25 !important;
+  animation: none;
+}
 
 /* ===== Terminal Pane ===== */
 .terminal-pane {

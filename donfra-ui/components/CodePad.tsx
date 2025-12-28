@@ -243,11 +243,16 @@ export default function CodePad({ onExit, roomId }: Props) {
 
     // 在线同伴列表
     const applyPeers = () => {
-      const states = Array.from(awareness.getStates().values())
-        .map((s: any) => s?.user)
+      const states = Array.from(awareness.getStates().entries());
+      const users = states
+        .map(([clientId, state]: [number, any]) => {
+          console.log(`[CodePad] Client ${clientId} awareness state:`, state);
+          return state?.user;
+        })
         .filter(Boolean) as Peer[];
-      setPeers(states);
-      console.log('[CodePad] Awareness states updated. Total peers:', states.length, states);
+      setPeers(users);
+      console.log('[CodePad] Total peers with user info:', users.length);
+      console.log('[CodePad] All awareness states:', states.map(([id, s]) => ({ id, user: s?.user, cursor: s?.cursor })));
     };
     awareness.on("change", applyPeers);
     applyPeers();
@@ -265,14 +270,69 @@ export default function CodePad({ onExit, roomId }: Props) {
 
     // CRITICAL: Create MonacoBinding FIRST before setting up event listeners
     // This ensures all event handlers have access to the binding reference
+    // Pass awareness as the 4th parameter to enable remote cursor rendering
     const binding = new YMonacoNS!.MonacoBinding(
       ytext,
       model,
       new Set([editor]),
-      awareness
+      awareness  // This enables remote cursor/selection rendering
     );
 
-    console.log('[CodePad] MonacoBinding created with awareness. Current awareness states:', awareness.getStates().size);
+    console.log('[CodePad] MonacoBinding created with awareness:', {
+      awarenessStates: awareness.getStates().size,
+      bindingCreated: !!binding,
+      editorModel: !!model
+    });
+
+    // Inject CSS styles for remote cursors based on awareness states
+    // y-monaco creates decorations but doesn't apply colors automatically
+    const updateRemoteCursorStyles = () => {
+      const styles: string[] = [];
+      awareness.getStates().forEach((state, clientId) => {
+        if (clientId !== doc.clientID && state.user) {
+          const { color, colorLight, name } = state.user;
+          // Selection background
+          styles.push(`
+            .yRemoteSelection-${clientId} {
+              background-color: ${colorLight} !important;
+            }
+          `);
+          // Cursor line
+          styles.push(`
+            .yRemoteSelectionHead-${clientId} {
+              border-left-color: ${color} !important;
+            }
+          `);
+          // Cursor label with username
+          styles.push(`
+            .yRemoteSelectionHead-${clientId}::after {
+              content: "${name}";
+              background-color: ${color} !important;
+            }
+          `);
+        }
+      });
+
+      // Inject or update style tag
+      let styleTag = document.getElementById('yjs-remote-cursor-styles');
+      if (!styleTag) {
+        styleTag = document.createElement('style');
+        styleTag.id = 'yjs-remote-cursor-styles';
+        document.head.appendChild(styleTag);
+      }
+      styleTag.textContent = styles.join('\n');
+
+      console.log('[CodePad] Injected remote cursor styles for', awareness.getStates().size - 1, 'remote users');
+    };
+
+    // Update styles when awareness changes
+    awareness.on('change', updateRemoteCursorStyles);
+    updateRemoteCursorStyles(); // Initial update
+    cleanupFnsRef.current.push(() => {
+      awareness.off('change', updateRemoteCursorStyles);
+      const styleTag = document.getElementById('yjs-remote-cursor-styles');
+      if (styleTag) styleTag.remove();
+    });
 
     // Track if we've done initial sync
     let hasInitialSynced = false;
@@ -457,16 +517,48 @@ export default function CodePad({ onExit, roomId }: Props) {
           }
 
           return { monacoLines: monacoLines.length, yjsLines: yjsLines.length };
+        },
+        inspectAwareness: () => {
+          console.log('=== Awareness Inspection ===');
+          console.log('Local client ID:', doc.clientID);
+          console.log('Total clients:', awareness.getStates().size);
+
+          const states = Array.from(awareness.getStates().entries());
+          states.forEach(([clientId, state]) => {
+            console.log(`\nClient ${clientId}:`, {
+              isLocal: clientId === doc.clientID,
+              user: state.user,
+              cursor: state.cursor,
+              selection: state.selection,
+              fullState: state
+            });
+          });
+
+          return { localClientId: doc.clientID, totalClients: awareness.getStates().size };
+        },
+        inspectBinding: () => {
+          console.log('=== MonacoBinding Inspection ===');
+          console.log('Binding object:', binding);
+          console.log('Editor decorations:', editor.getModel()?.getAllDecorations());
+
+          // Check if y-monaco cursor widgets exist in DOM
+          const cursorWidgets = document.querySelectorAll('.yRemoteSelection, .yRemoteSelectionHead');
+          console.log('Found cursor widgets in DOM:', cursorWidgets.length);
+          cursorWidgets.forEach((widget, i) => {
+            console.log(`Widget ${i}:`, widget);
+          });
+
+          return { binding, decorationsCount: editor.getModel()?.getAllDecorations().length };
         }
       };
       console.log('[CodePad] 🐛 Debug utilities exposed to window.yjsDebug');
       console.log('Available commands:');
-      console.log('  - window.yjsDebug.checkSync()        // Check if Yjs and Monaco are in sync');
-      console.log('  - window.yjsDebug.compareContents()  // Compare line-by-line differences');
-      console.log('  - window.yjsDebug.forceSync()        // Force Monaco -> Yjs sync');
-      console.log('  - window.yjsDebug.syncYjsToMonaco()  // Force Yjs -> Monaco sync');
-      console.log('  - window.yjsDebug.getYjsText()       // Get Yjs text content');
-      console.log('  - window.yjsDebug.getMonacoText()    // Get Monaco text content');
+      console.log('  - window.yjsDebug.checkSync()         // Check if Yjs and Monaco are in sync');
+      console.log('  - window.yjsDebug.compareContents()   // Compare line-by-line differences');
+      console.log('  - window.yjsDebug.forceSync()         // Force Monaco -> Yjs sync');
+      console.log('  - window.yjsDebug.syncYjsToMonaco()   // Force Yjs -> Monaco sync');
+      console.log('  - window.yjsDebug.inspectAwareness()  // Inspect awareness states (cursors)');
+      console.log('  - window.yjsDebug.inspectBinding()    // Inspect MonacoBinding and decorations');
     }
   }, [run, clearOutput, applyOutputsFromY, roomId]);
 
