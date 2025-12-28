@@ -258,6 +258,11 @@ export default function CodePad({ onExit, roomId }: Props) {
 
     if (!model) return;
 
+    // CRITICAL: Force LF line endings to match Yjs document
+    // This prevents sync mismatches between \r\n (CRLF) and \n (LF)
+    model.setEOL(0); // 0 = LF (\n), 1 = CRLF (\r\n)
+    console.log('[CodePad] Model EOL set to LF (\\n)');
+
     // CRITICAL: Create MonacoBinding FIRST before setting up event listeners
     // This ensures all event handlers have access to the binding reference
     const binding = new YMonacoNS!.MonacoBinding(

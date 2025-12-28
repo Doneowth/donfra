@@ -7,7 +7,7 @@ COMPOSE_FILE ?= infra/docker-compose.local.yml
 PROD_COMPOSE_FILE ?= infra/docker-compose.yml
 
 # UI Image Tag
-UI_IMAGE_TAG ?= 1.0.13
+UI_IMAGE_TAG ?= 1.0.14
 
 # Allow overriding compose command (support `docker-compose` or `docker compose`)
 DOCKER_COMPOSE ?= docker-compose
