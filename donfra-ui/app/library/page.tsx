@@ -34,24 +34,26 @@ function LibraryInner() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
+  const [adminToken, setAdminToken] = useState<string | null>(null);
 
   // Check if user is admin via user authentication OR admin token
   const isUserAdmin = user?.role === "admin";
-  const adminToken = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
   const isAdmin = isUserAdmin || Boolean(adminToken);
   const isVip = user?.role === "vip" || isAdmin;
+
+  // Initialize admin token from localStorage on client side only
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setAdminToken(localStorage.getItem("admin_token"));
+    }
+  }, []);
 
   useEffect(() => {
     (async () => {
       try {
-        let token: string | null = null;
-        if (typeof window !== "undefined") {
-          token = localStorage.getItem("admin_token");
-        }
-
         const headers: HeadersInit = {};
-        if (token) {
-          headers.Authorization = `Bearer ${token}`;
+        if (adminToken) {
+          headers.Authorization = `Bearer ${adminToken}`;
         }
 
         const res = await fetch(`${API_ROOT}/lessons`, { headers, credentials: 'include' });
@@ -64,8 +66,7 @@ function LibraryInner() {
         setLoadingList(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [adminToken]);
 
   return (
     <main className="admin-shell" style={{ paddingTop: 100 }}>
