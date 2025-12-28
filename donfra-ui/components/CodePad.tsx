@@ -314,45 +314,44 @@ export default function CodePad({ onExit, roomId }: Props) {
       console.warn('[CodePad] 🔌 WebSocket connection closed:', event);
     });
 
-    // === DEBUG: Monitor sync issues (only log when out of sync) ===
-    let lastYjsContent = ytext.toString();
-    ytext.observe((event: any) => {
-      const currentYjs = ytext.toString();
-      const currentMonaco = editor.getValue();
-      const match = currentYjs === currentMonaco;
+    // === DEBUG: Monitor sync issues with debounce to avoid interference ===
+    // Use debounced checks to give MonacoBinding time to complete synchronization
+    let syncCheckTimeout: NodeJS.Timeout | null = null;
 
-      if (!match) {
-        console.error('[CodePad] ❌ SYNC MISMATCH after Yjs change!', {
-          delta: event.delta,
-          yjsLines: currentYjs.split('\n').length,
-          monacoLines: currentMonaco.split('\n').length,
-          yjsLength: currentYjs.length,
-          monacoLength: currentMonaco.length,
-          yjsPreview: currentYjs.slice(0, 100),
-          monacoPreview: currentMonaco.slice(0, 100)
-        });
+    const scheduleSyncCheck = (source: 'Yjs' | 'Monaco') => {
+      if (syncCheckTimeout) {
+        clearTimeout(syncCheckTimeout);
       }
-      lastYjsContent = currentYjs;
+
+      // Wait 100ms after last change before checking (gives MonacoBinding time to sync)
+      syncCheckTimeout = setTimeout(() => {
+        const currentYjs = ytext.toString();
+        const currentMonaco = editor.getValue();
+        const match = currentYjs === currentMonaco;
+
+        if (!match) {
+          console.error(`[CodePad] ❌ SYNC MISMATCH detected after ${source} change!`, {
+            yjsLines: currentYjs.split('\n').length,
+            monacoLines: currentMonaco.split('\n').length,
+            yjsLength: currentYjs.length,
+            monacoLength: currentMonaco.length,
+            yjsPreview: currentYjs.slice(0, 100),
+            monacoPreview: currentMonaco.slice(0, 100)
+          });
+        }
+      }, 100);
+    };
+
+    ytext.observe(() => {
+      scheduleSyncCheck('Yjs');
     });
 
-    // Monitor Monaco changes for debugging
-    let lastMonacoContent = editor.getValue();
     model.onDidChangeContent(() => {
-      const currentMonaco = editor.getValue();
-      const currentYjs = ytext.toString();
-      const match = currentYjs === currentMonaco;
+      scheduleSyncCheck('Monaco');
+    });
 
-      if (!match) {
-        console.error('[CodePad] ❌ SYNC MISMATCH after Monaco change!', {
-          monacoLines: currentMonaco.split('\n').length,
-          yjsLines: currentYjs.split('\n').length,
-          monacoLength: currentMonaco.length,
-          yjsLength: currentYjs.length,
-          lastMonacoLength: lastMonacoContent.length,
-          lastYjsLength: lastYjsContent.length
-        });
-      }
-      lastMonacoContent = currentMonaco;
+    cleanupFnsRef.current.push(() => {
+      if (syncCheckTimeout) clearTimeout(syncCheckTimeout);
     });
 
     // 共享输出 Map
