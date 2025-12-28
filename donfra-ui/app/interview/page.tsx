@@ -46,7 +46,7 @@ function InterviewContent() {
         // Check if current user is the room owner (admin)
         try {
           const userResponse = await api.auth.me();
-          setIsOwner(userResponse.user.role === "admin");
+          setIsOwner(userResponse.user?.role === "admin");
         } catch (err) {
           console.log("[Interview] Could not fetch user info, assuming non-owner");
           setIsOwner(false);

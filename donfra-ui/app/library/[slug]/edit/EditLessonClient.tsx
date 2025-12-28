@@ -15,6 +15,7 @@ type Lesson = {
   markdown?: string;
   excalidraw?: any;
   isPublished?: boolean;
+  isVip?: boolean;
 };
 
 const API_ROOT = API_BASE || "/api";
@@ -35,6 +36,7 @@ export default function EditLessonClient({ slug }: { slug: string }) {
   const [title, setTitle] = useState("");
   const [markdown, setMarkdown] = useState("");
   const [isPublished, setIsPublished] = useState(true);
+  const [isVip, setIsVip] = useState(false);
   const [diagram, setDiagram] = useState<ExcalidrawData>(EMPTY_EXCALIDRAW);
   const diagramRef = useRef<ExcalidrawData>(EMPTY_EXCALIDRAW);
 
@@ -85,11 +87,13 @@ export default function EditLessonClient({ slug }: { slug: string }) {
           markdown: data.markdown ?? "",
           excalidraw: sanitizeExcalidraw(excaliData),
           isPublished: data.isPublished ?? true,
+          isVip: data.isVip ?? false,
         };
         setLesson(lessonData);
         setTitle(data.title ?? slug);
         setMarkdown(lessonData.markdown ?? "");
         setIsPublished(data.isPublished ?? true);
+        setIsVip(data.isVip ?? false);
         const sanitized = lessonData.excalidraw || EMPTY_EXCALIDRAW;
         diagramRef.current = sanitized;
         setDiagram(sanitized);
@@ -113,7 +117,8 @@ export default function EditLessonClient({ slug }: { slug: string }) {
         title: title.trim(),
         markdown,
         excalidraw: diagramRef.current,
-        isPublished
+        isPublished,
+        isVip
       }, token || "");
       router.push(`/library/${slug}`);
     } catch (err: any) {
@@ -160,7 +165,7 @@ export default function EditLessonClient({ slug }: { slug: string }) {
       {loading && <div>Loading…</div>}
       {!loading && lesson && (
         <div className="edit-lesson-container">
-          {/* Header fields: Title, Slug, Published */}
+          {/* Header fields: Title, Slug, Published, VIP */}
           <div className="edit-lesson-header">
             <div className="edit-lesson-field">
               <label>Title</label>
@@ -185,6 +190,16 @@ export default function EditLessonClient({ slug }: { slug: string }) {
                 style={{ width: 16, height: 16 }}
               />
               <label htmlFor="isPublished" style={{ color: "#ccc", margin: 0 }}>Published</label>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                id="isVip"
+                type="checkbox"
+                checked={isVip}
+                onChange={(e) => setIsVip(e.target.checked)}
+                style={{ width: 16, height: 16 }}
+              />
+              <label htmlFor="isVip" style={{ color: "#ffd700", margin: 0, fontWeight: 600 }}>VIP</label>
             </div>
           </div>
 

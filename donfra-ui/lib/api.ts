@@ -48,10 +48,10 @@ export const api = {
   },
   study: {
     list: () =>
-      getJSON<Array<{ slug: string; title: string; markdown: string; excalidraw: any; createdAt: string; updatedAt: string; isPublished: boolean }>>("/lessons"),
+      getJSON<Array<{ slug: string; title: string; markdown: string; excalidraw: any; createdAt: string; updatedAt: string; isPublished: boolean; isVip: boolean }>>("/lessons"),
     get: (slug: string) =>
-      getJSON<{ slug: string; title: string; markdown: string; excalidraw: any; createdAt: string; updatedAt: string; isPublished: boolean }>(`/lessons/${slug}`),
-    create: (data: { slug: string; title: string; markdown: string; excalidraw: any; isPublished?: boolean }, token: string) =>
+      getJSON<{ slug: string; title: string; markdown: string; excalidraw: any; createdAt: string; updatedAt: string; isPublished: boolean; isVip: boolean }>(`/lessons/${slug}`),
+    create: (data: { slug: string; title: string; markdown: string; excalidraw: any; isPublished?: boolean; isVip?: boolean }, token: string) =>
       fetch(`${API_BASE}/lessons`, {
         method: "POST",
         headers: {
@@ -65,13 +65,14 @@ export const api = {
           markdown: data.markdown,
           excalidraw: data.excalidraw,
           isPublished: data.isPublished ?? true,
+          isVip: data.isVip ?? false,
         }),
       }).then(async (res) => {
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
         return body;
       }),
-    update: (slug: string, data: { title?: string; markdown?: string; excalidraw?: any; isPublished?: boolean }, token: string) =>
+    update: (slug: string, data: { title?: string; markdown?: string; excalidraw?: any; isPublished?: boolean; isVip?: boolean }, token: string) =>
       fetch(`${API_BASE}/lessons/${slug}`, {
         method: "PATCH",
         headers: {
@@ -84,6 +85,7 @@ export const api = {
           ...(data.markdown !== undefined ? { markdown: data.markdown } : {}),
           ...(data.excalidraw !== undefined ? { excalidraw: data.excalidraw } : {}),
           ...(data.isPublished !== undefined ? { isPublished: data.isPublished } : {}),
+          ...(data.isVip !== undefined ? { isVip: data.isVip } : {}),
         }),
       }).then(async (res) => {
         const body = await res.json().catch(() => ({}));
@@ -111,7 +113,7 @@ export const api = {
     logout: () =>
       postJSON<{ message: string }>("/auth/logout", {}),
     me: () =>
-      getJSON<{ user: { id: number; email: string; username: string; role: string; isActive: boolean; createdAt: string } }>("/auth/me"),
+      getJSON<{ user: { id: number; email: string; username: string; role: string; isActive: boolean; createdAt: string } | null }>("/auth/me"),
     refresh: () =>
       postJSON<{ token: string }>("/auth/refresh", {}),
     updatePassword: (currentPassword: string, newPassword: string) =>

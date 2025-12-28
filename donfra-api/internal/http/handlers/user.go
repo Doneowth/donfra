@@ -106,14 +106,17 @@ func (h *Handlers) Logout(w http.ResponseWriter, r *http.Request) {
 
 // GetCurrentUser returns the currently authenticated user.
 // GET /api/auth/me
-// Requires authentication middleware.
+// Uses OptionalAuth middleware - returns null user if not authenticated.
 func (h *Handlers) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	// Extract user ID from context (set by auth middleware)
+	// Extract user ID from context (set by OptionalAuth middleware)
 	userID, ok := ctx.Value("user_id").(uint)
 	if !ok {
-		httputil.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		// Not authenticated - return null user instead of error
+		httputil.WriteJSON(w, http.StatusOK, map[string]interface{}{
+			"user": nil,
+		})
 		return
 	}
 

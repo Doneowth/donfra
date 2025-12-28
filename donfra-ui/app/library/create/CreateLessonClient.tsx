@@ -14,6 +14,7 @@ type LessonPayload = {
   markdown: string;
   excalidraw: any;
   isPublished: boolean;
+  isVip: boolean;
 };
 
 const Excalidraw = dynamic(() => import("@excalidraw/excalidraw").then((mod) => mod.Excalidraw), {
@@ -29,6 +30,7 @@ export default function CreateLessonClient() {
   const [slug, setSlug] = useState("");
   const [markdown, setMarkdown] = useState("");
   const [isPublished, setIsPublished] = useState(true);
+  const [isVip, setIsVip] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const excaliRef = useRef<ExcalidrawData>(EMPTY_EXCALIDRAW);
@@ -55,6 +57,7 @@ export default function CreateLessonClient() {
       setError("Slug and Title are required.");
       return;
     }
+
     try {
       setSaving(true);
       setError(null);
@@ -64,7 +67,9 @@ export default function CreateLessonClient() {
         markdown,
         excalidraw: excaliRef.current,
         isPublished,
+        isVip,
       };
+
       await api.study.create(payload, token || "");
       router.push(`/library/${payload.slug}`);
     } catch (err: any) {
@@ -107,20 +112,22 @@ export default function CreateLessonClient() {
       {error && <div style={{ color: "#f88", marginBottom: 12 }}>{error}</div>}
 
       <div className="edit-lesson-container">
-        {/* Header fields: Title, Slug, Published */}
+        {/* Header fields: Title, Slug, Published, VIP */}
         <div className="edit-lesson-header">
           <div className="edit-lesson-field">
             <label>Title</label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              placeholder="Lesson title"
             />
           </div>
           <div className="edit-lesson-field">
             <label>Slug</label>
             <input
               value={slug}
-              onChange={(e) => setSlug(e.target.value)}
+              onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"))}
+              placeholder="unique-slug"
             />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -133,6 +140,16 @@ export default function CreateLessonClient() {
             />
             <label htmlFor="isPublished" style={{ color: "#ccc", margin: 0 }}>Published</label>
           </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input
+              id="isVip"
+              type="checkbox"
+              checked={isVip}
+              onChange={(e) => setIsVip(e.target.checked)}
+              style={{ width: 16, height: 16 }}
+            />
+            <label htmlFor="isVip" style={{ color: "#ffd700", margin: 0, fontWeight: 600 }}>VIP</label>
+          </div>
         </div>
 
         {/* 水平布局：左边Markdown编辑器，右边Diagram */}
@@ -144,6 +161,7 @@ export default function CreateLessonClient() {
               className="edit-markdown-editor"
               value={markdown}
               onChange={(e) => setMarkdown(e.target.value)}
+              placeholder="Write lesson content in Markdown..."
             />
           </div>
 
@@ -169,9 +187,9 @@ export default function CreateLessonClient() {
           <button
             className="btn-save"
             onClick={handleSubmit}
-            disabled={saving}
+            disabled={saving || !slug.trim() || !title.trim()}
           >
-            {saving ? "Submitting…" : "Create lesson"}
+            {saving ? "Creating…" : "Create lesson"}
           </button>
           <button
             className="btn-cancel"

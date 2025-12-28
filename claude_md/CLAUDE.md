@@ -135,6 +135,25 @@ make docker-build-ui UI_IMAGE_TAG=1.0.4
 make docker-push-ui UI_IMAGE_TAG=1.0.4
 ```
 
+### Database Operations
+
+```bash
+# Load all SQL files from infra/db/ into database
+make load-db-sample
+
+# Create database backup snapshot
+make db-backup
+
+# Restore from specific backup
+make db-restore BACKUP_FILE=./db-backups/donfra_backup_YYYYMMDD_HHMMSS.sql
+
+# Restore from latest backup
+make db-restore-latest
+
+# List available backups
+make db-list-backups
+```
+
 ### Jaeger Tracing
 
 ```bash

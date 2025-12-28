@@ -19,7 +19,8 @@ func NewService(db *gorm.DB) *Service {
 }
 
 // GetLessonBySlug retrieves a lesson by its slug.
-func (s *Service) GetLessonBySlug(ctx context.Context, slug string) (*Lesson, error) {
+// If hasVipAccess is false and lesson is VIP-only, returns lesson with empty markdown/excalidraw.
+func (s *Service) GetLessonBySlug(ctx context.Context, slug string, hasVipAccess bool) (*Lesson, error) {
 	ctx, span := tracing.StartSpan(ctx, "study.GetLessonBySlug",
 		tracing.AttrDBOperation.String("SELECT"),
 		tracing.AttrDBTable.String("lessons"),
@@ -32,6 +33,13 @@ func (s *Service) GetLessonBySlug(ctx context.Context, slug string) (*Lesson, er
 		tracing.RecordError(span, err)
 		return nil, err
 	}
+
+	// Filter VIP content if user doesn't have access
+	if lesson.IsVip && !hasVipAccess {
+		lesson.Markdown = ""
+		lesson.Excalidraw = nil
+	}
+
 	return &lesson, nil
 }
 
@@ -80,8 +88,9 @@ func (s *Service) DeleteLessonBySlug(ctx context.Context, slug string) error {
 	return nil
 }
 
-// ListPublishedLessons returns all lessons marked as published.
-func (s *Service) ListPublishedLessons(ctx context.Context) ([]Lesson, error) {
+// ListPublishedLessons returns all lessons marked as published, ordered by newest first.
+// If hasVipAccess is false, VIP lessons will have empty markdown/excalidraw.
+func (s *Service) ListPublishedLessons(ctx context.Context, hasVipAccess bool) ([]Lesson, error) {
 	ctx, span := tracing.StartSpan(ctx, "study.ListPublishedLessons",
 		tracing.AttrDBOperation.String("SELECT"),
 		tracing.AttrDBTable.String("lessons"),
@@ -89,15 +98,30 @@ func (s *Service) ListPublishedLessons(ctx context.Context) ([]Lesson, error) {
 	defer span.End()
 
 	var lessons []Lesson
-	if err := s.db.WithContext(ctx).Where("is_published = ?", true).Find(&lessons).Error; err != nil {
+	if err := s.db.WithContext(ctx).
+		Where("is_published = ?", true).
+		Order("created_at DESC").
+		Find(&lessons).Error; err != nil {
 		tracing.RecordError(span, err)
 		return nil, err
 	}
+
+	// Filter VIP content for non-VIP users
+	if !hasVipAccess {
+		for i := range lessons {
+			if lessons[i].IsVip {
+				lessons[i].Markdown = ""
+				lessons[i].Excalidraw = nil
+			}
+		}
+	}
+
 	return lessons, nil
 }
 
-// ListAllLessons returns all lessons (both published and unpublished).
-func (s *Service) ListAllLessons(ctx context.Context) ([]Lesson, error) {
+// ListAllLessons returns all lessons (both published and unpublished), ordered by newest first.
+// If hasVipAccess is false, VIP lessons will have empty markdown/excalidraw.
+func (s *Service) ListAllLessons(ctx context.Context, hasVipAccess bool) ([]Lesson, error) {
 	ctx, span := tracing.StartSpan(ctx, "study.ListAllLessons",
 		tracing.AttrDBOperation.String("SELECT"),
 		tracing.AttrDBTable.String("lessons"),
@@ -105,9 +129,22 @@ func (s *Service) ListAllLessons(ctx context.Context) ([]Lesson, error) {
 	defer span.End()
 
 	var lessons []Lesson
-	if err := s.db.WithContext(ctx).Find(&lessons).Error; err != nil {
+	if err := s.db.WithContext(ctx).
+		Order("created_at DESC").
+		Find(&lessons).Error; err != nil {
 		tracing.RecordError(span, err)
 		return nil, err
 	}
+
+	// Filter VIP content for non-VIP users
+	if !hasVipAccess {
+		for i := range lessons {
+			if lessons[i].IsVip {
+				lessons[i].Markdown = ""
+				lessons[i].Excalidraw = nil
+			}
+		}
+	}
+
 	return lessons, nil
 }

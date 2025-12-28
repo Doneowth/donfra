@@ -17,6 +17,7 @@ type Lesson = {
   title: string;
   markdown?: string;
   excalidraw?: any;
+  isVip?: boolean;
 };
 
 const API_ROOT = API_BASE || "/api";
@@ -128,6 +129,7 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
   // Check if user is admin via user authentication OR admin token
   const isUserAdmin = user?.role === "admin";
   const isAdmin = isUserAdmin || Boolean(token);
+  const isVip = user?.role === "vip" || isAdmin;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -174,6 +176,7 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
           title: data.title ?? slug,
           markdown: data.markdown ?? "",
           excalidraw: sanitizeExcalidraw(excaliData),
+          isVip: data.isVip ?? false,
         });
       } catch (err: any) {
         console.error("Failed to load lesson:", err);
@@ -230,7 +233,22 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
             background: "#0f1211",
           }}
         >
-          <h2 style={{ marginTop: 0 }}>{lesson.title || lesson.slug}</h2>
+          <h2 style={{ marginTop: 0 }}>
+            {lesson.title || lesson.slug}
+            {lesson.isVip && (
+              <span style={{
+                marginLeft: 12,
+                fontSize: 14,
+                color: "#ffd700",
+                fontWeight: 700,
+                background: "rgba(255,215,0,0.15)",
+                padding: "4px 10px",
+                borderRadius: 6,
+              }}>
+                VIP
+              </span>
+            )}
+          </h2>
           <p
             style={{
               color: "#888",
@@ -296,38 +314,86 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
             <div style={{ color: "#f88", marginBottom: 12 }}>{actionError}</div>
           )}
 
-          {/* 水平布局：左边Markdown，右边Diagram */}
-          <div className="lesson-content-grid">
-            {/* Markdown 内容 */}
-            <div className="lesson-content-column">
-              <h4>Content</h4>
-              {lesson.markdown ? (
-                <div className="lesson-markdown-content">
-                  <ReactMarkdown components={markdownComponents}>
-                    {lesson.markdown}
-                  </ReactMarkdown>
-                </div>
-              ) : (
-                <div style={{ color: "#888" }}>No content.</div>
-              )}
+          {/* VIP Content Lock */}
+          {lesson.isVip && !isVip ? (
+            <div style={{
+              padding: "40px 20px",
+              textAlign: "center",
+              background: "rgba(255,215,0,0.05)",
+              border: "2px dashed rgba(255,215,0,0.3)",
+              borderRadius: 8,
+              marginTop: 20,
+            }}>
+              <div style={{
+                fontSize: 48,
+                marginBottom: 16,
+              }}>🔒</div>
+              <h3 style={{
+                color: "#ffd700",
+                marginTop: 0,
+                marginBottom: 12,
+              }}>VIP Content</h3>
+              <p style={{
+                color: "#ccc",
+                fontSize: 16,
+                marginBottom: 20,
+                lineHeight: 1.6,
+              }}>
+                This lesson is exclusive to VIP members.<br />
+                Please upgrade your account to access this content.
+              </p>
+              <button
+                onClick={() => router.push("/user")}
+                style={{
+                  padding: "12px 24px",
+                  borderRadius: 8,
+                  border: "2px solid #ffd700",
+                  background: "rgba(255,215,0,0.1)",
+                  color: "#ffd700",
+                  cursor: "pointer",
+                  fontWeight: 700,
+                  fontSize: 16,
+                }}
+              >
+                Upgrade to VIP
+              </button>
             </div>
+          ) : (
+            <>
+              {/* 水平布局：左边Markdown，右边Diagram */}
+              <div className="lesson-content-grid">
+                {/* Markdown 内容 */}
+                <div className="lesson-content-column">
+                  <h4>Content</h4>
+                  {lesson.markdown ? (
+                    <div className="lesson-markdown-content">
+                      <ReactMarkdown components={markdownComponents}>
+                        {lesson.markdown}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    <div style={{ color: "#888" }}>No content.</div>
+                  )}
+                </div>
 
-            {/* Excalidraw 区域 */}
-            <div className="lesson-content-column">
-              <h4>Diagram</h4>
-              {canRenderDiagram ? (
-                <div className="lesson-diagram-container">
-                  <Excalidraw
-                    initialData={lesson.excalidraw || EMPTY_EXCALIDRAW}
-                    zenModeEnabled
-                    gridModeEnabled
-                  />
+                {/* Excalidraw 区域 */}
+                <div className="lesson-content-column">
+                  <h4>Diagram</h4>
+                  {canRenderDiagram ? (
+                    <div className="lesson-diagram-container">
+                      <Excalidraw
+                        initialData={lesson.excalidraw || EMPTY_EXCALIDRAW}
+                        zenModeEnabled
+                        gridModeEnabled
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ color: "#888" }}>Preparing canvas…</div>
+                  )}
                 </div>
-              ) : (
-                <div style={{ color: "#888" }}>Preparing canvas…</div>
-              )}
-            </div>
-          </div>
+              </div>
+            </>
+          )}
 
         </div>
 

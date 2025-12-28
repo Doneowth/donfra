@@ -7,7 +7,7 @@ COMPOSE_FILE ?= infra/docker-compose.local.yml
 PROD_COMPOSE_FILE ?= infra/docker-compose.yml
 
 # UI Image Tag
-UI_IMAGE_TAG ?= 1.0.15
+UI_IMAGE_TAG ?= 1.0.17
 
 # Allow overriding compose command (support `docker-compose` or `docker compose`)
 DOCKER_COMPOSE ?= docker-compose
@@ -23,7 +23,7 @@ PROD = $(DOCKER_COMPOSE) -f $(PROD_COMPOSE_FILE)
 .PHONY: localdev-up-redis localdev-restart-redis localdev-logs-redis
 .PHONY: prod-up prod-down prod-restart prod-logs prod-ps
 .PHONY: jaeger-ui jaeger-logs jaeger-hash-password
-.PHONY: db-backup db-restore db-restore-latest db-list-backups
+.PHONY: db-backup db-restore db-restore-latest db-list-backups load-db-sample
 
 
 localdev-up:
@@ -200,3 +200,25 @@ db-restore-latest:
 db-list-backups:
 	@echo "📋 Available database snapshots (newest first):"
 	@ls -lht ./db-backups/*.sql 2>/dev/null | head -10 || echo "No backups found"
+
+# ===== Load Database Sample Data =====
+
+load-db-sample:
+	@echo "📥 Loading all SQL files from infra/db/ into database..."
+	@echo ""
+	@for sql_file in infra/db/*.sql; do \
+		if [ -f "$$sql_file" ]; then \
+			echo "▶ Executing: $$sql_file"; \
+			output=$$(docker exec -i donfra-db psql -U donfra -d donfra_study < "$$sql_file" 2>&1); \
+			echo "$$output" | grep -v "^NOTICE:" | grep -E "(CREATE|ALTER|INSERT|UPDATE|DELETE|ERROR)" || true; \
+			if echo "$$output" | grep -q "ERROR.*already exists"; then \
+				echo "⚠️  Some objects already exist (skipped): $$sql_file"; \
+			elif echo "$$output" | grep -q "ERROR"; then \
+				echo "❌ Failed with errors: $$sql_file"; \
+			else \
+				echo "✅ Successfully loaded: $$sql_file"; \
+			fi; \
+			echo ""; \
+		fi; \
+	done
+	@echo "✨ Database sample data loading complete!"

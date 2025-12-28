@@ -12,6 +12,7 @@ type Lesson = {
   markdown?: string;
   excalidraw?: any;
   isPublished?: boolean;
+  isVip?: boolean;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -38,6 +39,7 @@ function LibraryInner() {
   const isUserAdmin = user?.role === "admin";
   const adminToken = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
   const isAdmin = isUserAdmin || Boolean(adminToken);
+  const isVip = user?.role === "vip" || isAdmin;
 
   useEffect(() => {
     (async () => {
@@ -121,6 +123,7 @@ function LibraryInner() {
               <tbody>
                 {lessons.map((lesson) => {
                   const isUnpublished = lesson.isPublished === false;
+                  const isVipOnly = lesson.isVip === true;
                   return (
                     <tr key={lesson.slug} style={{ borderBottom: "1px solid rgba(169,142,100,0.1)" }}>
                       <td style={{ padding: "10px 6px", color: isUnpublished ? "#666" : "#c8c1b4" }}>
@@ -142,6 +145,19 @@ function LibraryInner() {
                           {lesson.title || lesson.slug}
                           {isUnpublished && (
                             <span style={{ marginLeft: 8, fontSize: 12, color: "#666" }}>(unpublished)</span>
+                          )}
+                          {isVipOnly && (
+                            <span style={{ 
+                              marginLeft: 8, 
+                              fontSize: 11, 
+                              color: "#ffd700",
+                              fontWeight: 700,
+                              background: "rgba(255,215,0,0.15)",
+                              padding: "2px 6px",
+                              borderRadius: 4,
+                            }}>
+                              VIP
+                            </span>
                           )}
                         </button>
                       </td>

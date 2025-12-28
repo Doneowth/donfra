@@ -47,7 +47,7 @@ func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, auth
 	v1.Post("/auth/logout", h.Logout)
 
 	// ===== User Routes (Protected) =====
-	v1.With(middleware.RequireAuth(userSvc)).Get("/auth/me", h.GetCurrentUser)
+	v1.With(middleware.OptionalAuth(userSvc)).Get("/auth/me", h.GetCurrentUser)
 	v1.With(middleware.RequireAuth(userSvc)).Post("/auth/refresh", h.RefreshToken)
 	v1.With(middleware.RequireAuth(userSvc)).Post("/auth/update-password", h.UpdatePassword)
 

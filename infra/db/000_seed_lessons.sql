@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS lessons (
     markdown TEXT NOT NULL,
     excalidraw JSONB NOT NULL,
     is_published BOOLEAN NOT NULL DEFAULT FALSE,
+    is_vip BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -13,7 +14,10 @@ CREATE TABLE IF NOT EXISTS lessons (
 -- Ensure slug is unique so ON CONFLICT works
 CREATE UNIQUE INDEX IF NOT EXISTS idx_lessons_slug ON lessons (slug);
 
-INSERT INTO lessons (slug, title, markdown, excalidraw, is_published)
+-- Create index for VIP filtering
+CREATE INDEX IF NOT EXISTS idx_lessons_is_vip ON lessons(is_vip);
+
+INSERT INTO lessons (slug, title, markdown, excalidraw, is_published, is_vip)
 VALUES
     ('intro-to-donfra', 'Intro to Donfra', '# Welcome\n\nThis is a sample lesson for testing.', $json$
 {
@@ -29,7 +33,7 @@ VALUES
   },
   "files": {}
 }
-$json$::jsonb, TRUE),
+$json$::jsonb, TRUE, FALSE),
     ('advanced-collab', 'Advanced Collaboration', '## Collaboration\n\nTesting collaborative editing features.', $json$
 {
   "type": "excalidraw",
@@ -65,5 +69,5 @@ $json$::jsonb, TRUE),
   "scrollToContent": true,
   "files": {}
 }
-$json$::jsonb, TRUE)
+$json$::jsonb, TRUE, FALSE)
 ON CONFLICT (slug) DO NOTHING;

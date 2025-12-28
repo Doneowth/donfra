@@ -30,8 +30,21 @@ func isAdminUser(ctx context.Context) bool {
 	return ok && role == "admin"
 }
 
+// isVipUser checks if the user has VIP access (admin or vip role)
+func isVipUser(ctx context.Context) bool {
+	// Admins automatically have VIP access
+	if isAdminUser(ctx) {
+		return true
+	}
+
+	// Check user role
+	role, ok := ctx.Value("user_role").(string)
+	return ok && role == "vip"
+}
+
 // ListLessonsHandler handles GET /api/lessons and returns lessons based on auth status.
 // Admin users see all lessons (published + unpublished), regular users see only published.
+// VIP lessons show limited content to non-VIP users.
 // Requires OptionalAuth middleware to set context.
 func (h *Handlers) ListLessonsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.StartSpan(r.Context(), "handler.ListLessons")
@@ -42,18 +55,22 @@ func (h *Handlers) ListLessonsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check admin status (either admin token OR user with role=admin)
-	_, authSpan := tracing.StartSpan(ctx, "handler.CheckAdminAuth")
+	// Check admin and VIP status
+	_, authSpan := tracing.StartSpan(ctx, "handler.CheckAuth")
 	isAdmin := isAdminUser(ctx)
-	authSpan.SetAttributes(tracing.AttrIsAdmin.Bool(isAdmin))
+	hasVipAccess := isVipUser(ctx)
+	authSpan.SetAttributes(
+		tracing.AttrIsAdmin.Bool(isAdmin),
+		attribute.Bool("has_vip_access", hasVipAccess),
+	)
 	authSpan.End()
 
 	var lessons []study.Lesson
 	var err error
 	if isAdmin {
-		lessons, err = h.studySvc.ListAllLessons(ctx)
+		lessons, err = h.studySvc.ListAllLessons(ctx, hasVipAccess)
 	} else {
-		lessons, err = h.studySvc.ListPublishedLessons(ctx)
+		lessons, err = h.studySvc.ListPublishedLessons(ctx, hasVipAccess)
 	}
 
 	if err != nil {
@@ -70,8 +87,9 @@ func (h *Handlers) ListLessonsHandler(w http.ResponseWriter, r *http.Request) {
 	jsonSpan.End()
 }
 
-// GetLessonBySlugHandler handles GET /api/lessons/{slug} and returns the lesson with full content.
+// GetLessonBySlugHandler handles GET /api/lessons/{slug} and returns the lesson.
 // Unpublished lessons can only be accessed by admin users.
+// VIP lessons show limited content to non-VIP users (title only, no markdown/excalidraw).
 // Requires OptionalAuth middleware to set context.
 func (h *Handlers) GetLessonBySlugHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.StartSpan(r.Context(), "handler.GetLessonBySlug")
@@ -93,7 +111,17 @@ func (h *Handlers) GetLessonBySlugHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	lesson, err := h.studySvc.GetLessonBySlug(ctx, slug)
+	// Check admin and VIP status
+	_, authSpan := tracing.StartSpan(ctx, "handler.CheckAccess")
+	isAdmin := isAdminUser(ctx)
+	hasVipAccess := isVipUser(ctx)
+	authSpan.SetAttributes(
+		tracing.AttrIsAdmin.Bool(isAdmin),
+		attribute.Bool("has_vip_access", hasVipAccess),
+	)
+	authSpan.End()
+
+	lesson, err := h.studySvc.GetLessonBySlug(ctx, slug, hasVipAccess)
 	if err != nil {
 		tracing.RecordError(span, err)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -104,20 +132,10 @@ func (h *Handlers) GetLessonBySlugHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// If lesson is unpublished, verify admin access (either admin token OR user with role=admin)
-	if !lesson.IsPublished {
-		_, authSpan := tracing.StartSpan(ctx, "handler.CheckUnpublishedAccess")
-		isAdmin := isAdminUser(ctx)
-		authSpan.SetAttributes(
-			tracing.AttrIsAdmin.Bool(isAdmin),
-			attribute.Bool("lesson.is_published", lesson.IsPublished),
-		)
-		authSpan.End()
-
-		if !isAdmin {
-			httputil.WriteError(w, http.StatusNotFound, "lesson not found")
-			return
-		}
+	// If lesson is unpublished, verify admin access
+	if !lesson.IsPublished && !isAdmin {
+		httputil.WriteError(w, http.StatusNotFound, "lesson not found")
+		return
 	}
 
 	_, jsonSpan := tracing.StartSpan(ctx, "handler.SerializeJSON")
@@ -144,7 +162,10 @@ func (h *Handlers) CreateLessonHandler(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
-	parseSpan.SetAttributes(tracing.AttrLessonSlug.String(req.Slug))
+	parseSpan.SetAttributes(
+		tracing.AttrLessonSlug.String(req.Slug),
+		attribute.Bool("is_vip", req.IsVip),
+	)
 	parseSpan.End()
 
 	newLesson := &study.Lesson{
@@ -153,6 +174,7 @@ func (h *Handlers) CreateLessonHandler(w http.ResponseWriter, r *http.Request) {
 		Markdown:    req.Markdown,
 		Excalidraw:  req.Excalidraw,
 		IsPublished: req.IsPublished,
+		IsVip:       req.IsVip,
 	}
 	
 	created, err := h.studySvc.CreateLesson(ctx, newLesson)
@@ -201,6 +223,9 @@ func (h *Handlers) UpdateLessonHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.IsPublished != nil {
 		updates["is_published"] = *req.IsPublished
+	}
+	if req.IsVip != nil {
+		updates["is_vip"] = *req.IsVip
 	}
 
 	if len(updates) == 0 {

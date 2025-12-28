@@ -28,8 +28,11 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Optional: Create a default admin user for testing (password: admin123)
+-- Optional: Create default test users (password: admin123)
 -- Password hash generated with bcrypt cost 12
+-- Hash: $2a$12$/.ZnTCSQ/htuc6xJtZmG9uyViBygcOyZzPlz2arLHRvZ27Hh7MLGS
+
+-- Admin user
 INSERT INTO users (email, password, username, role, is_active)
 VALUES (
     'admin@donfra.com',
@@ -40,12 +43,35 @@ VALUES (
 )
 ON CONFLICT (email) DO NOTHING;
 
+-- Regular user
 INSERT INTO users (email, password, username, role, is_active)
 VALUES (
-    'b@b.com',
+    'duser@d.com',
     '$2a$12$/.ZnTCSQ/htuc6xJtZmG9uyViBygcOyZzPlz2arLHRvZ27Hh7MLGS',
-    'bdmin',
-    'admin',
+    'duser',
+    'user',
+    true
+)
+ON CONFLICT (email) DO NOTHING;
+
+-- VIP user
+INSERT INTO users (email, password, username, role, is_active)
+VALUES (
+    'dvip@d.com',
+    '$2a$12$/.ZnTCSQ/htuc6xJtZmG9uyViBygcOyZzPlz2arLHRvZ27Hh7MLGS',
+    'dvip',
+    'vip',
+    true
+)
+ON CONFLICT (email) DO NOTHING;
+
+-- Mentor user
+INSERT INTO users (email, password, username, role, is_active)
+VALUES (
+    'dmen@d.com',
+    '$2a$12$/.ZnTCSQ/htuc6xJtZmG9uyViBygcOyZzPlz2arLHRvZ27Hh7MLGS',
+    'dmen',
+    'mentor',
     true
 )
 ON CONFLICT (email) DO NOTHING;

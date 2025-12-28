@@ -14,6 +14,7 @@ type Lesson struct {
 	Markdown    string         `gorm:"type:text;not null" json:"markdown"`
 	Excalidraw  datatypes.JSON `gorm:"type:jsonb;not null" json:"excalidraw"`
 	IsPublished bool           `gorm:"column:is_published;not null;default:false" json:"isPublished"`
+	IsVip       bool           `gorm:"column:is_vip;not null;default:false" json:"isVip"`
 	CreatedAt   time.Time      `json:"createdAt"`
 	UpdatedAt   time.Time      `json:"updatedAt"`
 }
@@ -25,6 +26,7 @@ type CreateLessonRequest struct {
 	Markdown    string         `json:"markdown"`
 	Excalidraw  datatypes.JSON `json:"excalidraw"`
 	IsPublished bool           `json:"isPublished"`
+	IsVip       bool           `json:"isVip"`
 }
 
 // UpdateLessonRequest represents a request to update an existing lesson.
@@ -33,6 +35,7 @@ type UpdateLessonRequest struct {
 	Markdown    string         `json:"markdown"`
 	Excalidraw  datatypes.JSON `json:"excalidraw"`
 	IsPublished *bool          `json:"isPublished"`
+	IsVip       *bool          `json:"isVip"`
 }
 
 // UpdateLessonResponse represents the response after updating a lesson.
