@@ -9,6 +9,7 @@ import ReactMarkdown, {
 import { API_BASE, api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { EMPTY_EXCALIDRAW, sanitizeExcalidraw } from "@/lib/utils/excalidraw";
+import Toast from "@/components/Toast";
 import "./lesson-detail.css";
 
 type Lesson = {
@@ -17,6 +18,7 @@ type Lesson = {
   title: string;
   markdown?: string;
   excalidraw?: any;
+  videoUrl?: string;
   isVip?: boolean;
 };
 
@@ -114,6 +116,8 @@ const markdownComponents: MarkdownComponents = {
   ),
 };
 
+type TabType = "markdown" | "diagram" | "video";
+
 export default function LessonDetailClient({ slug }: { slug: string }) {
   const router = useRouter();
   const { user } = useAuth();
@@ -125,6 +129,8 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>("markdown");
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   // Check if user is admin via user authentication OR admin token
   const isUserAdmin = user?.role === "admin";
@@ -176,6 +182,7 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
           title: data.title ?? slug,
           markdown: data.markdown ?? "",
           excalidraw: sanitizeExcalidraw(excaliData),
+          videoUrl: data.videoUrl,
           isVip: data.isVip ?? false,
         });
       } catch (err: any) {
@@ -280,6 +287,7 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
                 onClick={async () => {
                   if (!token && !isUserAdmin) {
                     setActionError("Admin authentication required. Please login.");
+                    setToast({ message: "Admin authentication required. Please login.", type: "error" });
                     return;
                   }
                   if (!window.confirm("Delete this lesson? This cannot be undone.")) return;
@@ -287,9 +295,14 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
                     setBusy(true);
                     setActionError(null);
                     await api.study.delete(lesson.slug, token || "");
-                    router.push("/library");
+                    setToast({ message: "Lesson deleted successfully!", type: "success" });
+                    setTimeout(() => {
+                      router.push("/library");
+                    }, 1000);
                   } catch (err: any) {
-                    setActionError(err?.message || "Failed to delete lesson");
+                    const errorMsg = err?.message || "Failed to delete lesson";
+                    setActionError(errorMsg);
+                    setToast({ message: errorMsg, type: "error" });
                   } finally {
                     setBusy(false);
                   }
@@ -360,43 +373,129 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
             </div>
           ) : (
             <>
-              {/* 水平布局：左边Markdown，右边Diagram */}
-              <div className="lesson-content-grid">
-                {/* Markdown 内容 */}
-                <div className="lesson-content-column">
-                  <h4>Content</h4>
-                  {lesson.markdown ? (
-                    <div className="lesson-markdown-content">
-                      <ReactMarkdown components={markdownComponents}>
-                        {lesson.markdown}
-                      </ReactMarkdown>
-                    </div>
-                  ) : (
-                    <div style={{ color: "#888" }}>No content.</div>
-                  )}
-                </div>
+              {/* Tab Navigation */}
+              <div style={{
+                display: "flex",
+                gap: 8,
+                borderBottom: "2px solid #333",
+                marginBottom: 16,
+              }}>
+                <button
+                  onClick={() => setActiveTab("markdown")}
+                  style={{
+                    padding: "10px 20px",
+                    border: "none",
+                    background: activeTab === "markdown" ? "#1a1f1e" : "transparent",
+                    color: activeTab === "markdown" ? "#f4d18c" : "#888",
+                    cursor: "pointer",
+                    fontWeight: activeTab === "markdown" ? 600 : 400,
+                    borderBottom: activeTab === "markdown" ? "2px solid #f4d18c" : "2px solid transparent",
+                    marginBottom: -2,
+                  }}
+                >
+                  Markdown
+                </button>
+                <button
+                  onClick={() => setActiveTab("diagram")}
+                  style={{
+                    padding: "10px 20px",
+                    border: "none",
+                    background: activeTab === "diagram" ? "#1a1f1e" : "transparent",
+                    color: activeTab === "diagram" ? "#f4d18c" : "#888",
+                    cursor: "pointer",
+                    fontWeight: activeTab === "diagram" ? 600 : 400,
+                    borderBottom: activeTab === "diagram" ? "2px solid #f4d18c" : "2px solid transparent",
+                    marginBottom: -2,
+                  }}
+                >
+                  Diagram
+                </button>
+                {lesson.videoUrl && (
+                  <button
+                    onClick={() => setActiveTab("video")}
+                    style={{
+                      padding: "10px 20px",
+                      border: "none",
+                      background: activeTab === "video" ? "#1a1f1e" : "transparent",
+                      color: activeTab === "video" ? "#f4d18c" : "#888",
+                      cursor: "pointer",
+                      fontWeight: activeTab === "video" ? 600 : 400,
+                      borderBottom: activeTab === "video" ? "2px solid #f4d18c" : "2px solid transparent",
+                      marginBottom: -2,
+                    }}
+                  >
+                    Video
+                  </button>
+                )}
+              </div>
 
-                {/* Excalidraw 区域 */}
-                <div className="lesson-content-column">
-                  <h4>Diagram</h4>
-                  {canRenderDiagram ? (
-                    <div className="lesson-diagram-container">
-                      <Excalidraw
-                        initialData={lesson.excalidraw || EMPTY_EXCALIDRAW}
-                        zenModeEnabled
-                        gridModeEnabled
-                      />
-                    </div>
-                  ) : (
-                    <div style={{ color: "#888" }}>Preparing canvas…</div>
-                  )}
-                </div>
+              {/* Tab Content */}
+              <div>
+                {activeTab === "markdown" && (
+                  <div>
+                    {lesson.markdown ? (
+                      <div className="lesson-markdown-content">
+                        <ReactMarkdown components={markdownComponents}>
+                          {lesson.markdown}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      <div style={{ color: "#888" }}>No content.</div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === "diagram" && (
+                  <div>
+                    {canRenderDiagram ? (
+                      <div style={{
+                        height: "600px",
+                        border: "1px solid #333",
+                        borderRadius: 6,
+                        overflow: "hidden",
+                      }}>
+                        <Excalidraw
+                          initialData={lesson.excalidraw || EMPTY_EXCALIDRAW}
+                          zenModeEnabled
+                          gridModeEnabled
+                        />
+                      </div>
+                    ) : (
+                      <div style={{ color: "#888" }}>Preparing canvas…</div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === "video" && lesson.videoUrl && (
+                  <div>
+                    <video
+                      controls
+                      style={{
+                        width: "100%",
+                        maxWidth: "900px",
+                        borderRadius: 6,
+                        background: "#000",
+                      }}
+                      src={lesson.videoUrl}
+                    >
+                      Your browser does not support video playback.
+                    </video>
+                  </div>
+                )}
               </div>
             </>
           )}
 
         </div>
 
+      )}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          isOpen={!!toast}
+          onClose={() => setToast(null)}
+        />
       )}
     </main>
   );

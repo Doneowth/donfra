@@ -152,6 +152,9 @@ make db-restore-latest
 
 # List available backups
 make db-list-backups
+
+# Add 20 test lessons (mixed published/unpublished and VIP)
+make add-20-lessons
 ```
 
 ### Jaeger Tracing

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { API_BASE, api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { EMPTY_EXCALIDRAW, sanitizeExcalidraw, type ExcalidrawData } from "@/lib/utils/excalidraw";
+import Toast from "@/components/Toast";
 import "../[slug]/edit/edit-lesson.css";
 
 type LessonPayload = {
@@ -13,8 +14,11 @@ type LessonPayload = {
   title: string;
   markdown: string;
   excalidraw: any;
+  videoUrl?: string;
   isPublished: boolean;
   isVip: boolean;
+  author?: string;
+  publishedDate?: string;
 };
 
 const Excalidraw = dynamic(() => import("@excalidraw/excalidraw").then((mod) => mod.Excalidraw), {
@@ -31,8 +35,12 @@ export default function CreateLessonClient() {
   const [markdown, setMarkdown] = useState("");
   const [isPublished, setIsPublished] = useState(true);
   const [isVip, setIsVip] = useState(false);
+  const [author, setAuthor] = useState("");
+  const [publishedDate, setPublishedDate] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const excaliRef = useRef<ExcalidrawData>(EMPTY_EXCALIDRAW);
 
   // Check if user is admin via user authentication OR admin token
@@ -66,14 +74,22 @@ export default function CreateLessonClient() {
         title: title.trim(),
         markdown,
         excalidraw: excaliRef.current,
+        videoUrl: videoUrl.trim() || undefined,
         isPublished,
         isVip,
+        author: author.trim() || undefined,
+        publishedDate: publishedDate || undefined,
       };
 
       await api.study.create(payload, token || "");
-      router.push(`/library/${payload.slug}`);
+      setToast({ message: "Lesson created successfully!", type: "success" });
+      setTimeout(() => {
+        router.push(`/library/${payload.slug}`);
+      }, 1000);
     } catch (err: any) {
-      setError(err?.message || "Failed to create lesson");
+      const errorMsg = err?.message || "Failed to create lesson";
+      setError(errorMsg);
+      setToast({ message: errorMsg, type: "error" });
     } finally {
       setSaving(false);
     }
@@ -128,6 +144,30 @@ export default function CreateLessonClient() {
               value={slug}
               onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"))}
               placeholder="unique-slug"
+            />
+          </div>
+          <div className="edit-lesson-field">
+            <label>Author</label>
+            <input
+              value={author}
+              onChange={(e) => setAuthor(e.target.value)}
+              placeholder="Author name (optional)"
+            />
+          </div>
+          <div className="edit-lesson-field">
+            <label>Published Date <span style={{ color: "#888", fontWeight: 400, fontSize: 13 }}>(optional, e.g., {new Date().toISOString().split('T')[0]})</span></label>
+            <input
+              type="date"
+              value={publishedDate}
+              onChange={(e) => setPublishedDate(e.target.value)}
+            />
+          </div>
+          <div className="edit-lesson-field">
+            <label>Video URL</label>
+            <input
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="https://your-cdn.akamai.com/video.mp4 (optional)"
             />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -199,6 +239,14 @@ export default function CreateLessonClient() {
           </button>
         </div>
       </div>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          isOpen={!!toast}
+          onClose={() => setToast(null)}
+        />
+      )}
     </main>
   );
 }

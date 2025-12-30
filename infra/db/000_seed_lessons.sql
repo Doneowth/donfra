@@ -5,8 +5,11 @@ CREATE TABLE IF NOT EXISTS lessons (
     title TEXT NOT NULL,
     markdown TEXT NOT NULL,
     excalidraw JSONB NOT NULL,
+    video_url TEXT,
     is_published BOOLEAN NOT NULL DEFAULT FALSE,
     is_vip BOOLEAN NOT NULL DEFAULT FALSE,
+    author TEXT,
+    published_date DATE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -17,7 +20,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_lessons_slug ON lessons (slug);
 -- Create index for VIP filtering
 CREATE INDEX IF NOT EXISTS idx_lessons_is_vip ON lessons(is_vip);
 
-INSERT INTO lessons (slug, title, markdown, excalidraw, is_published, is_vip)
+-- Create index for author filtering
+CREATE INDEX IF NOT EXISTS idx_lessons_author ON lessons(author);
+
+-- Create index for published date sorting
+CREATE INDEX IF NOT EXISTS idx_lessons_published_date ON lessons(published_date);
+
+INSERT INTO lessons (slug, title, markdown, excalidraw, is_published, is_vip, author, published_date)
 VALUES
     ('intro-to-donfra', 'Intro to Donfra', '# Welcome\n\nThis is a sample lesson for testing.', $json$
 {
@@ -33,7 +42,7 @@ VALUES
   },
   "files": {}
 }
-$json$::jsonb, TRUE, FALSE),
+$json$::jsonb, TRUE, FALSE, 'Donfra Team', '2025-01-15'),
     ('advanced-collab', 'Advanced Collaboration', '## Collaboration\n\nTesting collaborative editing features.', $json$
 {
   "type": "excalidraw",
@@ -69,5 +78,5 @@ $json$::jsonb, TRUE, FALSE),
   "scrollToContent": true,
   "files": {}
 }
-$json$::jsonb, TRUE, FALSE)
+$json$::jsonb, TRUE, FALSE, 'Donfra Team', '2025-01-20')
 ON CONFLICT (slug) DO NOTHING;

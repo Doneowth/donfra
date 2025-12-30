@@ -25,10 +25,13 @@ type RoomService interface {
 }
 
 // StudyService defines the interface for lesson operations.
-// StudyService defines the interface for lesson operations.
 type StudyService interface {
 	ListPublishedLessons(ctx context.Context, hasVipAccess bool) ([]study.Lesson, error)
 	ListAllLessons(ctx context.Context, hasVipAccess bool) ([]study.Lesson, error)
+	ListPublishedLessonsPaginated(ctx context.Context, hasVipAccess bool, params study.PaginationParams) (*study.PaginatedLessonsResponse, error)
+	ListAllLessonsPaginated(ctx context.Context, hasVipAccess bool, params study.PaginationParams) (*study.PaginatedLessonsResponse, error)
+	ListPublishedLessonsSummaryPaginated(ctx context.Context, params study.PaginationParams) (*study.PaginatedLessonsSummaryResponse, error)
+	ListAllLessonsSummaryPaginated(ctx context.Context, params study.PaginationParams) (*study.PaginatedLessonsSummaryResponse, error)
 	GetLessonBySlug(ctx context.Context, slug string, hasVipAccess bool) (*study.Lesson, error)
 	CreateLesson(ctx context.Context, newLesson *study.Lesson) (*study.Lesson, error)
 	UpdateLessonBySlug(ctx context.Context, slug string, updates map[string]any) error

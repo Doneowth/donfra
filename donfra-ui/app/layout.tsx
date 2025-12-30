@@ -4,6 +4,9 @@ import { AuthProvider } from "@/lib/auth-context";
 export const metadata = {
   title: "Donfra — British Tactical Elegance",
   description: "Precision. Preparation. Placement.",
+  icons: {
+    icon: "/donfra.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

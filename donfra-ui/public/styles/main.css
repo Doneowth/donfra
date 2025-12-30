@@ -199,8 +199,16 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
-  width:56px;
-  height:56px;
+  flex-shrink:0;
+}
+.logo img{
+  border:none;
+  outline:none;
+  display:block;
+}
+.logo-text{
+  width:80px;
+  height:80px;
   border-radius:12px;
   border:1px solid rgba(169,142,100,0.6);
   background:linear-gradient(145deg,#0E1813,#1A2F23);
@@ -211,7 +219,9 @@ body{
   letter-spacing:1px;
   box-shadow:inset 0 0 10px rgba(169,142,100,0.25);
   text-transform:uppercase;
-  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 .nav{
   display:flex;

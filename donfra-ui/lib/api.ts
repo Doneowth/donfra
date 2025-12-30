@@ -47,11 +47,35 @@ export const api = {
     login: (password: string) => postJSON<{ token: string }>("/admin/login", { password }),
   },
   study: {
-    list: () =>
-      getJSON<Array<{ slug: string; title: string; markdown: string; excalidraw: any; createdAt: string; updatedAt: string; isPublished: boolean; isVip: boolean }>>("/lessons"),
+    list: (page?: number, size?: number) => {
+      const params = new URLSearchParams();
+      if (page !== undefined) params.append("page", page.toString());
+      if (size !== undefined) params.append("size", size.toString());
+      const query = params.toString();
+      return getJSON<{
+        lessons: Array<{ id: number; slug: string; title: string; markdown: string; excalidraw: any; createdAt: string; updatedAt: string; isPublished: boolean; isVip: boolean; author?: string; publishedDate?: string }>;
+        total: number;
+        page: number;
+        size: number;
+        totalPages: number;
+      }>(`/lessons${query ? `?${query}` : ""}`);
+    },
+    listSummary: (page?: number, size?: number) => {
+      const params = new URLSearchParams();
+      if (page !== undefined) params.append("page", page.toString());
+      if (size !== undefined) params.append("size", size.toString());
+      const query = params.toString();
+      return getJSON<{
+        lessons: Array<{ id: number; slug: string; title: string; isPublished: boolean; isVip: boolean; author?: string; publishedDate?: string; createdAt: string; updatedAt: string }>;
+        total: number;
+        page: number;
+        size: number;
+        totalPages: number;
+      }>(`/lessons/summary${query ? `?${query}` : ""}`);
+    },
     get: (slug: string) =>
-      getJSON<{ slug: string; title: string; markdown: string; excalidraw: any; createdAt: string; updatedAt: string; isPublished: boolean; isVip: boolean }>(`/lessons/${slug}`),
-    create: (data: { slug: string; title: string; markdown: string; excalidraw: any; isPublished?: boolean; isVip?: boolean }, token: string) =>
+      getJSON<{ slug: string; title: string; markdown: string; excalidraw: any; videoUrl?: string; createdAt: string; updatedAt: string; isPublished: boolean; isVip: boolean; author?: string; publishedDate?: string }>(`/lessons/${slug}`),
+    create: (data: { slug: string; title: string; markdown: string; excalidraw: any; videoUrl?: string; isPublished?: boolean; isVip?: boolean; author?: string; publishedDate?: string }, token: string) =>
       fetch(`${API_BASE}/lessons`, {
         method: "POST",
         headers: {
@@ -64,15 +88,18 @@ export const api = {
           title: data.title,
           markdown: data.markdown,
           excalidraw: data.excalidraw,
+          videoUrl: data.videoUrl,
           isPublished: data.isPublished ?? true,
           isVip: data.isVip ?? false,
+          author: data.author,
+          publishedDate: data.publishedDate,
         }),
       }).then(async (res) => {
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
         return body;
       }),
-    update: (slug: string, data: { title?: string; markdown?: string; excalidraw?: any; isPublished?: boolean; isVip?: boolean }, token: string) =>
+    update: (slug: string, data: { title?: string; markdown?: string; excalidraw?: any; videoUrl?: string; isPublished?: boolean; isVip?: boolean; author?: string; publishedDate?: string }, token: string) =>
       fetch(`${API_BASE}/lessons/${slug}`, {
         method: "PATCH",
         headers: {
@@ -84,8 +111,11 @@ export const api = {
           ...(data.title !== undefined ? { title: data.title } : {}),
           ...(data.markdown !== undefined ? { markdown: data.markdown } : {}),
           ...(data.excalidraw !== undefined ? { excalidraw: data.excalidraw } : {}),
+          ...(data.videoUrl !== undefined ? { videoUrl: data.videoUrl } : {}),
           ...(data.isPublished !== undefined ? { isPublished: data.isPublished } : {}),
           ...(data.isVip !== undefined ? { isVip: data.isVip } : {}),
+          ...(data.author !== undefined ? { author: data.author } : {}),
+          ...(data.publishedDate !== undefined ? { publishedDate: data.publishedDate } : {}),
         }),
       }).then(async (res) => {
         const body = await res.json().catch(() => ({}));

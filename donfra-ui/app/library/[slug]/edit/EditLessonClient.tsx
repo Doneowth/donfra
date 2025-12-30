@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { API_BASE, api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { EMPTY_EXCALIDRAW, sanitizeExcalidraw, type ExcalidrawData } from "@/lib/utils/excalidraw";
+import Toast from "@/components/Toast";
 import "./edit-lesson.css";
 
 type Lesson = {
@@ -14,8 +15,11 @@ type Lesson = {
   title: string;
   markdown?: string;
   excalidraw?: any;
+  videoUrl?: string;
   isPublished?: boolean;
   isVip?: boolean;
+  author?: string;
+  publishedDate?: string;
 };
 
 const API_ROOT = API_BASE || "/api";
@@ -37,6 +41,10 @@ export default function EditLessonClient({ slug }: { slug: string }) {
   const [markdown, setMarkdown] = useState("");
   const [isPublished, setIsPublished] = useState(true);
   const [isVip, setIsVip] = useState(false);
+  const [author, setAuthor] = useState("");
+  const [publishedDate, setPublishedDate] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [diagram, setDiagram] = useState<ExcalidrawData>(EMPTY_EXCALIDRAW);
   const diagramRef = useRef<ExcalidrawData>(EMPTY_EXCALIDRAW);
 
@@ -86,14 +94,20 @@ export default function EditLessonClient({ slug }: { slug: string }) {
           title: data.title ?? slug,
           markdown: data.markdown ?? "",
           excalidraw: sanitizeExcalidraw(excaliData),
+          videoUrl: data.videoUrl,
           isPublished: data.isPublished ?? true,
           isVip: data.isVip ?? false,
+          author: data.author,
+          publishedDate: data.publishedDate,
         };
         setLesson(lessonData);
         setTitle(data.title ?? slug);
         setMarkdown(lessonData.markdown ?? "");
         setIsPublished(data.isPublished ?? true);
         setIsVip(data.isVip ?? false);
+        setAuthor(data.author ?? "");
+        setPublishedDate(data.publishedDate ?? "");
+        setVideoUrl(data.videoUrl ?? "");
         const sanitized = lessonData.excalidraw || EMPTY_EXCALIDRAW;
         diagramRef.current = sanitized;
         setDiagram(sanitized);
@@ -117,12 +131,20 @@ export default function EditLessonClient({ slug }: { slug: string }) {
         title: title.trim(),
         markdown,
         excalidraw: diagramRef.current,
+        videoUrl: videoUrl.trim() || undefined,
         isPublished,
-        isVip
+        isVip,
+        author: author.trim() || undefined,
+        publishedDate: publishedDate || undefined,
       }, token || "");
-      router.push(`/library/${slug}`);
+      setToast({ message: "Lesson updated successfully!", type: "success" });
+      setTimeout(() => {
+        router.push(`/library/${slug}`);
+      }, 1000);
     } catch (err: any) {
-      setError(err?.message || "Failed to save");
+      const errorMsg = err?.message || "Failed to save";
+      setError(errorMsg);
+      setToast({ message: errorMsg, type: "error" });
     } finally {
       setSaving(false);
     }
@@ -179,6 +201,30 @@ export default function EditLessonClient({ slug }: { slug: string }) {
               <input
                 value={lesson.slug}
                 readOnly
+              />
+            </div>
+            <div className="edit-lesson-field">
+              <label>Author</label>
+              <input
+                value={author}
+                onChange={(e) => setAuthor(e.target.value)}
+                placeholder="Author name (optional)"
+              />
+            </div>
+            <div className="edit-lesson-field">
+              <label>Published Date <span style={{ color: "#888", fontWeight: 400, fontSize: 13 }}>(optional, e.g., {new Date().toISOString().split('T')[0]})</span></label>
+              <input
+                type="date"
+                value={publishedDate}
+                onChange={(e) => setPublishedDate(e.target.value)}
+              />
+            </div>
+            <div className="edit-lesson-field">
+              <label>Video URL</label>
+              <input
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+                placeholder="https://your-cdn.akamai.com/video.mp4 (optional)"
               />
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -253,6 +299,14 @@ export default function EditLessonClient({ slug }: { slug: string }) {
             </button>
           </div>
         </div>
+      )}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          isOpen={!!toast}
+          onClose={() => setToast(null)}
+        />
       )}
     </main>
   );

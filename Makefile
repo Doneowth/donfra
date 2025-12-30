@@ -23,7 +23,7 @@ PROD = $(DOCKER_COMPOSE) -f $(PROD_COMPOSE_FILE)
 .PHONY: localdev-up-redis localdev-restart-redis localdev-logs-redis
 .PHONY: prod-up prod-down prod-restart prod-logs prod-ps
 .PHONY: jaeger-ui jaeger-logs jaeger-hash-password
-.PHONY: db-backup db-restore db-restore-latest db-list-backups load-db-sample
+.PHONY: db-backup db-restore db-restore-latest db-list-backups load-db-sample db-reset
 
 
 localdev-up:
@@ -222,3 +222,42 @@ load-db-sample:
 		fi; \
 	done
 	@echo "✨ Database sample data loading complete!"
+
+add-20-lessons:
+	@echo "📚 Adding 20 test lessons to database (mixed published/unpublished and VIP)..."
+	@docker exec -i donfra-db psql -U donfra -d donfra_study < infra/db/999_add_test_lessons.sql
+	@echo "✅ Added 20 test lessons successfully!"
+	@echo ""
+	@echo "Breakdown:"
+	@echo "  - Published lessons: 14"
+	@echo "  - Unpublished lessons: 6"
+	@echo "  - VIP lessons: 10"
+	@echo "  - Regular lessons: 10"
+
+# ===== Database Reset =====
+
+db-reset:
+	@echo "🔄 Dropping and recreating database..."
+	@echo "⏸️  Terminating existing connections..."
+	@docker exec -i donfra-db psql -U donfra -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'donfra_study' AND pid <> pg_backend_pid();" > /dev/null
+	@docker exec -i donfra-db psql -U donfra -d postgres -c "DROP DATABASE IF EXISTS donfra_study;"
+	@docker exec -i donfra-db psql -U donfra -d postgres -c "CREATE DATABASE donfra_study;"
+	@echo "✅ Database dropped and recreated!"
+	@echo ""
+	@echo "📥 Loading schema and seed data from 000_seed_lessons.sql..."
+	@docker exec -i donfra-db psql -U donfra -d donfra_study < infra/db/000_seed_lessons.sql
+	@echo "✅ Schema and initial data loaded!"
+	@echo ""
+	@echo "📥 Loading users table..."
+	@docker exec -i donfra-db psql -U donfra -d donfra_study < infra/db/001_create_users_table.sql
+	@echo "✅ Users table loaded!"
+	@echo ""
+	@echo "📥 Loading interview rooms table..."
+	@docker exec -i donfra-db psql -U donfra -d donfra_study < infra/db/002_create_interview_rooms.sql
+	@echo "✅ Interview rooms table loaded!"
+	@echo ""
+	@echo "📚 Adding 20 test lessons..."
+	@docker exec -i donfra-db psql -U donfra -d donfra_study < infra/db/999_add_test_lessons.sql
+	@echo "✅ Test lessons loaded!"
+	@echo ""
+	@echo "🎉 Database reset complete! Total lessons: 22 (2 seed + 20 test)"

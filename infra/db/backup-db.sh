@@ -29,7 +29,7 @@ if [ $? -eq 0 ]; then
 
   if [ ${BACKUP_COUNT} -gt ${KEEP_LAST} ]; then
     ls -1t ${BACKUP_DIR}/donfra_backup_*.sql | tail -n +$((KEEP_LAST + 1)) | while read old_backup; do
-      echo "  Removing: $(basename ${old_backup})"
+      echo "  Removing  : $(basename ${old_backup})"
       rm "${old_backup}"
     done
   fi

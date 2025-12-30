@@ -37,7 +37,7 @@ export default function Home() {
       <header className="header">
         <div className="container header-inner">
           <div className="logo">
-            <span className="logo-text">DF</span>
+            <img src="/donfra.png" alt="Donfra" style={{ height: 70, width: "auto", border: "none", outline: "none" }} />
           </div>
           <nav className="nav">
             <a href="#top">Home</a>
@@ -45,6 +45,7 @@ export default function Home() {
             <a href="#pipeline">Mission Path</a>
             <a href="#stories">Stories</a>
             <a href="#contact">Contact</a>
+            <a href="/live">Live</a>
 
             {user ? (
               <div className="user-menu">

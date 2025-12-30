@@ -65,6 +65,7 @@ func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, auth
 
 	// ===== Lesson Routes =====
 	// Public: list published lessons (with optional user auth)
+	v1.With(middleware.OptionalAuth(userSvc)).Get("/lessons/summary", h.ListLessonsSummaryHandler)
 	v1.With(middleware.OptionalAuth(userSvc)).Get("/lessons", h.ListLessonsHandler)
 	v1.With(middleware.OptionalAuth(userSvc)).Get("/lessons/{slug}", h.GetLessonBySlugHandler)
 
