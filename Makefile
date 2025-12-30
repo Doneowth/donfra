@@ -7,8 +7,9 @@ COMPOSE_FILE ?= infra/docker-compose.local.yml
 PROD_COMPOSE_FILE ?= infra/docker-compose.yml
 
 # UI Image Tag
-UI_IMAGE_TAG ?= 1.0.17
-
+UI_IMAGE_TAG ?= 1.0.18
+# API Image Tag
+API_IMAGE_TAG ?= 1.0.0
 # Allow overriding compose command (support `docker-compose` or `docker compose`)
 DOCKER_COMPOSE ?= docker-compose
 
@@ -112,6 +113,14 @@ docker-build-ui:
 docker-push-ui:
 	@echo "Pushing UI container to Docker Hub"
 	cd donfra-ui ; docker push doneowth/donfra-ui:$(UI_IMAGE_TAG)
+
+docker-build-api:
+	@echo "Building API container"
+	cd donfra-api ; docker build -t doneowth/donfra-api:$(API_IMAGE_TAG) .
+
+docker-push-api:
+	@echo "Pushing API container to Docker Hub"
+	cd donfra-api ; docker push doneowth/donfra-api:$(API_IMAGE_TAG)
 
 # ===== Production Commands =====
 
