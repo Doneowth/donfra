@@ -4,6 +4,7 @@
  */
 const WebSocket = require('ws')
 const http = require('http')
+const { spawn } = require('child_process')
 const ywsUtils = require('y-websocket/bin/utils')
 const setupWSConnection = ywsUtils.setupWSConnection
 const docs = ywsUtils.docs
@@ -50,7 +51,85 @@ initRedis().catch(err => {
   console.error(`${new Date().toISOString()} Redis initialization failed:`, err)
 })
 
-const server = http.createServer((request, response) => {
+/**
+ * Execute code in a sandboxed subprocess
+ * Supports Python (71) and JavaScript (63)
+ */
+async function executeCode(req) {
+  const { source_code, language_id, stdin = '' } = req
+
+  if (!source_code || !language_id) {
+    throw new Error('source_code and language_id are required')
+  }
+
+  let command, args
+  switch (language_id) {
+    case 71: // Python
+      command = 'python3'
+      args = ['-c', source_code]
+      break
+    case 63: // JavaScript (Node.js)
+      command = 'node'
+      args = ['-e', source_code]
+      break
+    default:
+      throw new Error(`Unsupported language_id: ${language_id}`)
+  }
+
+  return new Promise((resolve, reject) => {
+    const proc = spawn(command, args, {
+      timeout: 5000, // 5 second timeout
+      killSignal: 'SIGKILL'
+    })
+
+    let stdout = ''
+    let stderr = ''
+
+    proc.stdout.on('data', (data) => {
+      stdout += data.toString()
+    })
+
+    proc.stderr.on('data', (data) => {
+      stderr += data.toString()
+    })
+
+    // Send stdin if provided
+    if (stdin) {
+      proc.stdin.write(stdin)
+      proc.stdin.end()
+    } else {
+      proc.stdin.end()
+    }
+
+    proc.on('close', (code) => {
+      const result = {
+        token: 'ws-exec',
+        status: {
+          id: code === 0 ? 3 : 11,
+          description: code === 0 ? 'Accepted' : 'Runtime Error'
+        }
+      }
+
+      if (stdout.trim()) {
+        result.stdout = stdout.trim()
+      }
+      if (stderr.trim()) {
+        result.stderr = stderr.trim()
+      }
+      if (code !== 0) {
+        result.message = `Process exited with code ${code}`
+      }
+
+      resolve(result)
+    })
+
+    proc.on('error', (err) => {
+      reject(new Error(`Execution failed: ${err.message}`))
+    })
+  })
+}
+
+const server = http.createServer(async (request, response) => {
   if (request.url === '/health') {
     response.writeHead(200, { 'Content-Type': 'application/json' })
     response.end(JSON.stringify({
@@ -61,6 +140,29 @@ const server = http.createServer((request, response) => {
     }))
     return
   }
+
+  if (request.url === '/execute' && request.method === 'POST') {
+    let body = ''
+    request.on('data', chunk => { body += chunk })
+    request.on('end', async () => {
+      try {
+        const req = JSON.parse(body)
+        const result = await executeCode(req)
+        response.writeHead(200, { 'Content-Type': 'application/json' })
+        response.end(JSON.stringify(result))
+      } catch (err) {
+        console.error(`[${new Date().toISOString()}] Code execution error:`, err)
+        response.writeHead(500, { 'Content-Type': 'application/json' })
+        response.end(JSON.stringify({
+          token: 'ws-exec',
+          status: { id: 11, description: 'Runtime Error' },
+          message: err.message
+        }))
+      }
+    })
+    return
+  }
+
   response.writeHead(404)
   response.end('Not Found')
 })
@@ -87,11 +189,76 @@ wss.on('connection', (conn, req) => {
     docName = 'default-room'
   }
 
-  console.log(`[${new Date().toISOString()}] 🔗 New connection to room: ${docName} (raw URL: ${req.url})`)
-
   // Track initial connection count
   const currentCount = roomConnectionCounts.get(docName) || 0
   roomConnectionCounts.set(docName, currentCount + 1)
+
+  // Wrap the connection to intercept messages BEFORE y-websocket sees them
+  const originalOn = conn.on.bind(conn)
+  let yjsMessageHandler = null
+
+  // Override 'on' and 'addListener' methods to intercept message listeners
+  conn.on = conn.addListener = function(event, handler) {
+    if (event === 'message') {
+      // Store the y-websocket handler
+      yjsMessageHandler = handler
+
+      // Replace with our filtering handler
+      const filteringHandler = async (message) => {
+        // Check if this is a custom JSON message (starts with '{')
+        let isCustomMessage = false
+
+        if (Buffer.isBuffer(message) && message.length > 0 && message[0] === 123) { // '{' = 123
+          isCustomMessage = true
+        } else if (typeof message === 'string' && message.trim().startsWith('{')) {
+          isCustomMessage = true
+        }
+
+        if (isCustomMessage) {
+          try {
+            const str = Buffer.isBuffer(message) ? message.toString('utf8') : message
+            const data = JSON.parse(str)
+
+            // Handle custom execution messages - don't pass to y-websocket
+            if (data.type === 'execute') {
+              console.log(`[${new Date().toISOString()}] 🚀 Code execution request in room ${docName}`)
+              try {
+                const result = await executeCode({
+                  source_code: data.source_code,
+                  language_id: data.language_id,
+                  stdin: data.stdin || ''
+                })
+
+                conn.send(JSON.stringify({
+                  type: 'execution-result',
+                  ...result
+                }))
+              } catch (execErr) {
+                console.error(`[${new Date().toISOString()}] ❌ Code execution error:`, execErr)
+                conn.send(JSON.stringify({
+                  type: 'execution-result',
+                  token: 'ws-exec',
+                  status: { id: 11, description: 'Runtime Error' },
+                  message: execErr.message
+                }))
+              }
+              return // Don't pass to y-websocket
+            }
+          } catch (parseErr) {
+            // Not our JSON format, pass to y-websocket
+          }
+        }
+
+        // Pass binary Yjs messages to the original y-websocket handler
+        if (yjsMessageHandler) {
+          yjsMessageHandler(message)
+        }
+      }
+
+      return originalOn('message', filteringHandler)
+    }
+    return originalOn(event, handler)
+  }
 
   // setupWSConnection will use docName to get/create the Yjs document
   // Each unique docName gets its own isolated Yjs document
@@ -99,7 +266,7 @@ wss.on('connection', (conn, req) => {
     gc: docName !== 'ws/prosemirror-versions'
   })
 
-  // Log when connection closes
+  // Track when connection closes
   conn.on('close', () => {
     const count = roomConnectionCounts.get(docName) || 1
     roomConnectionCounts.set(docName, count - 1)
@@ -108,8 +275,6 @@ wss.on('connection', (conn, req) => {
     if (count - 1 === 0) {
       roomConnectionCounts.delete(docName)
     }
-
-    console.log(`[${new Date().toISOString()}] 🔌 Connection closed for room: ${docName} (remaining: ${count - 1})`)
   })
 
   conn.on('error', (error) => {
@@ -126,7 +291,6 @@ async function publishHeadcount(count) {
 
   try {
     await redisPublisher.publish('room:chan:headcount', count.toString())
-    console.log(`${new Date().toISOString()} Published headcount ${count} to Redis channel 'room:chan:headcount'`)
   } catch (err) {
     console.error(`${new Date().toISOString()} Error publishing headcount to Redis:`, err)
   }
@@ -148,16 +312,10 @@ setInterval(() => {
     }
   })
 
-  // Only log if there's a change in connections or room count
+  // Only publish if there's a change in connections or room count
   const hasChange = conns !== lastStats.conns || docs.size !== lastStats.docs
 
   if (hasChange) {
-    const stats = {
-      connections: conns,
-      rooms: docs.size,
-      roomDetails: roomStats
-    }
-    console.log(`[${new Date().toISOString()}] 📊 Stats updated:`, JSON.stringify(stats))
     lastStats = { conns, docs: docs.size }
 
     // Publish headcount changes to Redis Pub/Sub

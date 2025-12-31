@@ -14,6 +14,7 @@ type Lesson struct {
 	Markdown      string         `gorm:"type:text;not null" json:"markdown"`
 	Excalidraw    datatypes.JSON `gorm:"type:jsonb;not null" json:"excalidraw"`
 	VideoURL      string         `gorm:"type:text" json:"videoUrl,omitempty"` // S3/CDN URL for video
+	CodeTemplate  datatypes.JSON `gorm:"type:jsonb" json:"codeTemplate,omitempty"` // Code template for interactive coding
 	IsPublished   bool           `gorm:"column:is_published;not null;default:false" json:"isPublished"`
 	IsVip         bool           `gorm:"column:is_vip;not null;default:false" json:"isVip"`
 	Author        string         `gorm:"type:text" json:"author,omitempty"`
@@ -29,6 +30,7 @@ type CreateLessonRequest struct {
 	Markdown      string         `json:"markdown"`
 	Excalidraw    datatypes.JSON `json:"excalidraw"`
 	VideoURL      string         `json:"videoUrl"`
+	CodeTemplate  datatypes.JSON `json:"codeTemplate"`
 	IsPublished   bool           `json:"isPublished"`
 	IsVip         bool           `json:"isVip"`
 	Author        string         `json:"author"`
@@ -41,6 +43,7 @@ type UpdateLessonRequest struct {
 	Markdown      string         `json:"markdown"`
 	Excalidraw    datatypes.JSON `json:"excalidraw"`
 	VideoURL      string         `json:"videoUrl"`
+	CodeTemplate  datatypes.JSON `json:"codeTemplate"`
 	IsPublished   *bool          `json:"isPublished"`
 	IsVip         *bool          `json:"isVip"`
 	Author        string         `json:"author"`

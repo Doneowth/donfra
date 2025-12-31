@@ -39,10 +39,7 @@ export const api = {
     status: () =>
       getJSON<{ open: boolean; roomId?: string; inviteLink?: string; headcount?: number; limit?: number }>("/room/status"),
   },
-  run: {
-    python: (code: string) =>
-      postJSON<{ stdout: string; stderr: string }>("/room/run", { code }),
-  },
+  // Removed: run.python and code.execute - code execution now via WebSocket in CodePad.tsx
   admin: {
     login: (password: string) => postJSON<{ token: string }>("/admin/login", { password }),
   },
@@ -74,8 +71,8 @@ export const api = {
       }>(`/lessons/summary${query ? `?${query}` : ""}`);
     },
     get: (slug: string) =>
-      getJSON<{ slug: string; title: string; markdown: string; excalidraw: any; videoUrl?: string; createdAt: string; updatedAt: string; isPublished: boolean; isVip: boolean; author?: string; publishedDate?: string }>(`/lessons/${slug}`),
-    create: (data: { slug: string; title: string; markdown: string; excalidraw: any; videoUrl?: string; isPublished?: boolean; isVip?: boolean; author?: string; publishedDate?: string }, token: string) =>
+      getJSON<{ slug: string; title: string; markdown: string; excalidraw: any; videoUrl?: string; codeTemplate?: any; createdAt: string; updatedAt: string; isPublished: boolean; isVip: boolean; author?: string; publishedDate?: string }>(`/lessons/${slug}`),
+    create: (data: { slug: string; title: string; markdown: string; excalidraw: any; videoUrl?: string; codeTemplate?: any; isPublished?: boolean; isVip?: boolean; author?: string; publishedDate?: string }, token: string) =>
       fetch(`${API_BASE}/lessons`, {
         method: "POST",
         headers: {
@@ -89,6 +86,7 @@ export const api = {
           markdown: data.markdown,
           excalidraw: data.excalidraw,
           videoUrl: data.videoUrl,
+          codeTemplate: data.codeTemplate,
           isPublished: data.isPublished ?? true,
           isVip: data.isVip ?? false,
           author: data.author,
@@ -99,7 +97,7 @@ export const api = {
         if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
         return body;
       }),
-    update: (slug: string, data: { title?: string; markdown?: string; excalidraw?: any; videoUrl?: string; isPublished?: boolean; isVip?: boolean; author?: string; publishedDate?: string }, token: string) =>
+    update: (slug: string, data: { title?: string; markdown?: string; excalidraw?: any; videoUrl?: string; codeTemplate?: any; isPublished?: boolean; isVip?: boolean; author?: string; publishedDate?: string }, token: string) =>
       fetch(`${API_BASE}/lessons/${slug}`, {
         method: "PATCH",
         headers: {
@@ -112,6 +110,7 @@ export const api = {
           ...(data.markdown !== undefined ? { markdown: data.markdown } : {}),
           ...(data.excalidraw !== undefined ? { excalidraw: data.excalidraw } : {}),
           ...(data.videoUrl !== undefined ? { videoUrl: data.videoUrl } : {}),
+          ...(data.codeTemplate !== undefined ? { codeTemplate: data.codeTemplate } : {}),
           ...(data.isPublished !== undefined ? { isPublished: data.isPublished } : {}),
           ...(data.isVip !== undefined ? { isVip: data.isVip } : {}),
           ...(data.author !== undefined ? { author: data.author } : {}),

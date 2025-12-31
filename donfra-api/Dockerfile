@@ -34,6 +34,7 @@ COPY --from=builder /out/donfra-api /usr/local/bin/donfra-api
 # 多域时可逗号分隔；开发期可覆盖为 http://localhost:3000 或 http://localhost:7777
 # ENV CORS_ORIGIN=http://localhost:3000
 
+# Run as app user
 USER app
 EXPOSE 8080
 

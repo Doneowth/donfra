@@ -73,31 +73,82 @@ export default function CodePad({ onExit, roomId }: Props) {
     setRunAt(typeof ts === "number" ? ts : null);
   }, []);
 
-  // Run：执行 + 写入共享 Map
+  // Run：通过 WebSocket 执行代码 + 写入共享 Map
   const run = useCallback(async () => {
     const src = editorRef.current?.getValue() ?? "";
     if (!src.trim()) return;
     setRunning(true);
+
     try {
-      const res = await api.run.python(src);
+      const provider = providerRef.current;
+      if (!provider || !provider.ws || provider.ws.readyState !== WebSocket.OPEN) {
+        throw new Error("WebSocket not connected");
+      }
+
+      // Send execution request via WebSocket
+      const executionRequest = {
+        type: 'execute',
+        source_code: src,
+        language_id: 71, // Python
+        stdin: ''
+      };
+
+      // Set up one-time listener for execution result
+      const resultPromise = new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error("Execution timeout (5s)"));
+        }, 6000); // 6s timeout (server has 5s timeout)
+
+        const messageHandler = (event: MessageEvent) => {
+          // Only process string messages (our JSON responses)
+          // Yjs sends binary messages (ArrayBuffer/Blob) which we should ignore
+          if (typeof event.data !== 'string') {
+            return;
+          }
+
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'execution-result') {
+              clearTimeout(timeout);
+              provider.ws.removeEventListener('message', messageHandler);
+              resolve(data);
+            }
+          } catch (err) {
+            // Ignore parsing errors (malformed JSON)
+          }
+        };
+
+        provider.ws.addEventListener('message', messageHandler);
+      });
+
+      // Send request
+      provider.ws.send(JSON.stringify(executionRequest));
+      console.log('[CodePad] 🚀 Sent code execution request via WebSocket');
+
+      // Wait for result
+      const res: any = await resultPromise;
+      console.log('[CodePad] ✅ Received execution result:', res);
+
       // 本地即时
       setStdout(res.stdout || "");
-      setStderr(res.stderr || "");
+      setStderr(res.stderr || res.message || "");
       setRunBy(userNameRef.current || "Someone");
       setRunAt(Date.now());
-      // 共享
+
+      // 共享到所有客户端
       const doc = ydocRef.current as import("yjs").Doc | null;
       const yMap = yOutputsRef.current;
       if (doc && yMap) {
         doc.transact(() => {
           yMap.set("stdout", res.stdout || "");
-          yMap.set("stderr", res.stderr || "");
+          yMap.set("stderr", res.stderr || res.message || "");
           yMap.set("runner", userNameRef.current || "Someone");
           yMap.set("ts", Date.now());
         });
       }
     } catch (e: any) {
       const msg = e?.message || "Run failed";
+      console.error('[CodePad] ❌ Code execution error:', e);
       setStderr(msg);
       const doc = ydocRef.current as import("yjs").Doc | null;
       const yMap = yOutputsRef.current;

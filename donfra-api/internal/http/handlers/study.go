@@ -268,6 +268,7 @@ func (h *Handlers) CreateLessonHandler(w http.ResponseWriter, r *http.Request) {
 		Markdown:      req.Markdown,
 		Excalidraw:    req.Excalidraw,
 		VideoURL:      req.VideoURL,
+		CodeTemplate:  req.CodeTemplate,
 		IsPublished:   req.IsPublished,
 		IsVip:         req.IsVip,
 		Author:        req.Author,
@@ -335,6 +336,9 @@ func (h *Handlers) UpdateLessonHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.VideoURL != "" {
 		updates["video_url"] = req.VideoURL
+	}
+	if len(req.CodeTemplate) > 0 {
+		updates["code_template"] = req.CodeTemplate
 	}
 	if req.IsPublished != nil {
 		updates["is_published"] = *req.IsPublished

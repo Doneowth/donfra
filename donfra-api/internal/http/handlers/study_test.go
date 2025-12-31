@@ -18,12 +18,16 @@ import (
 
 // MockStudyService for testing
 type MockStudyService struct {
-	ListPublishedLessonsFunc func(ctx context.Context, hasVipAccess bool) ([]study.Lesson, error)
-	ListAllLessonsFunc       func(ctx context.Context, hasVipAccess bool) ([]study.Lesson, error)
-	GetLessonBySlugFunc      func(ctx context.Context, slug string, hasVipAccess bool) (*study.Lesson, error)
-	CreateLessonFunc         func(ctx context.Context, lesson *study.Lesson) (*study.Lesson, error)
-	UpdateLessonBySlugFunc   func(ctx context.Context, slug string, updates map[string]any) error
-	DeleteLessonBySlugFunc   func(ctx context.Context, slug string) error
+	ListPublishedLessonsFunc                func(ctx context.Context, hasVipAccess bool) ([]study.Lesson, error)
+	ListAllLessonsFunc                      func(ctx context.Context, hasVipAccess bool) ([]study.Lesson, error)
+	ListPublishedLessonsPaginatedFunc       func(ctx context.Context, hasVipAccess bool, params study.PaginationParams) (*study.PaginatedLessonsResponse, error)
+	ListAllLessonsPaginatedFunc             func(ctx context.Context, hasVipAccess bool, params study.PaginationParams) (*study.PaginatedLessonsResponse, error)
+	ListPublishedLessonsSummaryPaginatedFunc func(ctx context.Context, params study.PaginationParams) (*study.PaginatedLessonsSummaryResponse, error)
+	ListAllLessonsSummaryPaginatedFunc      func(ctx context.Context, params study.PaginationParams) (*study.PaginatedLessonsSummaryResponse, error)
+	GetLessonBySlugFunc                     func(ctx context.Context, slug string, hasVipAccess bool) (*study.Lesson, error)
+	CreateLessonFunc                        func(ctx context.Context, lesson *study.Lesson) (*study.Lesson, error)
+	UpdateLessonBySlugFunc                  func(ctx context.Context, slug string, updates map[string]any) error
+	DeleteLessonBySlugFunc                  func(ctx context.Context, slug string) error
 }
 
 func (m *MockStudyService) ListPublishedLessons(ctx context.Context, hasVipAccess bool) ([]study.Lesson, error) {
@@ -38,6 +42,34 @@ func (m *MockStudyService) ListAllLessons(ctx context.Context, hasVipAccess bool
 		return m.ListAllLessonsFunc(ctx, hasVipAccess)
 	}
 	return nil, nil
+}
+
+func (m *MockStudyService) ListPublishedLessonsPaginated(ctx context.Context, hasVipAccess bool, params study.PaginationParams) (*study.PaginatedLessonsResponse, error) {
+	if m.ListPublishedLessonsPaginatedFunc != nil {
+		return m.ListPublishedLessonsPaginatedFunc(ctx, hasVipAccess, params)
+	}
+	return &study.PaginatedLessonsResponse{Lessons: []study.Lesson{}, Total: 0, Page: 1, Size: 10, TotalPages: 0}, nil
+}
+
+func (m *MockStudyService) ListAllLessonsPaginated(ctx context.Context, hasVipAccess bool, params study.PaginationParams) (*study.PaginatedLessonsResponse, error) {
+	if m.ListAllLessonsPaginatedFunc != nil {
+		return m.ListAllLessonsPaginatedFunc(ctx, hasVipAccess, params)
+	}
+	return &study.PaginatedLessonsResponse{Lessons: []study.Lesson{}, Total: 0, Page: 1, Size: 10, TotalPages: 0}, nil
+}
+
+func (m *MockStudyService) ListPublishedLessonsSummaryPaginated(ctx context.Context, params study.PaginationParams) (*study.PaginatedLessonsSummaryResponse, error) {
+	if m.ListPublishedLessonsSummaryPaginatedFunc != nil {
+		return m.ListPublishedLessonsSummaryPaginatedFunc(ctx, params)
+	}
+	return &study.PaginatedLessonsSummaryResponse{Lessons: []study.LessonSummary{}, Total: 0, Page: 1, Size: 10, TotalPages: 0}, nil
+}
+
+func (m *MockStudyService) ListAllLessonsSummaryPaginated(ctx context.Context, params study.PaginationParams) (*study.PaginatedLessonsSummaryResponse, error) {
+	if m.ListAllLessonsSummaryPaginatedFunc != nil {
+		return m.ListAllLessonsSummaryPaginatedFunc(ctx, params)
+	}
+	return &study.PaginatedLessonsSummaryResponse{Lessons: []study.LessonSummary{}, Total: 0, Page: 1, Size: 10, TotalPages: 0}, nil
 }
 
 func (m *MockStudyService) GetLessonBySlug(ctx context.Context, slug string, hasVipAccess bool) (*study.Lesson, error) {
@@ -76,8 +108,14 @@ func TestListLessons_AsAdmin(t *testing.T) {
 	}
 
 	mockStudy := &MockStudyService{
-		ListAllLessonsFunc: func(ctx context.Context, hasVipAccess bool) ([]study.Lesson, error) {
-			return allLessons, nil
+		ListAllLessonsPaginatedFunc: func(ctx context.Context, hasVipAccess bool, params study.PaginationParams) (*study.PaginatedLessonsResponse, error) {
+			return &study.PaginatedLessonsResponse{
+				Lessons:    allLessons,
+				Total:      int64(len(allLessons)),
+				Page:       params.Page,
+				Size:       params.Size,
+				TotalPages: 1,
+			}, nil
 		},
 	}
 
@@ -95,11 +133,11 @@ func TestListLessons_AsAdmin(t *testing.T) {
 		t.Errorf("expected status 200, got %d", w.Code)
 	}
 
-	var lessons []study.Lesson
-	json.NewDecoder(w.Body).Decode(&lessons)
+	var response study.PaginatedLessonsResponse
+	json.NewDecoder(w.Body).Decode(&response)
 
-	if len(lessons) != 2 {
-		t.Errorf("expected 2 lessons, got %d", len(lessons))
+	if len(response.Lessons) != 2 {
+		t.Errorf("expected 2 lessons, got %d", len(response.Lessons))
 	}
 }
 
@@ -110,8 +148,14 @@ func TestListLessons_AsRegularUser(t *testing.T) {
 	}
 
 	mockStudy := &MockStudyService{
-		ListPublishedLessonsFunc: func(ctx context.Context, hasVipAccess bool) ([]study.Lesson, error) {
-			return publishedLessons, nil
+		ListPublishedLessonsPaginatedFunc: func(ctx context.Context, hasVipAccess bool, params study.PaginationParams) (*study.PaginatedLessonsResponse, error) {
+			return &study.PaginatedLessonsResponse{
+				Lessons:    publishedLessons,
+				Total:      int64(len(publishedLessons)),
+				Page:       params.Page,
+				Size:       params.Size,
+				TotalPages: 1,
+			}, nil
 		},
 	}
 
@@ -126,18 +170,18 @@ func TestListLessons_AsRegularUser(t *testing.T) {
 		t.Errorf("expected status 200, got %d", w.Code)
 	}
 
-	var lessons []study.Lesson
-	json.NewDecoder(w.Body).Decode(&lessons)
+	var response study.PaginatedLessonsResponse
+	json.NewDecoder(w.Body).Decode(&response)
 
-	if len(lessons) != 1 {
-		t.Errorf("expected 1 lesson, got %d", len(lessons))
+	if len(response.Lessons) != 1 {
+		t.Errorf("expected 1 lesson, got %d", len(response.Lessons))
 	}
 }
 
 // TestListLessons_DatabaseError tests error handling
 func TestListLessons_DatabaseError(t *testing.T) {
 	mockStudy := &MockStudyService{
-		ListPublishedLessonsFunc: func(ctx context.Context, hasVipAccess bool) ([]study.Lesson, error) {
+		ListPublishedLessonsPaginatedFunc: func(ctx context.Context, hasVipAccess bool, params study.PaginationParams) (*study.PaginatedLessonsResponse, error) {
 			return nil, errors.New("database error")
 		},
 	}

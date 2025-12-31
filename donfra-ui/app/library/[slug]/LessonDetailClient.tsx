@@ -19,6 +19,10 @@ type Lesson = {
   markdown?: string;
   excalidraw?: any;
   videoUrl?: string;
+  codeTemplate?: {
+    language: string;
+    externalUrl?: string;  // URL to CodeSandbox, Replit, StackBlitz, etc.
+  };
   isVip?: boolean;
 };
 
@@ -31,6 +35,15 @@ const Excalidraw = dynamic(
     loading: () => <div style={{ color: "#aaa" }}>Loading diagram…</div>,
   }
 );
+
+// No longer needed - using external IDEs instead of Monaco
+// const MonacoEditor = dynamic(
+//   () => import("@monaco-editor/react"),
+//   {
+//     ssr: false,
+//     loading: () => <div style={{ color: "#aaa", padding: 12 }}>Loading editor…</div>,
+//   }
+// );
 
 // 不再用 CodeComponent 类型，自己定义一个 props 就行
 type CodeProps = React.ComponentProps<"code"> & {
@@ -116,7 +129,7 @@ const markdownComponents: MarkdownComponents = {
   ),
 };
 
-type TabType = "markdown" | "diagram" | "video";
+type TabType = "markdown" | "diagram" | "video" | "code";
 
 export default function LessonDetailClient({ slug }: { slug: string }) {
   const router = useRouter();
@@ -183,6 +196,7 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
           markdown: data.markdown ?? "",
           excalidraw: sanitizeExcalidraw(excaliData),
           videoUrl: data.videoUrl,
+          codeTemplate: data.codeTemplate,
           isVip: data.isVip ?? false,
         });
       } catch (err: any) {
@@ -427,6 +441,21 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
                     Video
                   </button>
                 )}
+                <button
+                  onClick={() => setActiveTab("code")}
+                  style={{
+                    padding: "10px 20px",
+                    border: "none",
+                    background: activeTab === "code" ? "#1a1f1e" : "transparent",
+                    color: activeTab === "code" ? "#f4d18c" : "#888",
+                    cursor: "pointer",
+                    fontWeight: activeTab === "code" ? 600 : 400,
+                    borderBottom: activeTab === "code" ? "2px solid #f4d18c" : "2px solid transparent",
+                    marginBottom: -2,
+                  }}
+                >
+                  Code
+                </button>
               </div>
 
               {/* Tab Content */}
@@ -480,6 +509,96 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
                     >
                       Your browser does not support video playback.
                     </video>
+                  </div>
+                )}
+
+                {activeTab === "code" && (
+                  <div style={{
+                    padding: "40px 20px",
+                    textAlign: "center",
+                    background: "#161a19",
+                    border: "1px solid #333",
+                    borderRadius: 8,
+                  }}>
+                    {lesson.codeTemplate?.externalUrl ? (
+                      <>
+                        <div style={{
+                          fontSize: 48,
+                          marginBottom: 16,
+                        }}>💻</div>
+                        <h3 style={{
+                          color: "#f4d18c",
+                          marginTop: 0,
+                          marginBottom: 12,
+                        }}>Interactive Code Environment</h3>
+                        <p style={{
+                          color: "#ccc",
+                          fontSize: 16,
+                          marginBottom: 24,
+                          lineHeight: 1.6,
+                        }}>
+                          This lesson includes hands-on coding exercises.<br />
+                          Click below to open the interactive coding environment.
+                        </p>
+                        <a
+                          href={lesson.codeTemplate.externalUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: "inline-block",
+                            padding: "14px 28px",
+                            borderRadius: 8,
+                            border: "2px solid #f4d18c",
+                            background: "rgba(244, 209, 140, 0.1)",
+                            color: "#f4d18c",
+                            textDecoration: "none",
+                            fontWeight: 700,
+                            fontSize: 16,
+                            transition: "all 0.2s",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "rgba(244, 209, 140, 0.2)";
+                            e.currentTarget.style.transform = "translateY(-2px)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "rgba(244, 209, 140, 0.1)";
+                            e.currentTarget.style.transform = "translateY(0)";
+                          }}
+                        >
+                          Open in {lesson.codeTemplate.externalUrl.includes('replit') ? 'Replit' :
+                                   lesson.codeTemplate.externalUrl.includes('codesandbox') ? 'CodeSandbox' :
+                                   lesson.codeTemplate.externalUrl.includes('stackblitz') ? 'StackBlitz' :
+                                   'External IDE'} →
+                        </a>
+                        {lesson.codeTemplate.language && (
+                          <div style={{
+                            marginTop: 20,
+                            fontSize: 14,
+                            color: "#888",
+                          }}>
+                            Language: <span style={{ color: "#f4d18c" }}>{lesson.codeTemplate.language}</span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div style={{
+                          fontSize: 48,
+                          marginBottom: 16,
+                        }}>📝</div>
+                        <h3 style={{
+                          color: "#888",
+                          marginTop: 0,
+                          marginBottom: 12,
+                        }}>No Code Template Available</h3>
+                        <p style={{
+                          color: "#666",
+                          fontSize: 14,
+                        }}>
+                          This lesson does not include a coding exercise.
+                        </p>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
