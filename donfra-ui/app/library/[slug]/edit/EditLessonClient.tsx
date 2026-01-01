@@ -16,6 +16,10 @@ type Lesson = {
   markdown?: string;
   excalidraw?: any;
   videoUrl?: string;
+  codeTemplate?: {
+    language?: string;
+    externalUrl?: string;
+  };
   isPublished?: boolean;
   isVip?: boolean;
   author?: string;
@@ -44,13 +48,13 @@ export default function EditLessonClient({ slug }: { slug: string }) {
   const [author, setAuthor] = useState("");
   const [publishedDate, setPublishedDate] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
+  const [codeUrl, setCodeUrl] = useState("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [diagram, setDiagram] = useState<ExcalidrawData>(EMPTY_EXCALIDRAW);
   const diagramRef = useRef<ExcalidrawData>(EMPTY_EXCALIDRAW);
 
   // Check if user is admin via user authentication OR admin token
   const isUserAdmin = user?.role === "admin";
-  const isAdmin = isUserAdmin || Boolean(token);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -95,6 +99,7 @@ export default function EditLessonClient({ slug }: { slug: string }) {
           markdown: data.markdown ?? "",
           excalidraw: sanitizeExcalidraw(excaliData),
           videoUrl: data.videoUrl,
+          codeTemplate: data.codeTemplate,
           isPublished: data.isPublished ?? true,
           isVip: data.isVip ?? false,
           author: data.author,
@@ -108,6 +113,7 @@ export default function EditLessonClient({ slug }: { slug: string }) {
         setAuthor(data.author ?? "");
         setPublishedDate(data.publishedDate ?? "");
         setVideoUrl(data.videoUrl ?? "");
+        setCodeUrl(data.codeTemplate?.externalUrl ?? "");
         const sanitized = lessonData.excalidraw || EMPTY_EXCALIDRAW;
         diagramRef.current = sanitized;
         setDiagram(sanitized);
@@ -132,6 +138,10 @@ export default function EditLessonClient({ slug }: { slug: string }) {
         markdown,
         excalidraw: diagramRef.current,
         videoUrl: videoUrl.trim() || undefined,
+        codeTemplate: codeUrl.trim() ? {
+          language: "Python",
+          externalUrl: codeUrl.trim()
+        } : undefined,
         isPublished,
         isVip,
         author: author.trim() || undefined,
@@ -225,6 +235,14 @@ export default function EditLessonClient({ slug }: { slug: string }) {
                 value={videoUrl}
                 onChange={(e) => setVideoUrl(e.target.value)}
                 placeholder="https://your-cdn.akamai.com/video.mp4 (optional)"
+              />
+            </div>
+            <div className="edit-lesson-field">
+              <label>Code URL <span style={{ color: "#888", fontWeight: 400, fontSize: 13 }}>(CodeSandbox, Replit, StackBlitz)</span></label>
+              <input
+                value={codeUrl}
+                onChange={(e) => setCodeUrl(e.target.value)}
+                placeholder="https://codesandbox.io/p/devbox/... (optional)"
               />
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
