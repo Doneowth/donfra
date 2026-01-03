@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
@@ -25,11 +26,12 @@ var (
 // GoogleOAuthService handles Google OAuth login flow
 type GoogleOAuthService struct {
 	config      *oauth2.Config
-	frontendURL string // Frontend URL for OAuth callback redirect
+	frontendURL string       // Frontend URL for OAuth callback redirect
+	redisClient *redis.Client // Redis client for state storage (nil = use in-memory)
 
-	// In-memory state storage (in production, use Redis)
+	// In-memory state storage (fallback when Redis is not available)
 	states   map[string]*StateData
-	statesMu sync.RWMutex
+	statesMu *sync.RWMutex
 }
 
 type StateData struct {
@@ -49,7 +51,7 @@ type GoogleUserInfo struct {
 }
 
 // NewGoogleOAuthService creates a new Google OAuth service
-func NewGoogleOAuthService(clientID, clientSecret, redirectURL, frontendURL string) *GoogleOAuthService {
+func NewGoogleOAuthService(clientID, clientSecret, redirectURL, frontendURL string, redisClient *redis.Client) *GoogleOAuthService {
 	svc := &GoogleOAuthService{
 		config: &oauth2.Config{
 			ClientID:     clientID,
@@ -62,11 +64,15 @@ func NewGoogleOAuthService(clientID, clientSecret, redirectURL, frontendURL stri
 			Endpoint: google.Endpoint,
 		},
 		frontendURL: frontendURL,
+		redisClient: redisClient,
 		states:      make(map[string]*StateData),
+		statesMu:    &sync.RWMutex{},
 	}
 
-	// Start cleanup goroutine for expired states
-	go svc.cleanupExpiredStates()
+	// Start cleanup goroutine for expired states (only for in-memory mode)
+	if redisClient == nil {
+		go svc.cleanupExpiredStates()
+	}
 
 	return svc
 }
@@ -74,14 +80,26 @@ func NewGoogleOAuthService(clientID, clientSecret, redirectURL, frontendURL stri
 // GenerateAuthURL generates a Google OAuth authorization URL
 func (s *GoogleOAuthService) GenerateAuthURL() (string, string, error) {
 	state := s.generateState()
+	expiration := 10 * time.Minute
 
-	// Store state with expiration
-	s.statesMu.Lock()
-	s.states[state] = &StateData{
-		CreatedAt: time.Now(),
-		ExpiresAt: time.Now().Add(10 * time.Minute),
+	// Store state with expiration (Redis or in-memory)
+	if s.redisClient != nil {
+		// Use Redis for distributed state storage
+		ctx := context.Background()
+		key := "google_oauth_state:" + state
+		err := s.redisClient.Set(ctx, key, "valid", expiration).Err()
+		if err != nil {
+			return "", "", fmt.Errorf("failed to store state in Redis: %w", err)
+		}
+	} else {
+		// Fallback to in-memory storage
+		s.statesMu.Lock()
+		s.states[state] = &StateData{
+			CreatedAt: time.Now(),
+			ExpiresAt: time.Now().Add(expiration),
+		}
+		s.statesMu.Unlock()
 	}
-	s.statesMu.Unlock()
 
 	// Generate OAuth URL
 	authURL := s.config.AuthCodeURL(state, oauth2.AccessTypeOffline)
@@ -108,10 +126,15 @@ func (s *GoogleOAuthService) ExchangeCode(ctx context.Context, code, state strin
 		return nil, err
 	}
 
-	// Remove used state
-	s.statesMu.Lock()
-	delete(s.states, state)
-	s.statesMu.Unlock()
+	// Remove used state (Redis or in-memory)
+	if s.redisClient != nil {
+		key := "google_oauth_state:" + state
+		s.redisClient.Del(ctx, key)
+	} else {
+		s.statesMu.Lock()
+		delete(s.states, state)
+		s.statesMu.Unlock()
+	}
 
 	return userInfo, nil
 }
@@ -166,6 +189,18 @@ func (s *GoogleOAuthService) generateState() string {
 
 // validateState checks if the state is valid and not expired
 func (s *GoogleOAuthService) validateState(state string) bool {
+	if s.redisClient != nil {
+		// Check Redis for state validity
+		ctx := context.Background()
+		key := "google_oauth_state:" + state
+		result, err := s.redisClient.Get(ctx, key).Result()
+		if err != nil || result == "" {
+			return false
+		}
+		return true
+	}
+
+	// Fallback to in-memory validation
 	s.statesMu.RLock()
 	defer s.statesMu.RUnlock()
 
