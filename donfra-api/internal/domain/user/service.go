@@ -22,6 +22,8 @@ var (
 	ErrUserInactive = errors.New("account is inactive")
 	// ErrIncorrectPassword is returned when the current password is incorrect.
 	ErrIncorrectPassword = errors.New("current password is incorrect")
+	// ErrGoogleIDRequired is returned when Google ID is missing.
+	ErrGoogleIDRequired = errors.New("google id is required")
 )
 
 // Email validation regex (simple version)
@@ -203,4 +205,94 @@ func (s *Service) UpdatePassword(ctx context.Context, userID uint, currentPasswo
 	}
 
 	return nil
+}
+
+// LoginOrRegisterWithGoogle logs in or registers a user via Google OAuth.
+// If the user with the given Google ID exists, they are logged in.
+// If not, a new user is created using their Google account info.
+func (s *Service) LoginOrRegisterWithGoogle(ctx context.Context, googleID, email, name, avatar string) (*User, string, error) {
+	if googleID == "" {
+		return nil, "", ErrGoogleIDRequired
+	}
+
+	// Try to find user by Google ID
+	user, err := s.repo.FindByGoogleID(ctx, googleID)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// If user exists, log them in
+	if user != nil {
+		if !user.IsActive {
+			return nil, "", ErrUserInactive
+		}
+
+		// Update avatar if changed
+		if avatar != "" && user.GoogleAvatar != avatar {
+			user.GoogleAvatar = avatar
+			s.repo.Update(ctx, user)
+		}
+
+		// Generate JWT token
+		token, err := GenerateToken(user, s.jwtSecret, s.jwtExpiry)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return user, token, nil
+	}
+
+	// User doesn't exist, create new account using Google info
+	// Use email from Google if available, otherwise create placeholder
+	userEmail := email
+	if userEmail == "" {
+		userEmail = "google_" + googleID + "@placeholder.donfra.com"
+	}
+
+	// Generate random password (user won't need it as they login via Google)
+	placeholderPassword, err := HashPassword("google_oauth_" + googleID)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Use name from Google, or fallback to email prefix
+	username := name
+	if username == "" {
+		username = strings.Split(userEmail, "@")[0]
+	}
+
+	// Create new user
+	newUser := &User{
+		Email:        userEmail,
+		Password:     placeholderPassword,
+		Username:     username,
+		Role:         "user",
+		IsActive:     true,
+		GoogleID:     googleID,
+		GoogleAvatar: avatar,
+	}
+
+	if err := s.repo.Create(ctx, newUser); err != nil {
+		return nil, "", err
+	}
+
+	// Generate JWT token
+	token, err := GenerateToken(newUser, s.jwtSecret, s.jwtExpiry)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return newUser, token, nil
+}
+
+// GetUserByGoogleID retrieves a user by their Google ID.
+func (s *Service) GetUserByGoogleID(ctx context.Context, googleID string) (*User, error) {
+	user, err := s.repo.FindByGoogleID(ctx, googleID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, ErrUserNotFound
+	}
+	return user, nil
 }

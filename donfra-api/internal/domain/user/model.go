@@ -8,15 +8,17 @@ import (
 
 // User represents a user in the system.
 type User struct {
-	ID        uint           `gorm:"primaryKey" json:"id"`
-	Email     string         `gorm:"uniqueIndex;not null" json:"email"`
-	Password  string         `gorm:"not null" json:"-"` // Never expose password in JSON
-	Username  string         `gorm:"index" json:"username"`
-	Role      string         `gorm:"not null;default:'user'" json:"role"` // user, admin, mentor
-	IsActive  bool           `gorm:"not null;default:true" json:"isActive"`
-	CreatedAt time.Time      `json:"createdAt"`
-	UpdatedAt time.Time      `json:"updatedAt"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"` // Soft delete
+	ID           uint           `gorm:"primaryKey" json:"id"`
+	Email        string         `gorm:"uniqueIndex;not null" json:"email"`
+	Password     string         `gorm:"not null" json:"-"` // Never expose password in JSON
+	Username     string         `gorm:"index" json:"username"`
+	Role         string         `gorm:"not null;default:'user'" json:"role"` // user, admin, mentor
+	IsActive     bool           `gorm:"not null;default:true" json:"isActive"`
+	GoogleID     string         `gorm:"uniqueIndex" json:"-"` // Google OAuth ID (unique identifier)
+	GoogleAvatar string         `json:"-"`                    // Google profile picture URL
+	CreatedAt    time.Time      `json:"createdAt"`
+	UpdatedAt    time.Time      `json:"updatedAt"`
+	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"` // Soft delete
 }
 
 // TableName specifies the table name for GORM.

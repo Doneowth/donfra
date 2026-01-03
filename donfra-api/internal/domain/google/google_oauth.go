@@ -1,0 +1,193 @@
+package google
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"sync"
+	"time"
+
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+)
+
+var (
+	ErrInvalidState     = errors.New("invalid state parameter")
+	ErrAuthCodeExchange = errors.New("failed to exchange auth code for access token")
+	ErrGetUserInfo      = errors.New("failed to get google user info")
+)
+
+// GoogleOAuthService handles Google OAuth login flow
+type GoogleOAuthService struct {
+	config *oauth2.Config
+
+	// In-memory state storage (in production, use Redis)
+	states   map[string]*StateData
+	statesMu sync.RWMutex
+}
+
+type StateData struct {
+	CreatedAt time.Time
+	ExpiresAt time.Time
+}
+
+type GoogleUserInfo struct {
+	ID            string `json:"id"`
+	Email         string `json:"email"`
+	VerifiedEmail bool   `json:"verified_email"`
+	Name          string `json:"name"`
+	GivenName     string `json:"given_name"`
+	FamilyName    string `json:"family_name"`
+	Picture       string `json:"picture"`
+	Locale        string `json:"locale"`
+}
+
+// NewGoogleOAuthService creates a new Google OAuth service
+func NewGoogleOAuthService(clientID, clientSecret, redirectURL string) *GoogleOAuthService {
+	svc := &GoogleOAuthService{
+		config: &oauth2.Config{
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+			RedirectURL:  redirectURL,
+			Scopes: []string{
+				"https://www.googleapis.com/auth/userinfo.email",
+				"https://www.googleapis.com/auth/userinfo.profile",
+			},
+			Endpoint: google.Endpoint,
+		},
+		states: make(map[string]*StateData),
+	}
+
+	// Start cleanup goroutine for expired states
+	go svc.cleanupExpiredStates()
+
+	return svc
+}
+
+// GenerateAuthURL generates a Google OAuth authorization URL
+func (s *GoogleOAuthService) GenerateAuthURL() (string, string, error) {
+	state := s.generateState()
+
+	// Store state with expiration
+	s.statesMu.Lock()
+	s.states[state] = &StateData{
+		CreatedAt: time.Now(),
+		ExpiresAt: time.Now().Add(10 * time.Minute),
+	}
+	s.statesMu.Unlock()
+
+	// Generate OAuth URL
+	authURL := s.config.AuthCodeURL(state, oauth2.AccessTypeOffline)
+
+	return authURL, state, nil
+}
+
+// ExchangeCode exchanges authorization code for access token and user info
+func (s *GoogleOAuthService) ExchangeCode(ctx context.Context, code, state string) (*GoogleUserInfo, error) {
+	// Verify state
+	if !s.validateState(state) {
+		return nil, ErrInvalidState
+	}
+
+	// Exchange code for token
+	token, err := s.config.Exchange(ctx, code)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrAuthCodeExchange, err)
+	}
+
+	// Get user info using access token
+	userInfo, err := s.getUserInfo(ctx, token.AccessToken)
+	if err != nil {
+		return nil, err
+	}
+
+	// Remove used state
+	s.statesMu.Lock()
+	delete(s.states, state)
+	s.statesMu.Unlock()
+
+	return userInfo, nil
+}
+
+// getUserInfo fetches user information from Google API
+func (s *GoogleOAuthService) getUserInfo(ctx context.Context, accessToken string) (*GoogleUserInfo, error) {
+	// Google UserInfo endpoint
+	userInfoURL := "https://www.googleapis.com/oauth2/v2/userinfo"
+
+	req, err := http.NewRequestWithContext(ctx, "GET", userInfoURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("%w: failed to create request", ErrGetUserInfo)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrGetUserInfo, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("%w: HTTP %d: %s", ErrGetUserInfo, resp.StatusCode, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("%w: failed to read response", ErrGetUserInfo)
+	}
+
+	var userInfo GoogleUserInfo
+	if err := json.Unmarshal(body, &userInfo); err != nil {
+		return nil, fmt.Errorf("%w: invalid response format", ErrGetUserInfo)
+	}
+
+	if userInfo.ID == "" {
+		return nil, fmt.Errorf("%w: no user id in response", ErrGetUserInfo)
+	}
+
+	return &userInfo, nil
+}
+
+// generateState creates a cryptographically secure random state
+func (s *GoogleOAuthService) generateState() string {
+	b := make([]byte, 32)
+	rand.Read(b)
+	return base64.URLEncoding.EncodeToString(b)
+}
+
+// validateState checks if the state is valid and not expired
+func (s *GoogleOAuthService) validateState(state string) bool {
+	s.statesMu.RLock()
+	defer s.statesMu.RUnlock()
+
+	data, exists := s.states[state]
+	if !exists {
+		return false
+	}
+
+	return time.Now().Before(data.ExpiresAt)
+}
+
+// cleanupExpiredStates periodically removes expired state entries
+func (s *GoogleOAuthService) cleanupExpiredStates() {
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		s.statesMu.Lock()
+		now := time.Now()
+		for state, data := range s.states {
+			if now.After(data.ExpiresAt) {
+				delete(s.states, state)
+			}
+		}
+		s.statesMu.Unlock()
+	}
+}

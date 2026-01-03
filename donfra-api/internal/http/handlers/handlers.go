@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"donfra-api/internal/domain/auth"
+	"donfra-api/internal/domain/google"
 	"donfra-api/internal/domain/interview"
 	"donfra-api/internal/domain/livekit"
 	"donfra-api/internal/domain/room"
@@ -48,12 +49,19 @@ type AuthService interface {
 type UserService interface {
 	Register(ctx context.Context, req *user.RegisterRequest) (*user.User, error)
 	Login(ctx context.Context, req *user.LoginRequest) (*user.User, string, error)
+	LoginOrRegisterWithGoogle(ctx context.Context, googleID, email, name, avatar string) (*user.User, string, error)
 	ValidateToken(tokenString string) (*user.Claims, error)
 	GetUserByID(ctx context.Context, id uint) (*user.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*user.User, error)
 	GetJWTSecret() string
 	GetJWTExpiry() int
 	UpdatePassword(ctx context.Context, userID uint, currentPassword, newPassword string) error
+}
+
+// GoogleService defines the interface for Google OAuth operations.
+type GoogleService interface {
+	GenerateAuthURL() (authURL string, state string, err error)
+	ExchangeCode(ctx context.Context, code, state string) (*google.GoogleUserInfo, error)
 }
 
 // InterviewService defines the interface for interview room operations.
@@ -79,18 +87,22 @@ type Handlers struct {
 	studySvc     StudyService
 	authSvc      AuthService
 	userSvc      UserService
+	googleSvc    GoogleService
 	interviewSvc InterviewService
 	livekitSvc   LiveKitService
+	frontendURL  string
 }
 
 // New creates a new Handlers instance with the given services.
-func New(roomSvc RoomService, studySvc StudyService, authSvc AuthService, userSvc UserService, interviewSvc InterviewService, livekitSvc LiveKitService) *Handlers {
+func New(roomSvc RoomService, studySvc StudyService, authSvc AuthService, userSvc UserService, googleSvc GoogleService, interviewSvc InterviewService, livekitSvc LiveKitService, frontendURL string) *Handlers {
 	return &Handlers{
 		roomSvc:      roomSvc,
 		studySvc:     studySvc,
 		authSvc:      authSvc,
 		userSvc:      userSvc,
+		googleSvc:    googleSvc,
 		interviewSvc: interviewSvc,
 		livekitSvc:   livekitSvc,
+		frontendURL:  frontendURL,
 	}
 }

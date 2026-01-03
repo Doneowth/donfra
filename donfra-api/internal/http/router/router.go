@@ -8,6 +8,7 @@ import (
 
 	"donfra-api/internal/config"
 	"donfra-api/internal/domain/auth"
+	"donfra-api/internal/domain/google"
 	"donfra-api/internal/domain/interview"
 	"donfra-api/internal/domain/livekit"
 	"donfra-api/internal/domain/room"
@@ -17,7 +18,7 @@ import (
 	"donfra-api/internal/http/middleware"
 )
 
-func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, authSvc *auth.AuthService, userSvc *user.Service, interviewSvc interview.Service, livekitSvc *livekit.Service) http.Handler {
+func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, authSvc *auth.AuthService, userSvc *user.Service, googleSvc *google.GoogleOAuthService, interviewSvc interview.Service, livekitSvc *livekit.Service) http.Handler {
 	root := chi.NewRouter()
 
 	// Tracing middleware (must be first to capture all requests)
@@ -38,13 +39,17 @@ func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, auth
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	h := handlers.New(roomSvc, studySvc, authSvc, userSvc, interviewSvc, livekitSvc)
+	h := handlers.New(roomSvc, studySvc, authSvc, userSvc, googleSvc, interviewSvc, livekitSvc, cfg.FrontendURL)
 	v1 := chi.NewRouter()
 
 	// ===== User Authentication Routes (Public) =====
 	v1.Post("/auth/register", h.Register)
 	v1.Post("/auth/login", h.Login)
 	v1.Post("/auth/logout", h.Logout)
+
+	// Google OAuth routes
+	v1.Get("/auth/google/url", h.GoogleAuthURL)
+	v1.Get("/auth/google/callback", h.GoogleCallback)
 
 	// ===== User Routes (Protected) =====
 	v1.With(middleware.OptionalAuth(userSvc)).Get("/auth/me", h.GetCurrentUser)

@@ -48,6 +48,19 @@ func (r *PostgresRepository) FindByID(ctx context.Context, id uint) (*User, erro
 	return &user, nil
 }
 
+// FindByGoogleID retrieves a user by their Google ID.
+func (r *PostgresRepository) FindByGoogleID(ctx context.Context, googleID string) (*User, error) {
+	var user User
+	err := r.db.WithContext(ctx).Where("google_id = ?", googleID).First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil // Return nil instead of error for "not found"
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
 // Update updates an existing user.
 func (r *PostgresRepository) Update(ctx context.Context, user *User) error {
 	return r.db.WithContext(ctx).Save(user).Error

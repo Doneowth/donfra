@@ -12,6 +12,7 @@ import (
 	"donfra-api/internal/config"
 	"donfra-api/internal/domain/auth"
 	"donfra-api/internal/domain/db"
+	"donfra-api/internal/domain/google"
 	"donfra-api/internal/domain/interview"
 	"donfra-api/internal/domain/livekit"
 	"donfra-api/internal/domain/room"
@@ -78,6 +79,16 @@ func main() {
 	livekitSvc := livekit.NewService(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret, cfg.LiveKitPublicURL)
 	log.Println("[donfra-api] livekit service initialized")
 
+	// Initialize Google OAuth service
+	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
+	googleClientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
+	googleRedirectURL := os.Getenv("GOOGLE_REDIRECT_URL")
+	if googleRedirectURL == "" {
+		googleRedirectURL = "http://localhost:8080/api/auth/google/callback"
+	}
+	googleSvc := google.NewGoogleOAuthService(googleClientID, googleClientSecret, googleRedirectURL)
+	log.Printf("[donfra-api] google oauth service initialized (redirect: %s)", googleRedirectURL)
+
 	// Start Redis Pub/Sub subscriber for headcount updates (if using Redis)
 	var subCancel context.CancelFunc
 	if redisClient != nil {
@@ -91,7 +102,7 @@ func main() {
 		}()
 	}
 
-	r := router.New(cfg, roomSvc, studySvc, authSvc, userSvc, interviewSvc, livekitSvc)
+	r := router.New(cfg, roomSvc, studySvc, authSvc, userSvc, googleSvc, interviewSvc, livekitSvc)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,

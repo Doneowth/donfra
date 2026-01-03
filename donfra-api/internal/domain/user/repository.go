@@ -13,6 +13,9 @@ type Repository interface {
 	// FindByID retrieves a user by their ID.
 	FindByID(ctx context.Context, id uint) (*User, error)
 
+	// FindByGoogleID retrieves a user by their Google ID.
+	FindByGoogleID(ctx context.Context, googleID string) (*User, error)
+
 	// Update updates an existing user.
 	Update(ctx context.Context, user *User) error
 

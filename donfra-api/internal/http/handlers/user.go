@@ -222,3 +222,75 @@ func (h *Handlers) UpdatePassword(w http.ResponseWriter, r *http.Request) {
 		"message": "password updated successfully",
 	})
 }
+
+// GoogleAuthURL generates a Google OAuth authorization URL.
+// GET /api/auth/google/url
+func (h *Handlers) GoogleAuthURL(w http.ResponseWriter, r *http.Request) {
+	authURL, state, err := h.googleSvc.GenerateAuthURL()
+	if err != nil {
+		httputil.WriteError(w, http.StatusInternalServerError, "failed to generate auth URL")
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"auth_url": authURL,
+		"state":    state,
+	})
+}
+
+// GoogleCallback handles the Google OAuth callback.
+// GET /api/auth/google/callback?code=xxx&state=xxx
+func (h *Handlers) GoogleCallback(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	code := r.URL.Query().Get("code")
+	state := r.URL.Query().Get("state")
+
+	if code == "" || state == "" {
+		httputil.WriteError(w, http.StatusBadRequest, "missing code or state parameter")
+		return
+	}
+
+	// Exchange code for user info
+	userInfo, err := h.googleSvc.ExchangeCode(ctx, code, state)
+	if err != nil {
+		httputil.WriteError(w, http.StatusUnauthorized, "failed to verify Google login: "+err.Error())
+		return
+	}
+
+	// Login or register user with Google info
+	_, token, err := h.userSvc.LoginOrRegisterWithGoogle(
+		ctx,
+		userInfo.ID,
+		userInfo.Email,
+		userInfo.Name,
+		userInfo.Picture,
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, user.ErrUserInactive):
+			httputil.WriteError(w, http.StatusForbidden, err.Error())
+		default:
+			httputil.WriteError(w, http.StatusInternalServerError, "Google login failed")
+		}
+		return
+	}
+
+	// Set JWT token as HTTP-only cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    token,
+		Path:     "/",
+		MaxAge:   7 * 24 * 60 * 60, // 7 days in seconds
+		HttpOnly: true,
+		Secure:   false, // Set to true in production with HTTPS
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	// Redirect to frontend homepage after successful login
+	redirectURL := h.frontendURL
+	if redirectURL == "" {
+		redirectURL = "/"
+	}
+	http.Redirect(w, r, redirectURL, http.StatusFound)
+}
