@@ -25,7 +25,7 @@ services:
   api:
     # build:
     #   context: ../donfra-api
-    image: donfra-api:1.0.0
+    image: doneowth/donfra-api:1.0.0
     container_name: donfra-api
     env_file:
       - .env.production
