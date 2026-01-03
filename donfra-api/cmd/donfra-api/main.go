@@ -86,8 +86,8 @@ func main() {
 	if googleRedirectURL == "" {
 		googleRedirectURL = "http://localhost:8080/api/auth/google/callback"
 	}
-	googleSvc := google.NewGoogleOAuthService(googleClientID, googleClientSecret, googleRedirectURL)
-	log.Printf("[donfra-api] google oauth service initialized (redirect: %s)", googleRedirectURL)
+	googleSvc := google.NewGoogleOAuthService(googleClientID, googleClientSecret, googleRedirectURL, cfg.FrontendURL)
+	log.Printf("[donfra-api] google oauth service initialized (redirect: %s, frontend: %s)", googleRedirectURL, cfg.FrontendURL)
 
 	// Start Redis Pub/Sub subscriber for headcount updates (if using Redis)
 	var subCancel context.CancelFunc

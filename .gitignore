@@ -1,0 +1,47 @@
+# Environment variables
+.env
+.env.local
+.env.production
+.env.*.local
+infra/.env.local
+infra/.env.production
+donfra-api/.env.local
+
+# Docker volumes
+infra/caddy_data/
+infra/caddy_config/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+dist/
+build/
+*.out
+bin/
+
+# Database backups
+db-backups/
+*.sql.gz
+
+# Temporary files
+*.tmp
+.cache/

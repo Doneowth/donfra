@@ -62,6 +62,7 @@ type UserService interface {
 type GoogleService interface {
 	GenerateAuthURL() (authURL string, state string, err error)
 	ExchangeCode(ctx context.Context, code, state string) (*google.GoogleUserInfo, error)
+	GetFrontendURL() string
 }
 
 // InterviewService defines the interface for interview room operations.
@@ -90,11 +91,10 @@ type Handlers struct {
 	googleSvc    GoogleService
 	interviewSvc InterviewService
 	livekitSvc   LiveKitService
-	frontendURL  string
 }
 
 // New creates a new Handlers instance with the given services.
-func New(roomSvc RoomService, studySvc StudyService, authSvc AuthService, userSvc UserService, googleSvc GoogleService, interviewSvc InterviewService, livekitSvc LiveKitService, frontendURL string) *Handlers {
+func New(roomSvc RoomService, studySvc StudyService, authSvc AuthService, userSvc UserService, googleSvc GoogleService, interviewSvc InterviewService, livekitSvc LiveKitService) *Handlers {
 	return &Handlers{
 		roomSvc:      roomSvc,
 		studySvc:     studySvc,
@@ -103,6 +103,5 @@ func New(roomSvc RoomService, studySvc StudyService, authSvc AuthService, userSv
 		googleSvc:    googleSvc,
 		interviewSvc: interviewSvc,
 		livekitSvc:   livekitSvc,
-		frontendURL:  frontendURL,
 	}
 }

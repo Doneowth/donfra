@@ -41,7 +41,7 @@ func TestAdminLogin_Success(t *testing.T) {
 	}
 
 	// 2. 创建 handlers（只需要 authSvc，其他传 nil）
-	h := handlers.New(nil, nil, mockAuth, nil, nil, nil)
+	h := handlers.New(nil, nil, mockAuth, nil, nil, nil, nil)
 
 	// 3. 准备 HTTP 请求
 	reqBody := map[string]string{"password": "7777"}
@@ -78,7 +78,7 @@ func TestAdminLogin_WrongPassword(t *testing.T) {
 		ErrorToReturn: errors.New("invalid password"),
 	}
 
-	h := handlers.New(nil, nil, mockAuth, nil, nil, nil)
+	h := handlers.New(nil, nil, mockAuth, nil, nil, nil, nil)
 
 	reqBody := map[string]string{"password": "wrong"}
 	bodyBytes, _ := json.Marshal(reqBody)
@@ -96,7 +96,7 @@ func TestAdminLogin_WrongPassword(t *testing.T) {
 // TestAdminLogin_InvalidJSON 测试无效的 JSON 请求
 func TestAdminLogin_InvalidJSON(t *testing.T) {
 	mockAuth := &MockAuthService{}
-	h := handlers.New(nil, nil, mockAuth, nil, nil, nil)
+	h := handlers.New(nil, nil, mockAuth, nil, nil, nil, nil)
 
 	// 发送无效的 JSON
 	req := httptest.NewRequest(http.MethodPost, "/api/admin/login", bytes.NewReader([]byte("{invalid json")))
@@ -113,7 +113,7 @@ func TestAdminLogin_InvalidJSON(t *testing.T) {
 // TestAdminLogin_ServiceUnavailable 测试 service 为 nil 的情况
 func TestAdminLogin_ServiceUnavailable(t *testing.T) {
 	// 传入 nil authSvc
-	h := handlers.New(nil, nil, nil, nil, nil, nil)
+	h := handlers.New(nil, nil, nil, nil, nil, nil, nil)
 
 	reqBody := map[string]string{"password": "7777"}
 	bodyBytes, _ := json.Marshal(reqBody)

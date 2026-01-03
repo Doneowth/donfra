@@ -24,24 +24,11 @@ services:
   # ===== API: Go 后端 =====
   api:
     build:
-      context: ../donfra-api # 根据你实际路径改
+      context: ../donfra-api
     image: donfra-api:dev
     container_name: donfra-api
-    environment:
-      - ADDR=:8080
-      - PASSCODE=7777
-      - ADMIN_PASS=7777
-      - JWT_SECRET=don-secret
-      - DATABASE_URL=postgres://donfra:arfnod@donfra-db:5432/donfra_study?sslmode=disable
-      - JAEGER_ENDPOINT=jaeger:4318
-      - REDIS_ADDR=redis:6379
-      - USE_REDIS=true # Use Redis in production for multi-instance support
-      - LIVEKIT_API_KEY=devkeydevkeydevkeydevkeydevkeydevkey
-      - LIVEKIT_API_SECRET=APISECRETdevkeyAPISECRETdevkeyAPISECRETdevkey
-      - LIVEKIT_SERVER_URL=ws://livekit:7880
-      - LIVEKIT_PUBLIC_URL=wss://donfra.dev/livekit
-      # - CORS_ORIGIN=http://localhost
-      # - BASE_URL=http://localhost
+    env_file:
+      - .env.production
     expose:
       - "8080"
     depends_on:
@@ -58,10 +45,10 @@ services:
       context: ../donfra-ws
     image: donfra-ws:dev
     container_name: donfra-ws
+    env_file:
+      - .env.production
     expose:
       - "6789"
-    environment:
-      - REDIS_ADDR=redis:6379
     depends_on:
       - redis
     networks:
@@ -71,12 +58,8 @@ services:
   ui:
     image: doneowth/donfra-ui:1.0.18
     container_name: donfra-ui
-    environment:
-      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-/api}
-      - NEXT_PUBLIC_COLLAB_WS=${NEXT_PUBLIC_COLLAB_WS:-/yjs}
-      - API_PROXY_TARGET=${API_PROXY_TARGET:-http://api:8080}
-      - WS_PROXY_TARGET=${WS_PROXY_TARGET:-http://ws:6789}
-      - LIVEKIT_PROXY_TARGET=${LIVEKIT_PROXY_TARGET:-http://livekit:7880}
+    env_file:
+      - .env.production
     expose:
       - "3000"
     depends_on:
@@ -90,10 +73,8 @@ services:
   donfra-db:
     image: postgres:16
     container_name: donfra-db
-    environment:
-      - POSTGRES_USER=donfra
-      - POSTGRES_PASSWORD=arfnod
-      - POSTGRES_DB=donfra_study
+    env_file:
+      - .env.production
     ports:
       - "5432:5432"
     volumes:

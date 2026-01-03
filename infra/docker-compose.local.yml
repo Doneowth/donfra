@@ -7,29 +7,8 @@ services:
       context: ../donfra-api
     image: donfra-api:dev
     container_name: donfra-api
-    environment:
-      - ADDR=:8080
-      - PASSCODE=7777
-      - ADMIN_PASS=7777
-      - JWT_SECRET=don-secret
-      - DATABASE_URL=postgres://donfra:arfnod@donfra-db:5432/donfra_study?sslmode=disable
-      - JAEGER_ENDPOINT=jaeger:4318
-      - REDIS_ADDR=redis:6379
-      - USE_REDIS=true # 12-Factor App: local environment matches production
-      - LIVEKIT_API_KEY=devkeydevkeydevkeydevkeydevkeydevkey
-      - LIVEKIT_API_SECRET=APISECRETdevkeyAPISECRETdevkeyAPISECRETdevkey
-      - LIVEKIT_SERVER_URL=ws://livekit:7880
-      - LIVEKIT_PUBLIC_URL=ws://localhost:7880
-      # Google OAuth Configuration
-      - GOOGLE_CLIENT_ID=591319272586-mab0vkn55tpl83r4mdd4fhnb2hhae3pi.apps.googleusercontent.com
-      - GOOGLE_CLIENT_SECRET=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
-      - GOOGLE_REDIRECT_URL=http://localhost:8080/api/auth/google/callback
-      - FRONTEND_URL=http://localhost
-      # Removed: WS_EXECUTE_URL - code execution now via WebSocket messages, not HTTP
-      # - CORS_ORIGIN=http://localhost
-      # - BASE_URL=http://localhost
-      # expose:
-      #   - "8080"
+    env_file:
+      - .env.local
     ports:
       - "8080:8080"
     depends_on:
@@ -46,10 +25,8 @@ services:
       context: ../donfra-ws
     image: donfra-ws:dev
     container_name: donfra-ws
-    # expose:
-    #   - "6789"
-    environment:
-      - REDIS_ADDR=redis:6379
+    env_file:
+      - .env.local
     ports:
       - "6789:6789"
     depends_on:
@@ -70,6 +47,8 @@ services:
         LIVEKIT_PROXY_TARGET: ${LIVEKIT_PROXY_TARGET:-http://livekit:7880}
     image: donfra-ui:dev
     container_name: donfra-ui
+    env_file:
+      - .env.local
     ports:
       - "80:3000"
     depends_on:
@@ -83,10 +62,8 @@ services:
   db:
     image: postgres:16
     container_name: donfra-db
-    environment:
-      - POSTGRES_USER=donfra
-      - POSTGRES_PASSWORD=arfnod
-      - POSTGRES_DB=donfra_study
+    env_file:
+      - .env.local
     ports:
       - "5432:5432"
     volumes:

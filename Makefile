@@ -122,6 +122,14 @@ docker-push-api:
 	@echo "Pushing API container to Docker Hub"
 	cd donfra-api ; docker push doneowth/donfra-api:$(API_IMAGE_TAG)
 
+docker-build-api:
+	@echo "Building API container"
+	cd donfra-api ; docker build -t doneowth/donfra-api:$(API_IMAGE_TAG) .
+
+docker-push-api:
+	@echo "Pushing API container to Docker Hub"
+	cd donfra-api ; docker push doneowth/donfra-api:$(API_IMAGE_TAG)
+
 # ===== Production Commands =====
 
 prod-up:

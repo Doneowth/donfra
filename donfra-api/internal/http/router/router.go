@@ -39,7 +39,7 @@ func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, auth
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	h := handlers.New(roomSvc, studySvc, authSvc, userSvc, googleSvc, interviewSvc, livekitSvc, cfg.FrontendURL)
+	h := handlers.New(roomSvc, studySvc, authSvc, userSvc, googleSvc, interviewSvc, livekitSvc)
 	v1 := chi.NewRouter()
 
 	// ===== User Authentication Routes (Public) =====

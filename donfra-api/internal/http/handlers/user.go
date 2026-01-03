@@ -288,9 +288,6 @@ func (h *Handlers) GoogleCallback(w http.ResponseWriter, r *http.Request) {
 	})
 
 	// Redirect to frontend homepage after successful login
-	redirectURL := h.frontendURL
-	if redirectURL == "" {
-		redirectURL = "/"
-	}
+	redirectURL := h.googleSvc.GetFrontendURL()
 	http.Redirect(w, r, redirectURL, http.StatusFound)
 }

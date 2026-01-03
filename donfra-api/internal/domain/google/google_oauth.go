@@ -24,7 +24,8 @@ var (
 
 // GoogleOAuthService handles Google OAuth login flow
 type GoogleOAuthService struct {
-	config *oauth2.Config
+	config      *oauth2.Config
+	frontendURL string // Frontend URL for OAuth callback redirect
 
 	// In-memory state storage (in production, use Redis)
 	states   map[string]*StateData
@@ -48,7 +49,7 @@ type GoogleUserInfo struct {
 }
 
 // NewGoogleOAuthService creates a new Google OAuth service
-func NewGoogleOAuthService(clientID, clientSecret, redirectURL string) *GoogleOAuthService {
+func NewGoogleOAuthService(clientID, clientSecret, redirectURL, frontendURL string) *GoogleOAuthService {
 	svc := &GoogleOAuthService{
 		config: &oauth2.Config{
 			ClientID:     clientID,
@@ -60,7 +61,8 @@ func NewGoogleOAuthService(clientID, clientSecret, redirectURL string) *GoogleOA
 			},
 			Endpoint: google.Endpoint,
 		},
-		states: make(map[string]*StateData),
+		frontendURL: frontendURL,
+		states:      make(map[string]*StateData),
 	}
 
 	// Start cleanup goroutine for expired states
@@ -173,6 +175,14 @@ func (s *GoogleOAuthService) validateState(state string) bool {
 	}
 
 	return time.Now().Before(data.ExpiresAt)
+}
+
+// GetFrontendURL returns the frontend URL for OAuth callback redirect
+func (s *GoogleOAuthService) GetFrontendURL() string {
+	if s.frontendURL == "" {
+		return "/" // Default to root if not configured
+	}
+	return s.frontendURL
 }
 
 // cleanupExpiredStates periodically removes expired state entries
