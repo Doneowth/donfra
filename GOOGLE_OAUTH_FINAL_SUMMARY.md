@@ -206,8 +206,6 @@ const handleGoogleLogin = async () => {
 api:
   environment:
     # Google OAuth 配置
-    - GOOGLE_CLIENT_ID=591319272586-mab0vkn55tpl83r4mdd4fhnb2hhae3pi.apps.googleusercontent.com
-    - GOOGLE_CLIENT_SECRET=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
     - GOOGLE_REDIRECT_URL=http://localhost:8080/api/auth/google/callback
     - FRONTEND_URL=http://localhost  # 重要：修复了 404 问题
 ```
@@ -216,8 +214,6 @@ api:
 
 **[donfra-api/.env.local](donfra-api/.env.local)** (不提交到 git)
 ```bash
-GOOGLE_CLIENT_ID=591319272586-mab0vkn55tpl83r4mdd4fhnb2hhae3pi.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=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
 GOOGLE_REDIRECT_URL=http://localhost:8080/api/auth/google/callback
 ```
 
