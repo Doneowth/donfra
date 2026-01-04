@@ -1,0 +1,63 @@
+# QA checklist v1
+- [ ]  Home page: https://donfra.dev/
+    - [ ]  UI display
+    - [ ]  navigation to page
+        - [ ]  library
+        - [ ]  live
+        - [ ]  profile
+- [ ]  User
+    - [ ]  SSO
+        - [ ]  google login
+    - [ ]  sign up
+        - [ ]  existing user → error
+        - [ ]  non-existing user → ok
+    - [ ]  sign in
+        - [ ]  wrong email → error
+        - [ ]  wrong password → error
+        - [ ]  existing user login
+            - [ ]  user
+            - [ ]  admin
+            - [ ]  super user
+            - [ ]  mentor
+    - [ ]  profile: https://donfra.dev/user
+        - [ ]  user, vip, mentor
+            - [ ]  update password
+        - [ ]  admin
+            - [ ]  update password
+            - [ ]  create interview room
+            - [ ]  copy interview room invite link
+            - [ ]  join interview room
+            - [ ]  close interview room
+    - [ ]  sign out
+- [ ]  Library: https://donfra.dev/library
+    - [ ]  user, mentor
+        - [ ]  view lesson: markdown, diagram, video, code working
+            - [ ]  upgrade vip → user profile page
+        - [ ]  lessons in order and page turning button working
+        - [ ]  lessons count correct
+        - [ ]  can not edit or create lessons
+    - [ ]  vip
+        - [ ]  can view vip lessons
+    - [ ]  admin
+        - [ ]  create, edit, delete lessons
+            - [ ]  title, author, published date, video url, code url, isPublished, isVip, markdown, diagram
+            - [ ]  save changes or cancel
+- [ ]  Interview
+    - [ ]  join room - correct headcount and cursor
+    - [ ]  execute code
+    - [ ]  clear output
+    - [ ]  exit room
+    - [ ]  re-join room
+        - [ ]  with correct code content left
+    - [ ]  share room link
+    - [ ]  headcount can not exceed limit (?)
+    - [ ]  admin quit room → close room for others
+- [ ]  Live: https://donfra.dev/live
+    - [ ]  admin
+        - [ ]  create live session with title and name
+    - [ ]  users and visitors
+        - [ ]  join session with id and name
+    - [ ]  microphone, camera, chat, share screen
+    - [ ]  end live
+- [ ]  Admin dashboard: https://donfra.dev/admin-dashboard (?)
+    - [ ]  refresh status
