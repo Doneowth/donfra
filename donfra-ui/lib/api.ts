@@ -149,8 +149,7 @@ export const api = {
       postJSON<{ message: string }>("/auth/update-password", { current_password: currentPassword, new_password: newPassword }),
     googleAuthURL: () =>
       getJSON<{ auth_url: string; state: string }>("/auth/google/url"),
-    googleCallback: (code: string, state: string) =>
-      getJSON<{ user: { id: number; email: string; username: string; role: string; isActive: boolean; createdAt: string }; token: string }>(`/auth/google/callback?code=${code}&state=${state}`),
+    // Note: googleCallback is handled by backend redirect, not used in frontend
   },
   interview: {
     init: () =>

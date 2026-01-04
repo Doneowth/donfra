@@ -47,7 +47,7 @@ func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, auth
 	v1.Post("/auth/login", h.Login)
 	v1.Post("/auth/logout", h.Logout)
 
-	// Google OAuth routes
+	// ===== Google OAuth routes =====
 	v1.Get("/auth/google/url", h.GoogleAuthURL)
 	v1.Get("/auth/google/callback", h.GoogleCallback)
 
