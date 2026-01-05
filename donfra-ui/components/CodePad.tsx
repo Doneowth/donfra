@@ -5,8 +5,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { api } from "@/lib/api";
 import type { editor as MonacoEditor } from "monaco-editor";
-
-
+import AIChat from "./AIChat";
 
 // 动态加载 Monaco（禁 SSR）
 const Editor = dynamic(() => import("@monaco-editor/react"), { ssr: false }) as any;
@@ -18,6 +17,7 @@ let YMonacoNS: typeof import("y-monaco") | null = null;
 
 type Props = { onExit?: () => void; roomId?: string };
 type Peer = { name: string; color: string; colorLight?: string };
+type RightPaneTab = "terminal" | "ai";
 
 export default function CodePad({ onExit, roomId }: Props) {
   // 运行区（由共享 Y.Map 驱动）
@@ -29,6 +29,12 @@ export default function CodePad({ onExit, roomId }: Props) {
 
   // 在线协作者列表
   const [peers, setPeers] = useState<Peer[]>([]);
+
+  // Active tab in right pane
+  const [activeTab, setActiveTab] = useState<RightPaneTab>("terminal");
+
+  // User role for VIP check
+  const [userRole, setUserRole] = useState<string>("");
 
   // 本地 userName（用于标注 runner）
   const userNameRef = useRef<string>("");
@@ -123,11 +129,9 @@ export default function CodePad({ onExit, roomId }: Props) {
 
       // Send request
       provider.ws.send(JSON.stringify(executionRequest));
-      console.log('[CodePad] 🚀 Sent code execution request via WebSocket');
 
       // Wait for result
       const res: any = await resultPromise;
-      console.log('[CodePad] ✅ Received execution result:', res);
 
       // 本地即时
       setStdout(res.stdout || "");
@@ -148,7 +152,6 @@ export default function CodePad({ onExit, roomId }: Props) {
       }
     } catch (e: any) {
       const msg = e?.message || "Run failed";
-      console.error('[CodePad] ❌ Code execution error:', e);
       setStderr(msg);
       const doc = ydocRef.current as import("yjs").Doc | null;
       const yMap = yOutputsRef.current;
@@ -223,13 +226,6 @@ export default function CodePad({ onExit, roomId }: Props) {
     // Ensure collabURL is a string: prefer env var, otherwise derive a sensible fallback from current origin
     const collabURL = process.env.NEXT_PUBLIC_COLLAB_WS ?? `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/yjs`;
 
-    console.log('[CodePad] Room configuration:', {
-      roomName,
-      roomId,
-      urlRoomId: params.get("room_id"),
-      fullURL: window.location.href,
-      collabURL
-    });
 
     // 创建 Doc / Provider
     // The WebsocketProvider sends the roomName in the URL path (e.g., ws://host/yjs/room-id)
@@ -238,7 +234,6 @@ export default function CodePad({ onExit, roomId }: Props) {
     const ytext = doc.getText("monaco");
     const provider = new YWebsocketNS!.WebsocketProvider(collabURL, roomName, doc, { connect: true });
 
-    console.log('[CodePad] WebSocket provider created, connecting to:', `${collabURL}/${roomName}`);
     const awareness = provider.awareness;
 
     // Get real username from backend (if user is authenticated)
@@ -252,6 +247,7 @@ export default function CodePad({ onExit, roomId }: Props) {
         const data = await response.json();
         if (data.user && data.user.username) {
           userName = data.user.username;
+          setUserRole(data.user.role || "");
         }
       }
     } catch (err) {
@@ -279,12 +275,9 @@ export default function CodePad({ onExit, roomId }: Props) {
 
     awareness.setLocalState({ user: { name: userName, color, colorLight } });
 
-    console.log('[CodePad] Local awareness state set:', { userName, color, colorLight });
-    console.log('[CodePad] Provider status:', provider.wsconnected ? 'connected' : 'disconnected');
 
     // Monitor WebSocket connection status
     provider.on('status', (event: any) => {
-      console.log('[CodePad] WebSocket status changed:', event.status);
       if (event.status === 'disconnected') {
         console.warn('[CodePad] ⚠️ WebSocket disconnected! Will attempt to reconnect...');
       } else if (event.status === 'connected') {
@@ -297,13 +290,10 @@ export default function CodePad({ onExit, roomId }: Props) {
       const states = Array.from(awareness.getStates().entries());
       const users = states
         .map(([clientId, state]: [number, any]) => {
-          console.log(`[CodePad] Client ${clientId} awareness state:`, state);
           return state?.user;
         })
         .filter(Boolean) as Peer[];
       setPeers(users);
-      console.log('[CodePad] Total peers with user info:', users.length);
-      console.log('[CodePad] All awareness states:', states.map(([id, s]) => ({ id, user: s?.user, cursor: s?.cursor })));
     };
     awareness.on("change", applyPeers);
     applyPeers();
@@ -317,7 +307,6 @@ export default function CodePad({ onExit, roomId }: Props) {
     // CRITICAL: Force LF line endings to match Yjs document
     // This prevents sync mismatches between \r\n (CRLF) and \n (LF)
     model.setEOL(0); // 0 = LF (\n), 1 = CRLF (\r\n)
-    console.log('[CodePad] Model EOL set to LF (\\n)');
 
     // CRITICAL: Create MonacoBinding FIRST before setting up event listeners
     // This ensures all event handlers have access to the binding reference
@@ -329,11 +318,6 @@ export default function CodePad({ onExit, roomId }: Props) {
       awareness  // This enables remote cursor/selection rendering
     );
 
-    console.log('[CodePad] MonacoBinding created with awareness:', {
-      awarenessStates: awareness.getStates().size,
-      bindingCreated: !!binding,
-      editorModel: !!model
-    });
 
     // Inject CSS styles for remote cursors based on awareness states
     // y-monaco creates decorations but doesn't apply colors automatically
@@ -373,7 +357,6 @@ export default function CodePad({ onExit, roomId }: Props) {
       }
       styleTag.textContent = styles.join('\n');
 
-      console.log('[CodePad] Injected remote cursor styles for', awareness.getStates().size - 1, 'remote users');
     };
 
     // Update styles when awareness changes
@@ -402,33 +385,10 @@ export default function CodePad({ onExit, roomId }: Props) {
         hasInitialSynced = true;
         if (ytext.length === 0) {
           ytext.insert(0, "print('hello from CodePad')\n");
-          console.log('[CodePad] Initialized empty Yjs document with default content after sync');
         }
       }
     });
 
-    // Monitor doc updates (low-level Yjs updates)
-    // Now 'binding' is defined, so we can properly detect update origins
-    doc.on('update', (update: Uint8Array, origin: any) => {
-      const isFromProvider = origin === provider;
-      const isLocal = origin === binding || origin === doc;
-      console.log('[CodePad] 🔄 Doc update:', {
-        size: update.length,
-        source: isFromProvider ? 'WebSocket' : (isLocal ? 'Local' : 'Unknown'),
-        yjsLines: ytext.toString().split('\n').length,
-        monacoLines: editor.getValue().split('\n').length,
-        match: ytext.toString() === editor.getValue()
-      });
-    });
-
-    // Monitor connection errors
-    provider.on('connection-error', (event: any) => {
-      console.error('[CodePad] ❌ WebSocket connection error:', event);
-    });
-
-    provider.on('connection-close', (event: any) => {
-      console.warn('[CodePad] 🔌 WebSocket connection closed:', event);
-    });
 
     // === DEBUG: Monitor sync issues with debounce to avoid interference ===
     // Use debounced checks to give MonacoBinding time to complete synchronization
@@ -440,22 +400,22 @@ export default function CodePad({ onExit, roomId }: Props) {
       }
 
       // Wait 100ms after last change before checking (gives MonacoBinding time to sync)
-      syncCheckTimeout = setTimeout(() => {
-        const currentYjs = ytext.toString();
-        const currentMonaco = editor.getValue();
-        const match = currentYjs === currentMonaco;
+      // syncCheckTimeout = setTimeout(() => {
+      //   const currentYjs = ytext.toString();
+      //   const currentMonaco = editor.getValue();
+      //   // const match = currentYjs === currentMonaco;
 
-        if (!match) {
-          console.error(`[CodePad] ❌ SYNC MISMATCH detected after ${source} change!`, {
-            yjsLines: currentYjs.split('\n').length,
-            monacoLines: currentMonaco.split('\n').length,
-            yjsLength: currentYjs.length,
-            monacoLength: currentMonaco.length,
-            yjsPreview: currentYjs.slice(0, 100),
-            monacoPreview: currentMonaco.slice(0, 100)
-          });
-        }
-      }, 100);
+      //   // if (!match) {
+      //   //   console.error(`[CodePad] ❌ SYNC MISMATCH detected after ${source} change!`, {
+      //   //     yjsLines: currentYjs.split('\n').length,
+      //   //     monacoLines: currentMonaco.split('\n').length,
+      //   //     yjsLength: currentYjs.length,
+      //   //     monacoLength: currentMonaco.length,
+      //   //     yjsPreview: currentYjs.slice(0, 100),
+      //   //     monacoPreview: currentMonaco.slice(0, 100)
+      //   //   });
+      //   // }
+      // }, 100);
     };
 
     ytext.observe(() => {
@@ -488,22 +448,8 @@ export default function CodePad({ onExit, roomId }: Props) {
     bindingRef.current = binding;
 
     // Periodic sync check (every 3 seconds)
-    const syncCheckInterval = setInterval(() => {
-      const currentYjs = ytext.toString();
-      const currentMonaco = editor.getValue();
-      const match = currentYjs === currentMonaco;
+    
 
-      if (!match) {
-        console.error('[CodePad] 🚨 PERIODIC SYNC CHECK FAILED!', {
-          yjsLines: currentYjs.split('\n').length,
-          monacoLines: currentMonaco.split('\n').length,
-          wsConnected: provider.wsconnected,
-          docClientId: doc.clientID
-        });
-      }
-    }, 3000);
-
-    cleanupFnsRef.current.push(() => clearInterval(syncCheckInterval));
 
     // === DEBUG: Expose debug utilities to window for manual inspection ===
     if (typeof window !== 'undefined') {
@@ -602,14 +548,7 @@ export default function CodePad({ onExit, roomId }: Props) {
           return { binding, decorationsCount: editor.getModel()?.getAllDecorations().length };
         }
       };
-      console.log('[CodePad] 🐛 Debug utilities exposed to window.yjsDebug');
-      console.log('Available commands:');
-      console.log('  - window.yjsDebug.checkSync()         // Check if Yjs and Monaco are in sync');
-      console.log('  - window.yjsDebug.compareContents()   // Compare line-by-line differences');
-      console.log('  - window.yjsDebug.forceSync()         // Force Monaco -> Yjs sync');
-      console.log('  - window.yjsDebug.syncYjsToMonaco()   // Force Yjs -> Monaco sync');
-      console.log('  - window.yjsDebug.inspectAwareness()  // Inspect awareness states (cursors)');
-      console.log('  - window.yjsDebug.inspectBinding()    // Inspect MonacoBinding and decorations');
+
     }
   }, [run, clearOutput, applyOutputsFromY, roomId]);
 
@@ -673,23 +612,52 @@ export default function CodePad({ onExit, roomId }: Props) {
 
         <div className="terminal-pane" aria-label="terminal output">
           <div className="terminal-header">
-            <span>Terminal</span>
-            {runMeta && <span style={{ opacity: .7, marginLeft: 8, fontSize: 12 }}>{runMeta}</span>}
+            {(userRole === "vip" || userRole === "admin") ? (
+              <div className="tab-buttons">
+                <button
+                  className={`tab-button ${activeTab === "terminal" ? "active" : ""}`}
+                  onClick={() => setActiveTab("terminal")}
+                >
+                  Terminal
+                </button>
+                <button
+                  className={`tab-button ${activeTab === "ai" ? "active" : ""}`}
+                  onClick={() => setActiveTab("ai")}
+                >
+                  AI Agent
+                </button>
+              </div>
+            ) : (
+              <span>Terminal</span>
+            )}
+            {activeTab === "terminal" && runMeta && (
+              <span style={{ opacity: .7, marginLeft: 8, fontSize: 12 }}>{runMeta}</span>
+            )}
           </div>
-          <div className="terminal-body">
-            {stdout && (
-              <>
-                <div className="stream-title ok">$ stdout</div>
-                <pre className="stream">{stdout}</pre>
-              </>
+          <div className={`terminal-body ${activeTab === "ai" ? "no-padding" : ""}`}>
+            <div style={{ display: activeTab === "terminal" ? "block" : "none" }}>
+              {stdout && (
+                <>
+                  <div className="stream-title ok">$ stdout</div>
+                  <pre className="stream">{stdout}</pre>
+                </>
+              )}
+              {stderr && (
+                <>
+                  <div className="stream-title warn">$ stderr</div>
+                  <pre className="stream error">{stderr}</pre>
+                </>
+              )}
+              {!stdout && !stderr && <div className="empty">no output</div>}
+            </div>
+            {(userRole === "vip" || userRole === "admin") && (
+              <div style={{ display: activeTab === "ai" ? "block" : "none", height: "100%" }}>
+                <AIChat
+                  codeContent={editorRef.current?.getValue() ?? ""}
+                  userRole={userRole}
+                />
+              </div>
             )}
-            {stderr && (
-              <>
-                <div className="stream-title warn">$ stderr</div>
-                <pre className="stream error">{stderr}</pre>
-              </>
-            )}
-            {!stdout && !stderr && <div className="empty">no output</div>}
           </div>
         </div>
       </div>

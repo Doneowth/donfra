@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"donfra-api/internal/config"
+	"donfra-api/internal/domain/aiagent"
 	"donfra-api/internal/domain/auth"
 	"donfra-api/internal/domain/db"
 	"donfra-api/internal/domain/google"
@@ -93,6 +94,15 @@ func main() {
 		log.Printf("[donfra-api] google oauth service initialized with in-memory storage (redirect: %s, frontend: %s)", googleRedirectURL, cfg.FrontendURL)
 	}
 
+	// Initialize AI agent service
+	deepSeekAPIKey := os.Getenv("DEEPSEEK_API_KEY")
+	if deepSeekAPIKey == "" {
+		deepSeekAPIKey = "91" // Default API key
+	}
+	aiAgentRepo := aiagent.NewPostgresRepository(conn)
+	aiAgentSvc := aiagent.NewService(aiAgentRepo, deepSeekAPIKey)
+	log.Println("[donfra-api] AI agent service initialized")
+
 	// Start Redis Pub/Sub subscriber for headcount updates (if using Redis)
 	var subCancel context.CancelFunc
 	if redisClient != nil {
@@ -106,7 +116,7 @@ func main() {
 		}()
 	}
 
-	r := router.New(cfg, roomSvc, studySvc, authSvc, userSvc, googleSvc, interviewSvc, livekitSvc)
+	r := router.New(cfg, roomSvc, studySvc, authSvc, userSvc, googleSvc, interviewSvc, livekitSvc, aiAgentSvc)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,

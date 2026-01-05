@@ -221,7 +221,6 @@ wss.on('connection', (conn, req) => {
 
             // Handle custom execution messages - don't pass to y-websocket
             if (data.type === 'execute') {
-              console.log(`[${new Date().toISOString()}] 🚀 Code execution request in room ${docName}`)
               try {
                 const result = await executeCode({
                   source_code: data.source_code,

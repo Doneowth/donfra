@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"context"
+	"net/http"
 
+	"donfra-api/internal/domain/aiagent"
 	"donfra-api/internal/domain/auth"
 	"donfra-api/internal/domain/google"
 	"donfra-api/internal/domain/interview"
@@ -82,6 +84,14 @@ type LiveKitService interface {
 	EndSession(ctx context.Context, sessionID string) (*livekit.EndSessionResponse, error)
 }
 
+// AIAgentService defines the interface for AI code analysis operations.
+type AIAgentService interface {
+	AnalyzeCode(ctx context.Context, userID int, codeContent, question string) (*aiagent.AIResponse, error)
+	Chat(ctx context.Context, userID int, codeContent, question string, history []aiagent.DeepSeekMessage) (*aiagent.AIResponse, error)
+	ChatStream(ctx context.Context, codeContent, question string, history []aiagent.DeepSeekMessage) (*http.Response, error)
+	GetConversationHistory(ctx context.Context, userID int, limit int) ([]*aiagent.AIConversation, error)
+}
+
 // Handlers holds all service dependencies for HTTP handlers.
 type Handlers struct {
 	roomSvc      RoomService
@@ -91,10 +101,11 @@ type Handlers struct {
 	googleSvc    GoogleService
 	interviewSvc InterviewService
 	livekitSvc   LiveKitService
+	aiAgentSvc   AIAgentService
 }
 
 // New creates a new Handlers instance with the given services.
-func New(roomSvc RoomService, studySvc StudyService, authSvc AuthService, userSvc UserService, googleSvc GoogleService, interviewSvc InterviewService, livekitSvc LiveKitService) *Handlers {
+func New(roomSvc RoomService, studySvc StudyService, authSvc AuthService, userSvc UserService, googleSvc GoogleService, interviewSvc InterviewService, livekitSvc LiveKitService, aiAgentSvc AIAgentService) *Handlers {
 	return &Handlers{
 		roomSvc:      roomSvc,
 		studySvc:     studySvc,
@@ -103,5 +114,6 @@ func New(roomSvc RoomService, studySvc StudyService, authSvc AuthService, userSv
 		googleSvc:    googleSvc,
 		interviewSvc: interviewSvc,
 		livekitSvc:   livekitSvc,
+		aiAgentSvc:   aiAgentSvc,
 	}
 }

@@ -167,4 +167,101 @@ export const api = {
     end: (sessionId: string) =>
       postJSON<{ session_id: string; ended_at: string; message: string }>("/live/end", { session_id: sessionId }),
   },
+  ai: {
+    analyze: (codeContent: string, question?: string) =>
+      postJSON<{ response: string; model: string; conversation_id?: number }>("/ai/analyze", { code_content: codeContent, question: question || "" }),
+    chat: (codeContent: string | undefined, question: string, history: Array<{ role: string; content: string }>) =>
+      postJSON<{ response: string; model: string }>("/ai/chat", {
+        code_content: codeContent,
+        question,
+        history
+      }),
+    chatStream: async (
+      codeContent: string | undefined,
+      question: string,
+      history: Array<{ role: string; content: string }>,
+      onChunk: (chunk: string) => void,
+      onError?: (error: string) => void
+    ) => {
+      // Use direct backend URL to bypass Next.js proxy buffering for SSE
+      const streamUrl = typeof window !== 'undefined' && process.env.NODE_ENV === 'development'
+        ? 'http://localhost:8080/api/ai/chat/stream'
+        : `${API_BASE}/ai/chat/stream`;
+
+      const response = await fetch(streamUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          code_content: codeContent,
+          question,
+          history,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(errorData.error || `HTTP error ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error("No response body");
+      }
+
+      let buffer = "";
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          // Decode chunk and add to buffer
+          const decoded = decoder.decode(value, { stream: true });
+          buffer += decoded;
+
+          // Process complete lines from buffer
+          const lines = buffer.split("\n");
+          // Keep the last incomplete line in buffer
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+
+            if (line.startsWith("data: ")) {
+              const content = line.slice(6); // Remove "data: " prefix
+              if (content && content !== "[DONE]") {
+                onChunk(content);
+              }
+            } else if (line.startsWith("event: error")) {
+              // Error event
+              onError?.("Stream error occurred");
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    },
+    getConversations: (limit?: number) => {
+      const params = new URLSearchParams();
+      if (limit !== undefined) params.append("limit", limit.toString());
+      const query = params.toString();
+      return getJSON<{
+        conversations: Array<{
+          id: number;
+          user_id: number;
+          code_content: string;
+          question: string;
+          response: string;
+          model: string;
+          created_at: string;
+        }>;
+        count: number;
+      }>(`/ai/conversations${query ? `?${query}` : ""}`);
+    },
+  },
 };

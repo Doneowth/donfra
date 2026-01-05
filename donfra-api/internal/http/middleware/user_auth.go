@@ -94,3 +94,26 @@ func RequireRole(requiredRole string) func(http.Handler) http.Handler {
 		})
 	}
 }
+
+// RequireVIPOrAdmin is a middleware that requires the user to be VIP or admin.
+// Must be used after RequireAuth middleware.
+func RequireVIPOrAdmin() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Get role from context (set by RequireAuth)
+			role, ok := r.Context().Value("user_role").(string)
+			if !ok {
+				httputil.WriteError(w, http.StatusUnauthorized, "authentication required")
+				return
+			}
+
+			// Check if user is VIP or admin
+			if role != "vip" && role != "admin" {
+				httputil.WriteError(w, http.StatusForbidden, "VIP or admin access required")
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}

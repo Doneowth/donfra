@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/cors"
 
 	"donfra-api/internal/config"
+	"donfra-api/internal/domain/aiagent"
 	"donfra-api/internal/domain/auth"
 	"donfra-api/internal/domain/google"
 	"donfra-api/internal/domain/interview"
@@ -18,7 +19,7 @@ import (
 	"donfra-api/internal/http/middleware"
 )
 
-func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, authSvc *auth.AuthService, userSvc *user.Service, googleSvc *google.GoogleOAuthService, interviewSvc interview.Service, livekitSvc *livekit.Service) http.Handler {
+func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, authSvc *auth.AuthService, userSvc *user.Service, googleSvc *google.GoogleOAuthService, interviewSvc interview.Service, livekitSvc *livekit.Service, aiAgentSvc *aiagent.Service) http.Handler {
 	root := chi.NewRouter()
 
 	// Tracing middleware (must be first to capture all requests)
@@ -39,7 +40,7 @@ func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, auth
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	h := handlers.New(roomSvc, studySvc, authSvc, userSvc, googleSvc, interviewSvc, livekitSvc)
+	h := handlers.New(roomSvc, studySvc, authSvc, userSvc, googleSvc, interviewSvc, livekitSvc, aiAgentSvc)
 	v1 := chi.NewRouter()
 
 	// ===== User Authentication Routes (Public) =====
@@ -95,6 +96,13 @@ func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, auth
 	v1.With(middleware.RequireAdminUser(authSvc, userSvc)).Post("/live/end", h.EndLiveSession)
 	// Public: anyone can join with session ID
 	v1.Post("/live/join", h.JoinLiveSession)
+
+	// ===== AI Agent Routes =====
+	// VIP and Admin only: code analysis and conversation history
+	v1.With(middleware.RequireAuth(userSvc), middleware.RequireVIPOrAdmin()).Post("/ai/analyze", h.AIAnalyzeCode)
+	v1.With(middleware.RequireAuth(userSvc), middleware.RequireVIPOrAdmin()).Post("/ai/chat", h.AIChat)
+	v1.With(middleware.RequireAuth(userSvc), middleware.RequireVIPOrAdmin()).Post("/ai/chat/stream", h.AIChatStream)
+	v1.With(middleware.RequireAuth(userSvc), middleware.RequireVIPOrAdmin()).Get("/ai/conversations", h.AIGetConversations)
 
 	root.Mount("/api/v1", v1)
 	root.Mount("/api", v1)
