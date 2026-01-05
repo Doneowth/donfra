@@ -50,8 +50,17 @@
     - [ ]  re-join room
         - [ ]  with correct code content left
     - [ ]  share room link
-    - [ ]  headcount can not exceed limit (?)
+    - [ ]  headcount can not exceed limit?
     - [ ]  admin quit room → close room for others
+- [ ]  /coding API
+    - [ ]  join room with token
+        - [ ]  display correct username
+        - [ ]  if headcount == limit, should not join room
+    - [ ]  join room with invite token in link
+    - [ ]  see other users and view code if any
+    - [ ]  run code
+    - [ ]  clear output
+    - [ ]  quit
 - [ ]  Live: https://donfra.dev/live
     - [ ]  admin
         - [ ]  create live session with title and name
@@ -59,5 +68,5 @@
         - [ ]  join session with id and name
     - [ ]  microphone, camera, chat, share screen
     - [ ]  end live
-- [ ]  Admin dashboard: https://donfra.dev/admin-dashboard (?)
+- [ ]  Admin dashboard: https://donfra.dev/admin-dashboard ?
     - [ ]  refresh status
