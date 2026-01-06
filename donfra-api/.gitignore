@@ -23,6 +23,7 @@ coverage.out
 # Env/config
 .env
 .env.local
+.env.production
 .DS_Store
 
 # Dev report
