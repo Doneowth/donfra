@@ -273,10 +273,6 @@ db-reset:
 	@docker exec -i donfra-db psql -U donfra -d donfra_study < infra/db/002_create_interview_rooms.sql
 	@echo "✅ Interview rooms table loaded!"
 	@echo ""
-	@echo "📥 Loading ai-agent table..."
-	@docker exec -i donfra-db psql -U donfra -d donfra_study < infra/db/003_create_ai_conversations_table.sql
-	@echo "✅ ai_conversations table loaded!"
-	@echo ""
 	@echo "📚 Adding 20 test lessons..."
 	@docker exec -i donfra-db psql -U donfra -d donfra_study < infra/db/999_add_test_lessons.sql
 	@echo "✅ Test lessons loaded!"
