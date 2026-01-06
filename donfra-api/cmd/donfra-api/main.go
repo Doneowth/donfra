@@ -99,8 +99,7 @@ func main() {
 	if deepSeekAPIKey == "" {
 		deepSeekAPIKey = "91" // Default API key
 	}
-	aiAgentRepo := aiagent.NewPostgresRepository(conn)
-	aiAgentSvc := aiagent.NewService(aiAgentRepo, deepSeekAPIKey)
+	aiAgentSvc := aiagent.NewService(deepSeekAPIKey)
 	log.Println("[donfra-api] AI agent service initialized")
 
 	// Start Redis Pub/Sub subscriber for headcount updates (if using Redis)

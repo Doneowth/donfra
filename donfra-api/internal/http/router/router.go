@@ -64,8 +64,6 @@ func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, auth
 	v1.Post("/room/init", h.RoomInit)
 	v1.Get("/room/status", h.RoomStatus)
 	v1.Post("/room/join", h.RoomJoin)
-	// Removed: /room/update-people - now using Redis Pub/Sub for headcount updates
-	// Removed: /room/run - code execution now via WebSocket in donfra-ws
 	// Admin only: close room (supports both admin token and admin user JWT)
 	v1.With(middleware.RequireAdminUser(authSvc, userSvc)).Post("/room/close", h.RoomClose)
 
@@ -79,9 +77,6 @@ func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, auth
 	v1.With(middleware.RequireAdminUser(authSvc, userSvc)).Post("/lessons", h.CreateLessonHandler)
 	v1.With(middleware.RequireAdminUser(authSvc, userSvc)).Patch("/lessons/{slug}", h.UpdateLessonHandler)
 	v1.With(middleware.RequireAdminUser(authSvc, userSvc)).Delete("/lessons/{slug}", h.DeleteLessonHandler)
-
-	// ===== Code Execution Routes =====
-	// Removed: /code/execute - code execution now via WebSocket in donfra-ws (see CodePad.tsx)
 
 	// ===== Interview Room Routes =====
 	// Authenticated users can create/join/close interview rooms
@@ -98,11 +93,10 @@ func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, auth
 	v1.Post("/live/join", h.JoinLiveSession)
 
 	// ===== AI Agent Routes =====
-	// VIP and Admin only: code analysis and conversation history
+	// VIP and Admin only: AI-powered code analysis and chat
 	v1.With(middleware.RequireAuth(userSvc), middleware.RequireVIPOrAdmin()).Post("/ai/analyze", h.AIAnalyzeCode)
 	v1.With(middleware.RequireAuth(userSvc), middleware.RequireVIPOrAdmin()).Post("/ai/chat", h.AIChat)
 	v1.With(middleware.RequireAuth(userSvc), middleware.RequireVIPOrAdmin()).Post("/ai/chat/stream", h.AIChatStream)
-	v1.With(middleware.RequireAuth(userSvc), middleware.RequireVIPOrAdmin()).Get("/ai/conversations", h.AIGetConversations)
 
 	root.Mount("/api/v1", v1)
 	root.Mount("/api", v1)

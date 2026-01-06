@@ -27,24 +27,83 @@
   font-size: 18px;
 }
 
-.btn-analyze {
+.btn-clear {
   padding: 6px 12px;
-  background: #0e639c;
-  color: #fff;
-  border: none;
+  background: #3c3c3c;
+  color: #d4d4d4;
+  border: 1px solid #555;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.btn-clear:hover {
+  background: #505050;
+  border-color: #666;
+}
+
+/* Preset question buttons */
+.preset-label {
+  margin: 16px 0 8px 0;
   font-size: 13px;
-  transition: background 0.2s;
+  font-weight: 600;
+  color: #b8b8b8;
 }
 
-.btn-analyze:hover:not(:disabled) {
-  background: #1177bb;
+.preset-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-.btn-analyze:disabled {
+.preset-btn {
+  padding: 10px 16px;
+  background: #2d2d30;
+  color: #d4d4d4;
+  border: 1px solid #3c3c3c;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.preset-btn:hover:not(:disabled) {
+  background: #3c3c3c;
+  border-color: #0e639c;
+  transform: translateX(4px);
+}
+
+.preset-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.ai-welcome {
+  font-size: 16px;
+  font-weight: 600;
+  color: #d4d4d4;
+  margin-bottom: 8px;
+}
+
+.ai-subtitle {
+  font-size: 13px;
+  color: #b8b8b8;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.ai-hint {
+  font-size: 13px;
+  color: #858585;
+  margin-top: 16px;
+  font-style: italic;
 }
 
 .ai-chat-messages {
@@ -135,19 +194,19 @@
   border-bottom-left-radius: 2px;
 }
 
-.ai-message.loading .message-content {
-  opacity: 0.7;
+/* Typing indicator for streaming responses */
+.typing-indicator {
+  display: inline-block;
+  color: #858585;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: 2px;
+  animation: pulse 1.4s infinite;
 }
 
-.loading-dots::after {
-  content: '...';
-  animation: dots 1.5s steps(4, end) infinite;
-}
-
-@keyframes dots {
-  0%, 20% { content: '.'; }
-  40% { content: '..'; }
-  60%, 100% { content: '...'; }
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
 }
 
 /* Markdown styles in assistant messages */

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"donfra-api/internal/domain/aiagent"
@@ -31,9 +30,6 @@ type ChatRequest struct {
 // AIChat handles POST /api/ai/chat
 // Requires authentication and VIP/admin access (enforced by middleware)
 func (h *Handlers) AIChat(w http.ResponseWriter, r *http.Request) {
-	// Get user ID from context (set by RequireAuth middleware)
-	userID := r.Context().Value("user_id").(uint)
-
 	// Parse request
 	var req ChatRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -56,7 +52,7 @@ func (h *Handlers) AIChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Call AI service with conversation history
-	resp, err := h.aiAgentSvc.Chat(r.Context(), int(userID), req.CodeContent, req.Question, history)
+	resp, err := h.aiAgentSvc.Chat(r.Context(), req.CodeContent, req.Question, history)
 	if err != nil {
 		httputil.WriteError(w, http.StatusInternalServerError, fmt.Sprintf("AI chat failed: %v", err))
 		return
@@ -165,9 +161,6 @@ func (h *Handlers) AIChatStream(w http.ResponseWriter, r *http.Request) {
 // AIAnalyzeCode handles POST /api/ai/analyze
 // Requires authentication and VIP/admin access (enforced by middleware)
 func (h *Handlers) AIAnalyzeCode(w http.ResponseWriter, r *http.Request) {
-	// Get user ID from context (set by RequireAuth middleware)
-	userID := r.Context().Value("user_id").(uint)
-
 	// Parse request
 	var req AnalyzeCodeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -181,38 +174,11 @@ func (h *Handlers) AIAnalyzeCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Call AI service
-	resp, err := h.aiAgentSvc.AnalyzeCode(r.Context(), int(userID), req.CodeContent, req.Question)
+	resp, err := h.aiAgentSvc.AnalyzeCode(r.Context(), req.CodeContent, req.Question)
 	if err != nil {
 		httputil.WriteError(w, http.StatusInternalServerError, fmt.Sprintf("AI analysis failed: %v", err))
 		return
 	}
 
 	httputil.WriteJSON(w, http.StatusOK, resp)
-}
-
-// AIGetConversations handles GET /api/ai/conversations
-// Requires authentication and VIP/admin access (enforced by middleware)
-func (h *Handlers) AIGetConversations(w http.ResponseWriter, r *http.Request) {
-	// Get user ID from context (set by RequireAuth middleware)
-	userID := r.Context().Value("user_id").(uint)
-
-	// Parse limit query parameter
-	limit := 10
-	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
-		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
-			limit = parsedLimit
-		}
-	}
-
-	// Get conversation history
-	conversations, err := h.aiAgentSvc.GetConversationHistory(r.Context(), int(userID), limit)
-	if err != nil {
-		httputil.WriteError(w, http.StatusInternalServerError, fmt.Sprintf("failed to get conversations: %v", err))
-		return
-	}
-
-	httputil.WriteJSON(w, http.StatusOK, map[string]interface{}{
-		"conversations": conversations,
-		"count":         len(conversations),
-	})
 }

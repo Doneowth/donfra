@@ -17,8 +17,17 @@ const (
 	// DeepSeekModelCheap is the most economical model
 	DeepSeekModelCheap = "deepseek-chat"
 
-	// LowestTemperature for most coding math analysis
-	LowestTemperature = 0.0
+	// CodeAnalysisTemperature balances accuracy with natural responses (0.3-0.5 recommended for code)
+	// See: https://api-docs.deepseek.com/quick_start/parameter_settings
+	CodeAnalysisTemperature = 0.4
+
+	// MaxTokensQuick for brief responses (code explanations, quick answers)
+	MaxTokensQuick = 2000
+
+	// MaxTokensDetailed for comprehensive analysis (streaming, detailed reviews)
+	// DeepSeek recommends max 8192 for optimal quality
+	// See: https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-deepseek.html
+	MaxTokensDetailed = 8192
 )
 
 // DeepSeekClient handles communication with DeepSeek API
@@ -36,8 +45,8 @@ func NewDeepSeekClient(apiKey string) *DeepSeekClient {
 		httpClient: &http.Client{
 			Timeout: 60 * time.Second, // Increased to 60s for slower networks
 		},
-		model:      DeepSeekModelCheap,
-		temperature: LowestTemperature,
+		model:       DeepSeekModelCheap,
+		temperature: CodeAnalysisTemperature,
 	}
 }
 
@@ -46,7 +55,7 @@ func (c *DeepSeekClient) AnalyzeCode(ctx context.Context, code, question string)
 	messages := []DeepSeekMessage{
 		{
 			Role:    "system",
-			Content: "You are Donfra, a helpful and friendly code analysis assistant. Analyze the provided code and give constructive suggestions for improvement. Focus on code quality, best practices, potential bugs, and performance optimizations. Always format your responses in clean, readable Markdown with proper code blocks, headings, and lists. Add sexual innuendos where appropriate to keep the tone light and engaging.",
+			Content: "You are Donfra, an expert coding interview coach. Your goal is to help candidates improve their interview performance.\n\nWhen analyzing code:\n1. **Correctness**: Does it solve the problem? Any bugs or edge cases?\n2. **Time Complexity**: Big O analysis with clear explanation\n3. **Space Complexity**: Memory usage analysis\n4. **Code Quality**: Readability, naming, structure\n5. **Optimization**: Suggest better approaches if applicable\n6. **Interview Tips**: What would impress an interviewer?\n\nBe constructive but honest. Format responses in clean Markdown with code blocks and clear headings.",
 		},
 	}
 
@@ -65,7 +74,7 @@ func (c *DeepSeekClient) AnalyzeCode(ctx context.Context, code, question string)
 		Model:       c.model,
 		Messages:    messages,
 		Temperature: c.temperature,
-		MaxTokens:   300, // Reduced for faster responses - good for quick code explanations
+		MaxTokens:   MaxTokensQuick, // Good balance for code analysis
 	}
 
 	return c.sendRequest(ctx, request)
@@ -78,7 +87,7 @@ func (c *DeepSeekClient) Chat(ctx context.Context, codeContent, question string,
 	messages := []DeepSeekMessage{
 		{
 			Role:    "system",
-			Content: "You are Donfra, a helpful and friendly code analysis assistant. Answer questions about code clearly and concisely in 2-3 sentences. Keep responses brief and focused.",
+			Content: "You are Donfra, an expert coding interview coach. When answering questions:\n\n**For code review questions**: Analyze correctness, complexity (time/space), edge cases, and optimization opportunities.\n\n**For concept questions**: Explain clearly with examples. Relate to interview scenarios when relevant.\n\n**For debugging help**: Guide the candidate to find the issue (like an interviewer would), don't just give the answer.\n\n**For optimization questions**: Suggest better approaches and explain trade-offs.\n\nKeep responses concise but thorough. Use Markdown formatting for readability.",
 		},
 	}
 
@@ -104,7 +113,7 @@ func (c *DeepSeekClient) Chat(ctx context.Context, codeContent, question string,
 		Model:       c.model,
 		Messages:    messages,
 		Temperature: c.temperature,
-		MaxTokens:   300, // Reduced for faster responses - good for quick code explanations
+		MaxTokens:   MaxTokensQuick, // Good balance for conversational responses
 	}
 
 	return c.sendRequest(ctx, request)
@@ -115,7 +124,7 @@ func (c *DeepSeekClient) ChatStream(ctx context.Context, codeContent, question s
 	messages := []DeepSeekMessage{
 		{
 			Role:    "system",
-			Content: "You are Donfra, a helpful and friendly code analysis assistant. Answer questions about code clearly and concisely. Always format your responses in clean, readable Markdown with proper code blocks, headings, and lists.",
+			Content: "You are Donfra, an expert coding interview coach. When answering questions:\n\n**For code review questions**: Analyze correctness, complexity (time/space), edge cases, and optimization opportunities.\n\n**For concept questions**: Explain clearly with examples. Relate to interview scenarios when relevant.\n\n**For debugging help**: Guide the candidate to find the issue (like an interviewer would), don't just give the answer.\n\n**For optimization questions**: Suggest better approaches and explain trade-offs.\n\nFormat responses in clean Markdown with code blocks and clear headings.",
 		},
 	}
 
@@ -139,7 +148,7 @@ func (c *DeepSeekClient) ChatStream(ctx context.Context, codeContent, question s
 		Model:       c.model,
 		Messages:    messages,
 		Temperature: c.temperature,
-		MaxTokens:   1000,
+		MaxTokens:   MaxTokensDetailed, // Max 8192 recommended by DeepSeek for quality
 		Stream:      true,
 	}
 

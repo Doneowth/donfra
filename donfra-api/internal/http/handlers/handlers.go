@@ -86,10 +86,9 @@ type LiveKitService interface {
 
 // AIAgentService defines the interface for AI code analysis operations.
 type AIAgentService interface {
-	AnalyzeCode(ctx context.Context, userID int, codeContent, question string) (*aiagent.AIResponse, error)
-	Chat(ctx context.Context, userID int, codeContent, question string, history []aiagent.DeepSeekMessage) (*aiagent.AIResponse, error)
+	AnalyzeCode(ctx context.Context, codeContent, question string) (*aiagent.AIResponse, error)
+	Chat(ctx context.Context, codeContent, question string, history []aiagent.DeepSeekMessage) (*aiagent.AIResponse, error)
 	ChatStream(ctx context.Context, codeContent, question string, history []aiagent.DeepSeekMessage) (*http.Response, error)
-	GetConversationHistory(ctx context.Context, userID int, limit int) ([]*aiagent.AIConversation, error)
 }
 
 // Handlers holds all service dependencies for HTTP handlers.

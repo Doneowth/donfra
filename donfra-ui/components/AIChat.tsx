@@ -16,12 +16,20 @@ interface AIChatProps {
   userRole?: string;
 }
 
+// Preset questions for quick start
+const PRESET_QUESTIONS = [
+  "💡 Analyze time/space complexity",
+  "🐛 Find potential bugs",
+  "🚀 Suggest optimizations",
+  "📝 Explain the logic",
+  "🎯 Review for interview",
+];
+
 export default function AIChat({ codeContent, userRole }: AIChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [codeAnalyzed, setCodeAnalyzed] = useState(false); // Track if code has been sent
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const isVipOrAdmin = userRole === "vip" || userRole === "admin";
@@ -34,9 +42,11 @@ export default function AIChat({ codeContent, userRole }: AIChatProps) {
     scrollToBottom();
   }, [messages]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, presetQuestion?: string) => {
     e.preventDefault();
-    if (!question.trim()) {
+    const userQuestion = presetQuestion || question.trim();
+
+    if (!userQuestion) {
       setError("Please enter a question");
       return;
     }
@@ -52,90 +62,85 @@ export default function AIChat({ codeContent, userRole }: AIChatProps) {
     // Add user message immediately
     const userMessage: Message = {
       role: "user",
-      content: question,
+      content: userQuestion,
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, userMessage]);
     setQuestion("");
 
+    // Add placeholder assistant message for streaming
+    const assistantMessageIndex = messages.length + 1;
+    setMessages((prev) => [
+      ...prev,
+      { role: "assistant", content: "", timestamp: new Date() },
+    ]);
+
     try {
       // Build conversation history for context
-      const conversationHistory = messages.map(msg => ({
+      const conversationHistory = messages.map((msg) => ({
         role: msg.role,
-        content: msg.content
+        content: msg.content,
       }));
 
-      // Only send code on first message or if not analyzed yet
-      const shouldSendCode = !codeAnalyzed && codeContent.trim();
+      // Smart code sending logic:
+      // - Always send code on first message
+      // - Send code if question explicitly mentions code/analysis/review
+      const isFirstMessage = messages.length === 0;
+      const mentionsCode =
+        userQuestion.toLowerCase().includes("code") ||
+        userQuestion.toLowerCase().includes("analyze") ||
+        userQuestion.toLowerCase().includes("review") ||
+        userQuestion.toLowerCase().includes("complexity") ||
+        userQuestion.toLowerCase().includes("bug") ||
+        userQuestion.toLowerCase().includes("optim");
 
-      // Use non-streaming API
-      const response = await api.ai.chat(
+      const shouldSendCode = (isFirstMessage || mentionsCode) && codeContent.trim();
+
+      let fullResponse = "";
+
+      // Use streaming API for better UX
+      await api.ai.chatStream(
         shouldSendCode ? codeContent : undefined,
-        question,
-        conversationHistory
+        userQuestion,
+        conversationHistory,
+        (chunk) => {
+          // Update the placeholder message with streaming content
+          fullResponse += chunk;
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[assistantMessageIndex] = {
+              role: "assistant",
+              content: fullResponse,
+              timestamp: new Date(),
+            };
+            return updated;
+          });
+        },
+        (errorMsg) => {
+          setError(errorMsg);
+          // Remove placeholder message on error
+          setMessages((prev) => prev.slice(0, -1));
+        }
       );
-
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: response.response,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-
-      if (shouldSendCode) {
-        setCodeAnalyzed(true);
-      }
 
       setLoading(false);
     } catch (err: any) {
       setError(err.message || "Failed to get AI response");
-      // Remove the user message if request failed
-      setMessages((prev) => prev.slice(0, -1));
+      // Remove user message and placeholder on error
+      setMessages((prev) => prev.slice(0, -2));
       setQuestion(userMessage.content); // Restore the question
       setLoading(false);
     }
   };
 
-  const handleAnalyzeCode = async () => {
+  const handlePresetQuestion = (preset: string) => {
     if (!codeContent.trim()) {
-      setError("No code to analyze");
+      setError("Write some code first!");
       return;
     }
-
-    if (!isVipOrAdmin) {
-      setError("VIP or admin access required");
-      return;
-    }
-
-    setError("");
-    setLoading(true);
-
-    // Add user message
-    const userMessage: Message = {
-      role: "user",
-      content: "Please analyze this code and provide suggestions.",
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
-
-    try {
-      const response = await api.ai.analyze(codeContent);
-
-      // Mark code as analyzed
-      setCodeAnalyzed(true);
-
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: response.response,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch (err: any) {
-      setError(err.message || "Failed to analyze code");
-      setMessages((prev) => prev.slice(0, -1));
-    } finally {
-      setLoading(false);
-    }
+    // Extract just the text after emoji
+    const questionText = preset.split(" ").slice(1).join(" ");
+    handleSubmit(new Event("submit") as any, questionText);
   };
 
   if (!isVipOrAdmin) {
@@ -158,21 +163,48 @@ export default function AIChat({ codeContent, userRole }: AIChatProps) {
           <span className="ai-icon">🤖</span>
           <span>Donfra AI</span>
         </div>
-        <button
-          className="btn-analyze"
-          onClick={handleAnalyzeCode}
-          disabled={loading || !codeContent.trim()}
-          title="Analyze current code"
-        >
-          Analyze Code
-        </button>
+        {messages.length > 0 && (
+          <button
+            className="btn-clear"
+            onClick={() => setMessages([])}
+            title="Clear conversation"
+          >
+            Clear
+          </button>
+        )}
       </div>
 
       <div className="ai-chat-messages">
         {messages.length === 0 && (
           <div className="ai-empty-state">
-            <p>👋 Hi! I'm Donfra, your AI code assistant.</p>
-            <p>Ask me questions about your code or click "Analyze Code" for suggestions.</p>
+            <p className="ai-welcome">
+              👋 Hi! I'm Donfra, your AI code interview coach.
+            </p>
+            <p className="ai-subtitle">
+              I can help you practice mock interviews, analyze your solutions, and improve your coding skills.
+            </p>
+
+            {codeContent.trim() ? (
+              <>
+                <p className="preset-label">Quick actions:</p>
+                <div className="preset-questions">
+                  {PRESET_QUESTIONS.map((preset) => (
+                    <button
+                      key={preset}
+                      className="preset-btn"
+                      onClick={() => handlePresetQuestion(preset)}
+                      disabled={loading}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="ai-hint">
+                💡 Write some code in the editor, then ask me anything!
+              </p>
+            )}
           </div>
         )}
 
@@ -188,42 +220,35 @@ export default function AIChat({ codeContent, userRole }: AIChatProps) {
             </div>
             <div className="message-content">
               {msg.role === "assistant" ? (
-                <ReactMarkdown
-                  components={{
-                    code: ({ node, inline, className, children, ...props }: any) => {
-                      return !inline ? (
-                        <pre className="code-block">
-                          <code className={className} {...props}>
+                msg.content ? (
+                  <ReactMarkdown
+                    components={{
+                      code: ({ node, inline, className, children, ...props }: any) => {
+                        return !inline ? (
+                          <pre className="code-block">
+                            <code className={className} {...props}>
+                              {children}
+                            </code>
+                          </pre>
+                        ) : (
+                          <code className="inline-code" {...props}>
                             {children}
                           </code>
-                        </pre>
-                      ) : (
-                        <code className="inline-code" {...props}>
-                          {children}
-                        </code>
-                      );
-                    },
-                  }}
-                >
-                  {msg.content}
-                </ReactMarkdown>
+                        );
+                      },
+                    }}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
+                ) : (
+                  <span className="typing-indicator">●●●</span>
+                )
               ) : (
                 msg.content
               )}
             </div>
           </div>
         ))}
-
-        {loading && (
-          <div className="ai-message assistant loading">
-            <div className="message-header">
-              <span className="message-role">Donfra</span>
-            </div>
-            <div className="message-content">
-              <span className="loading-dots">Thinking...</span>
-            </div>
-          </div>
-        )}
 
         <div ref={messagesEndRef} />
       </div>
@@ -236,7 +261,11 @@ export default function AIChat({ codeContent, userRole }: AIChatProps) {
             className="ai-input"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Ask a question about your code..."
+            placeholder={
+              codeContent.trim()
+                ? "Ask about your code..."
+                : "Write code first, then ask me anything!"
+            }
             disabled={loading}
           />
           <button
@@ -244,7 +273,7 @@ export default function AIChat({ codeContent, userRole }: AIChatProps) {
             className="btn-send"
             disabled={loading || !question.trim()}
           >
-            Send
+            {loading ? "..." : "Send"}
           </button>
         </form>
       </div>

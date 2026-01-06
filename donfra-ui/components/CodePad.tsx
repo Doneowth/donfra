@@ -618,20 +618,29 @@ export default function CodePad({ onExit, roomId }: Props) {
                   className={`tab-button ${activeTab === "terminal" ? "active" : ""}`}
                   onClick={() => setActiveTab("terminal")}
                 >
-                  Terminal
+                  <span className="tab-icon">▶</span>
+                  <span>Terminal</span>
+                  {activeTab === "terminal" && (stdout || stderr) && (
+                    <span className="tab-badge">{(stdout || stderr).split('\n').length}</span>
+                  )}
                 </button>
                 <button
                   className={`tab-button ${activeTab === "ai" ? "active" : ""}`}
                   onClick={() => setActiveTab("ai")}
                 >
-                  AI Agent
+                  <span className="tab-icon">✨</span>
+                  <span>AI Coach</span>
+                  <span className="vip-badge">VIP</span>
                 </button>
               </div>
             ) : (
-              <span>Terminal</span>
+              <div className="header-title">
+                <span className="tab-icon">▶</span>
+                <span>Terminal</span>
+              </div>
             )}
             {activeTab === "terminal" && runMeta && (
-              <span style={{ opacity: .7, marginLeft: 8, fontSize: 12 }}>{runMeta}</span>
+              <span className="run-meta">{runMeta}</span>
             )}
           </div>
           <div className={`terminal-body ${activeTab === "ai" ? "no-padding" : ""}`}>

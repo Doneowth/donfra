@@ -1,23 +1,5 @@
 package aiagent
 
-import "time"
-
-// AIConversation represents a stored conversation between user and AI
-type AIConversation struct {
-	ID          int       `json:"id" gorm:"primaryKey"`
-	UserID      int       `json:"user_id" gorm:"not null"`
-	CodeContent string    `json:"code_content" gorm:"type:text;not null"`
-	Question    string    `json:"question" gorm:"type:text"`
-	Response    string    `json:"response" gorm:"type:text;not null"`
-	Model       string    `json:"model" gorm:"size:50;not null"`
-	CreatedAt   time.Time `json:"created_at" gorm:"not null;autoCreateTime"`
-}
-
-// TableName overrides the default table name
-func (AIConversation) TableName() string {
-	return "ai_conversations"
-}
-
 // AIRequest represents a request to analyze code
 type AIRequest struct {
 	CodeContent string `json:"code_content" binding:"required"`
@@ -26,9 +8,8 @@ type AIRequest struct {
 
 // AIResponse represents the AI's analysis response
 type AIResponse struct {
-	Response      string `json:"response"`
-	Model         string `json:"model"`
-	ConversationID int   `json:"conversation_id,omitempty"`
+	Response string `json:"response"`
+	Model    string `json:"model"`
 }
 
 // DeepSeekRequest represents the request format for DeepSeek API

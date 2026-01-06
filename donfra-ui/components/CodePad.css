@@ -235,8 +235,20 @@
   gap: 0;
 }
 
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  color: #D0B273;
+}
+
 .tab,
 .tab-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 12px 20px;
   background: transparent;
   border: none;
@@ -246,23 +258,92 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border-bottom: 2px solid transparent;
   font-family: inherit;
   outline: none;
 }
 
+.tab-icon {
+  font-size: 14px;
+  opacity: 0.8;
+  transition: transform 0.3s ease;
+}
+
+.tab-button:hover .tab-icon {
+  transform: scale(1.2);
+  opacity: 1;
+}
+
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  background: rgba(169, 142, 100, 0.3);
+  color: #D0B273;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 9px;
+  margin-left: auto;
+}
+
+.vip-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: linear-gradient(135deg, #D0B273 0%, #A98E64 100%);
+  color: #0F1211;
+  font-size: 10px;
+  font-weight: 800;
+  border-radius: 10px;
+  letter-spacing: 0.08em;
+  margin-left: 6px;
+  box-shadow: 0 2px 8px rgba(208, 178, 115, 0.3);
+  animation: vipPulse 2s ease-in-out infinite;
+}
+
+@keyframes vipPulse {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(208, 178, 115, 0.3);
+  }
+  50% {
+    box-shadow: 0 2px 12px rgba(208, 178, 115, 0.6);
+  }
+}
+
+.run-meta {
+  opacity: 0.7;
+  margin-left: auto;
+  margin-right: 16px;
+  font-size: 12px;
+  color: #A98E64;
+}
+
 .tab:hover,
 .tab-button:hover {
-  background: rgba(169, 142, 100, 0.1);
+  background: rgba(169, 142, 100, 0.15);
   color: #D0B273;
+  transform: translateY(-1px);
 }
 
 .tab.active,
 .tab-button.active {
   color: #D0B273;
   border-bottom-color: #D0B273;
-  background: rgba(169, 142, 100, 0.05);
+  background: rgba(169, 142, 100, 0.1);
+  box-shadow: inset 0 -2px 0 0 #D0B273;
+}
+
+.tab-button.active .tab-icon {
+  animation: iconBounce 0.5s ease;
+}
+
+@keyframes iconBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.3); }
 }
 
 .terminal-body {
