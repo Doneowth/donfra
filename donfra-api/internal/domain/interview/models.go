@@ -58,3 +58,13 @@ type CloseRoomResponse struct {
 	RoomID  string `json:"room_id"`
 	Message string `json:"message"`
 }
+
+// RoomStatusResponse is the response for GET /api/interview/rooms/:room_id/status
+type RoomStatusResponse struct {
+	RoomID     string `json:"room_id"`
+	OwnerID    uint   `json:"owner_id"`
+	Headcount  int    `json:"headcount"`
+	InviteLink string `json:"invite_link"`
+	CreatedAt  string `json:"created_at"`
+	UpdatedAt  string `json:"updated_at"`
+}

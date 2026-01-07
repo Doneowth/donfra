@@ -12,7 +12,6 @@ import (
 	"gorm.io/gorm"
 
 	"donfra-api/internal/domain/study"
-	"donfra-api/internal/http/middleware"
 	"donfra-api/internal/pkg/httputil"
 	"donfra-api/internal/pkg/tracing"
 )
@@ -29,30 +28,16 @@ func parsePaginationParam(param string, defaultVal int) int {
 	return val
 }
 
-// isAdminUser checks if the user is admin by checking both:
-// 1. Admin token context (from OptionalAdmin middleware)
-// 2. User role context (from OptionalAuth middleware)
-func isAdminUser(ctx context.Context) bool {
-	// Check admin token first
-	if middleware.IsAdminFromContext(ctx) {
-		return true
-	}
-
-	// Check user role
+// isAdminOrAbove checks if the user has admin or god role
+func isAdminOrAbove(ctx context.Context) bool {
 	role, ok := ctx.Value("user_role").(string)
-	return ok && role == "admin"
+	return ok && (role == "admin" || role == "god")
 }
 
-// isVipUser checks if the user has VIP access (admin or vip role)
-func isVipUser(ctx context.Context) bool {
-	// Admins automatically have VIP access
-	if isAdminUser(ctx) {
-		return true
-	}
-
-	// Check user role
+// isVipOrAbove checks if the user has VIP access (vip, admin, or god role)
+func isVipOrAbove(ctx context.Context) bool {
 	role, ok := ctx.Value("user_role").(string)
-	return ok && role == "vip"
+	return ok && (role == "vip" || role == "admin" || role == "god")
 }
 
 // ListLessonsSummaryHandler handles GET /api/lessons/summary and returns lightweight lesson summaries.
@@ -81,7 +66,7 @@ func (h *Handlers) ListLessonsSummaryHandler(w http.ResponseWriter, r *http.Requ
 
 	// Check admin status
 	_, authSpan := tracing.StartSpan(ctx, "handler.CheckAuth")
-	isAdmin := isAdminUser(ctx)
+	isAdmin := isAdminOrAbove(ctx)
 	authSpan.SetAttributes(tracing.AttrIsAdmin.Bool(isAdmin))
 	authSpan.End()
 
@@ -141,8 +126,8 @@ func (h *Handlers) ListLessonsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Check admin and VIP status
 	_, authSpan := tracing.StartSpan(ctx, "handler.CheckAuth")
-	isAdmin := isAdminUser(ctx)
-	hasVipAccess := isVipUser(ctx)
+	isAdmin := isAdminOrAbove(ctx)
+	hasVipAccess := isVipOrAbove(ctx)
 	authSpan.SetAttributes(
 		tracing.AttrIsAdmin.Bool(isAdmin),
 		attribute.Bool("has_vip_access", hasVipAccess),
@@ -205,8 +190,8 @@ func (h *Handlers) GetLessonBySlugHandler(w http.ResponseWriter, r *http.Request
 
 	// Check admin and VIP status
 	_, authSpan := tracing.StartSpan(ctx, "handler.CheckAccess")
-	isAdmin := isAdminUser(ctx)
-	hasVipAccess := isVipUser(ctx)
+	isAdmin := isAdminOrAbove(ctx)
+	hasVipAccess := isVipOrAbove(ctx)
 	authSpan.SetAttributes(
 		tracing.AttrIsAdmin.Bool(isAdmin),
 		attribute.Bool("has_vip_access", hasVipAccess),

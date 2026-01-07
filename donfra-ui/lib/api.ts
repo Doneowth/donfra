@@ -31,6 +31,7 @@ async function getJSON<T>(path: string): Promise<T> {
 }
 
 export const api = {
+  // DEPRECATED: room APIs - use interview APIs instead
   room: {
     init: (passcode: string, size: number) =>
       postJSON<{ inviteUrl: string; roomId: string; token?: string }>("/room/init", { passcode, size }),
@@ -42,6 +43,31 @@ export const api = {
   // Removed: run.python and code.execute - code execution now via WebSocket in CodePad.tsx
   admin: {
     login: (password: string) => postJSON<{ token: string }>("/admin/login", { password }),
+    users: {
+      list: () => getJSON<{ users: Array<{ id: number; email: string; username: string; role: string; is_active: boolean; created_at: string }> }>("/admin/users"),
+      updateRole: (userId: number, role: string) =>
+        fetch(`${API_BASE}/admin/users/${userId}/role`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ role }),
+        }).then(async (res) => {
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+          return data;
+        }),
+      updateActiveStatus: (userId: number, isActive: boolean) =>
+        fetch(`${API_BASE}/admin/users/${userId}/active`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ is_active: isActive }),
+        }).then(async (res) => {
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+          return data;
+        }),
+    },
   },
   study: {
     list: (page?: number, size?: number) => {
@@ -72,12 +98,11 @@ export const api = {
     },
     get: (slug: string) =>
       getJSON<{ slug: string; title: string; markdown: string; excalidraw: any; videoUrl?: string; codeTemplate?: any; createdAt: string; updatedAt: string; isPublished: boolean; isVip: boolean; author?: string; publishedDate?: string }>(`/lessons/${slug}`),
-    create: (data: { slug: string; title: string; markdown: string; excalidraw: any; videoUrl?: string; codeTemplate?: any; isPublished?: boolean; isVip?: boolean; author?: string; publishedDate?: string }, token: string) =>
+    create: (data: { slug: string; title: string; markdown: string; excalidraw: any; videoUrl?: string; codeTemplate?: any; isPublished?: boolean; isVip?: boolean; author?: string; publishedDate?: string }) =>
       fetch(`${API_BASE}/lessons`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         credentials: "include",
         body: JSON.stringify({
@@ -97,12 +122,11 @@ export const api = {
         if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
         return body;
       }),
-    update: (slug: string, data: { title?: string; markdown?: string; excalidraw?: any; videoUrl?: string; codeTemplate?: any; isPublished?: boolean; isVip?: boolean; author?: string; publishedDate?: string }, token: string) =>
+    update: (slug: string, data: { title?: string; markdown?: string; excalidraw?: any; videoUrl?: string; codeTemplate?: any; isPublished?: boolean; isVip?: boolean; author?: string; publishedDate?: string }) =>
       fetch(`${API_BASE}/lessons/${slug}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         credentials: "include",
         body: JSON.stringify({
@@ -121,12 +145,9 @@ export const api = {
         if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
         return body;
       }),
-    delete: (slug: string, token: string) =>
+    delete: (slug: string) =>
       fetch(`${API_BASE}/lessons/${slug}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         credentials: "include",
       }).then(async (res) => {
         const body = await res.json().catch(() => ({}));
@@ -154,10 +175,16 @@ export const api = {
   interview: {
     init: () =>
       postJSON<{ room_id: string; invite_link: string; message: string }>("/interview/init", {}),
+    join: (inviteToken: string) =>
+      postJSON<{ room_id: string; message: string }>("/interview/join", { invite_token: inviteToken }),
     close: (roomId: string) =>
-      postJSON<{ message: string }>("/interview/close", { room_id: roomId }),
+      postJSON<{ room_id: string; message: string }>("/interview/close", { room_id: roomId }),
     getMyRooms: () =>
       getJSON<{ rooms: Array<{ id: number; room_id: string; owner_id: number; headcount: number; code_snapshot: string; invite_link: string; created_at: string; updated_at: string }> }>("/interview/my-rooms"),
+    getRoomStatus: (roomId: string) =>
+      getJSON<{ room_id: string; owner_id: number; headcount: number; invite_link: string; created_at: string; updated_at: string }>(`/interview/rooms/${roomId}/status`),
+    getAllRooms: () =>
+      getJSON<{ rooms: Array<{ id: number; room_id: string; owner_id: number; headcount: number; code_snapshot: string; invite_link: string; created_at: string; updated_at: string }> }>("/interview/rooms/all"),
   },
   live: {
     create: (title: string, ownerName: string) =>

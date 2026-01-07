@@ -76,7 +76,6 @@ export function clearStorage(): void {
 
 // Common storage keys (prevents typos)
 export const STORAGE_KEYS = {
-  ADMIN_TOKEN: 'admin_token',
   ROOM_ACCESS: 'room_access',
   USER_PREFERENCES: 'user_preferences',
 } as const;

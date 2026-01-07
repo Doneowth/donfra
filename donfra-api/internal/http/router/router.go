@@ -8,18 +8,16 @@ import (
 
 	"donfra-api/internal/config"
 	"donfra-api/internal/domain/aiagent"
-	"donfra-api/internal/domain/auth"
 	"donfra-api/internal/domain/google"
 	"donfra-api/internal/domain/interview"
 	"donfra-api/internal/domain/livekit"
-	"donfra-api/internal/domain/room"
 	"donfra-api/internal/domain/study"
 	"donfra-api/internal/domain/user"
 	"donfra-api/internal/http/handlers"
 	"donfra-api/internal/http/middleware"
 )
 
-func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, authSvc *auth.AuthService, userSvc *user.Service, googleSvc *google.GoogleOAuthService, interviewSvc interview.Service, livekitSvc *livekit.Service, aiAgentSvc *aiagent.Service) http.Handler {
+func New(cfg config.Config, studySvc *study.Service, userSvc *user.Service, googleSvc *google.GoogleOAuthService, interviewSvc interview.Service, livekitSvc *livekit.Service, aiAgentSvc *aiagent.Service) http.Handler {
 	root := chi.NewRouter()
 
 	// Tracing middleware (must be first to capture all requests)
@@ -40,7 +38,7 @@ func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, auth
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	h := handlers.New(roomSvc, studySvc, authSvc, userSvc, googleSvc, interviewSvc, livekitSvc, aiAgentSvc)
+	h := handlers.New(studySvc, userSvc, googleSvc, interviewSvc, livekitSvc, aiAgentSvc)
 	v1 := chi.NewRouter()
 
 	// ===== User Authentication Routes (Public) =====
@@ -57,15 +55,17 @@ func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, auth
 	v1.With(middleware.RequireAuth(userSvc)).Post("/auth/refresh", h.RefreshToken)
 	v1.With(middleware.RequireAuth(userSvc)).Post("/auth/update-password", h.UpdatePassword)
 
-	// ===== Admin Routes =====
-	v1.Post("/admin/login", h.AdminLogin)
+	// ===== Admin Routes (God User Only) =====
+	// God user only: user management (including role changes)
+	v1.With(middleware.RequireAuth(userSvc), middleware.RequireGodUser()).Get("/admin/users", h.ListAllUsersHandler)
+	v1.With(middleware.RequireAuth(userSvc), middleware.RequireGodUser()).Patch("/admin/users/{id}/role", h.UpdateUserRoleHandler)
+	v1.With(middleware.RequireAuth(userSvc), middleware.RequireGodUser()).Patch("/admin/users/{id}/active", h.UpdateUserActiveStatusHandler)
 
-	// ===== Room Routes =====
-	v1.Post("/room/init", h.RoomInit)
-	v1.Get("/room/status", h.RoomStatus)
-	v1.Post("/room/join", h.RoomJoin)
-	// Admin only: close room (supports both admin token and admin user JWT)
-	v1.With(middleware.RequireAdminUser(authSvc, userSvc)).Post("/room/close", h.RoomClose)
+	// ===== Room Routes (DEPRECATED - use /interview/* instead) =====
+	// v1.Post("/room/init", h.RoomInit)
+	// v1.Get("/room/status", h.RoomStatus)
+	// v1.Post("/room/join", h.RoomJoin)
+	// v1.With(middleware.RequireAdminUser(authSvc, userSvc)).Post("/room/close", h.RoomClose)
 
 	// ===== Lesson Routes =====
 	// Public: list published lessons (with optional user auth)
@@ -73,22 +73,24 @@ func New(cfg config.Config, roomSvc *room.Service, studySvc *study.Service, auth
 	v1.With(middleware.OptionalAuth(userSvc)).Get("/lessons", h.ListLessonsHandler)
 	v1.With(middleware.OptionalAuth(userSvc)).Get("/lessons/{slug}", h.GetLessonBySlugHandler)
 
-	// Admin only: CRUD operations (supports both admin token and admin user JWT)
-	v1.With(middleware.RequireAdminUser(authSvc, userSvc)).Post("/lessons", h.CreateLessonHandler)
-	v1.With(middleware.RequireAdminUser(authSvc, userSvc)).Patch("/lessons/{slug}", h.UpdateLessonHandler)
-	v1.With(middleware.RequireAdminUser(authSvc, userSvc)).Delete("/lessons/{slug}", h.DeleteLessonHandler)
+	// Admin or God: CRUD operations for lessons
+	v1.With(middleware.RequireAuth(userSvc), middleware.RequireAdminOrAbove()).Post("/lessons", h.CreateLessonHandler)
+	v1.With(middleware.RequireAuth(userSvc), middleware.RequireAdminOrAbove()).Patch("/lessons/{slug}", h.UpdateLessonHandler)
+	v1.With(middleware.RequireAuth(userSvc), middleware.RequireAdminOrAbove()).Delete("/lessons/{slug}", h.DeleteLessonHandler)
 
 	// ===== Interview Room Routes =====
-	// Authenticated users can create/join/close interview rooms
-	v1.With(middleware.RequireAuth(userSvc)).Post("/interview/init", h.InitInterviewRoomHandler)
+	// Admin or above: create interview rooms
+	v1.With(middleware.RequireAuth(userSvc), middleware.RequireAdminOrAbove()).Post("/interview/init", h.InitInterviewRoomHandler)
 	v1.Post("/interview/join", h.JoinInterviewRoomHandler) // Public: anyone with invite token can join
-	v1.With(middleware.RequireAuth(userSvc)).Post("/interview/close", h.CloseInterviewRoomHandler)
+	v1.With(middleware.RequireAuth(userSvc), middleware.RequireAdminOrAbove()).Post("/interview/close", h.CloseInterviewRoomHandler)
 	v1.With(middleware.RequireAuth(userSvc)).Get("/interview/my-rooms", h.GetMyRoomsHandler)
+	v1.Get("/interview/rooms/{room_id}/status", h.GetRoomStatusHandler) // Public: get room status by room_id
+	v1.With(middleware.RequireAuth(userSvc), middleware.RequireAdminOrAbove()).Get("/interview/rooms/all", h.GetAllRoomsHandler) // Admin or God: get all rooms
 
 	// ===== LiveKit Live Streaming Routes =====
-	// Admin only: create and end sessions
-	v1.With(middleware.RequireAdminUser(authSvc, userSvc)).Post("/live/create", h.CreateLiveSession)
-	v1.With(middleware.RequireAdminUser(authSvc, userSvc)).Post("/live/end", h.EndLiveSession)
+	// Admin or God: create and end sessions
+	v1.With(middleware.RequireAuth(userSvc), middleware.RequireAdminOrAbove()).Post("/live/create", h.CreateLiveSession)
+	v1.With(middleware.RequireAuth(userSvc), middleware.RequireAdminOrAbove()).Post("/live/end", h.EndLiveSession)
 	// Public: anyone can join with session ID
 	v1.Post("/live/join", h.JoinLiveSession)
 

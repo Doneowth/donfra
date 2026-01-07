@@ -3,7 +3,10 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 
 	"donfra-api/internal/domain/user"
 	"donfra-api/internal/pkg/httputil"
@@ -290,4 +293,110 @@ func (h *Handlers) GoogleCallback(w http.ResponseWriter, r *http.Request) {
 	// Redirect to frontend homepage after successful login
 	redirectURL := h.googleSvc.GetFrontendURL()
 	http.Redirect(w, r, redirectURL, http.StatusFound)
+}
+
+// ListAllUsersHandler handles GET /api/admin/users
+// Returns all users (admin only)
+func (h *Handlers) ListAllUsersHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	users, err := h.userSvc.ListAllUsers(ctx)
+	if err != nil {
+		httputil.WriteError(w, http.StatusInternalServerError, "failed to list users")
+		return
+	}
+
+	// Convert to public format
+	publicUsers := make([]user.UserPublic, len(users))
+	for i, u := range users {
+		publicUsers[i] = *u.ToPublic()
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"users": publicUsers,
+	})
+}
+
+// UpdateUserRoleHandler handles PATCH /api/admin/users/:id/role
+// Updates a user's role (admin only)
+func (h *Handlers) UpdateUserRoleHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Parse request body
+	var req struct {
+		Role string `json:"role"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.WriteError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	// Get user ID from URL parameter
+	userIDStr := chi.URLParam(r, "id")
+	if userIDStr == "" {
+		httputil.WriteError(w, http.StatusBadRequest, "user ID is required")
+		return
+	}
+
+	var userID uint
+	if _, err := fmt.Sscanf(userIDStr, "%d", &userID); err != nil {
+		httputil.WriteError(w, http.StatusBadRequest, "invalid user ID")
+		return
+	}
+
+	// Update role
+	if err := h.userSvc.UpdateUserRole(ctx, userID, req.Role); err != nil {
+		if errors.Is(err, user.ErrUserNotFound) {
+			httputil.WriteError(w, http.StatusNotFound, "user not found")
+		} else {
+			httputil.WriteError(w, http.StatusBadRequest, err.Error())
+		}
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"message": "User role updated successfully",
+	})
+}
+
+// UpdateUserActiveStatusHandler handles PATCH /api/admin/users/:id/active
+// Updates a user's active status (admin only)
+func (h *Handlers) UpdateUserActiveStatusHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Parse request body
+	var req struct {
+		IsActive bool `json:"is_active"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.WriteError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	// Get user ID from URL parameter
+	userIDStr := chi.URLParam(r, "id")
+	if userIDStr == "" {
+		httputil.WriteError(w, http.StatusBadRequest, "user ID is required")
+		return
+	}
+
+	var userID uint
+	if _, err := fmt.Sscanf(userIDStr, "%d", &userID); err != nil {
+		httputil.WriteError(w, http.StatusBadRequest, "invalid user ID")
+		return
+	}
+
+	// Update active status
+	if err := h.userSvc.UpdateUserActiveStatus(ctx, userID, req.IsActive); err != nil {
+		if errors.Is(err, user.ErrUserNotFound) {
+			httputil.WriteError(w, http.StatusNotFound, "user not found")
+		} else {
+			httputil.WriteError(w, http.StatusInternalServerError, "failed to update user status")
+		}
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"message": "User active status updated successfully",
+	})
 }

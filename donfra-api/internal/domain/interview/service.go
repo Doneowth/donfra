@@ -25,6 +25,8 @@ type Service interface {
 	JoinRoom(ctx context.Context, inviteToken string) (*JoinRoomResponse, error)
 	CloseRoom(ctx context.Context, roomID string, userID uint) error
 	GetRoomByID(ctx context.Context, roomID string) (*InterviewRoom, error)
+	GetRoomStatus(ctx context.Context, roomID string) (*RoomStatusResponse, error)
+	GetAllRooms(ctx context.Context) ([]*InterviewRoom, error)
 	UpdateHeadcount(ctx context.Context, roomID string, headcount int) error
 	GetActiveRoomsByOwner(ctx context.Context, ownerID uint) ([]*InterviewRoom, error)
 }
@@ -154,6 +156,35 @@ func (s *service) GetRoomByID(ctx context.Context, roomID string) (*InterviewRoo
 		return nil, fmt.Errorf("failed to get room: %w", err)
 	}
 	return room, nil
+}
+
+// GetRoomStatus retrieves the status of a specific room
+func (s *service) GetRoomStatus(ctx context.Context, roomID string) (*RoomStatusResponse, error) {
+	room, err := s.repo.GetByRoomID(ctx, roomID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrRoomNotFound
+		}
+		return nil, fmt.Errorf("failed to get room: %w", err)
+	}
+
+	return &RoomStatusResponse{
+		RoomID:     room.RoomID,
+		OwnerID:    room.OwnerID,
+		Headcount:  room.Headcount,
+		InviteLink: room.InviteLink,
+		CreatedAt:  room.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:  room.UpdatedAt.Format(time.RFC3339),
+	}, nil
+}
+
+// GetAllRooms retrieves all active (non-deleted) rooms
+func (s *service) GetAllRooms(ctx context.Context) ([]*InterviewRoom, error) {
+	rooms, err := s.repo.GetAllActive(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all rooms: %w", err)
+	}
+	return rooms, nil
 }
 
 // UpdateHeadcount updates the participant count for a room

@@ -19,9 +19,15 @@ type Repository interface {
 	// Update updates an existing user.
 	Update(ctx context.Context, user *User) error
 
+	// UpdateFields updates specific fields of a user by ID.
+	UpdateFields(ctx context.Context, id uint, fields map[string]interface{}) error
+
 	// Delete soft-deletes a user by ID.
 	Delete(ctx context.Context, id uint) error
 
 	// ExistsByEmail checks if a user with the given email exists.
 	ExistsByEmail(ctx context.Context, email string) (bool, error)
+
+	// ListAll retrieves all users (for admin purposes).
+	ListAll(ctx context.Context) ([]*User, error)
 }

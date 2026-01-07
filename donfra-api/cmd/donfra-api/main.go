@@ -11,12 +11,10 @@ import (
 
 	"donfra-api/internal/config"
 	"donfra-api/internal/domain/aiagent"
-	"donfra-api/internal/domain/auth"
 	"donfra-api/internal/domain/db"
 	"donfra-api/internal/domain/google"
 	"donfra-api/internal/domain/interview"
 	"donfra-api/internal/domain/livekit"
-	"donfra-api/internal/domain/room"
 	"donfra-api/internal/domain/study"
 	"donfra-api/internal/domain/user"
 	"donfra-api/internal/http/router"
@@ -44,8 +42,7 @@ func main() {
 		log.Fatalf("failed to initialize database: %v", err)
 	}
 
-	// Initialize room repository (Redis or Memory)
-	var roomRepo room.Repository
+	// Initialize Redis client (optional)
 	var redisClient *redis.Client
 	if cfg.UseRedis && cfg.RedisAddr != "" {
 		redisClient = redis.NewClient(&redis.Options{
@@ -55,15 +52,9 @@ func main() {
 		if err := redisClient.Ping(context.Background()).Err(); err != nil {
 			log.Fatalf("failed to connect to Redis at %s: %v", cfg.RedisAddr, err)
 		}
-		roomRepo = room.NewRedisRepository(redisClient)
-		log.Printf("[donfra-api] using Redis repository at %s", cfg.RedisAddr)
-	} else {
-		roomRepo = room.NewMemoryRepository()
-		log.Println("[donfra-api] using in-memory repository")
+		log.Printf("[donfra-api] connected to Redis at %s", cfg.RedisAddr)
 	}
 
-	roomSvc := room.NewService(roomRepo, cfg.Passcode, cfg.BaseURL)
-	authSvc := auth.NewAuthService(cfg.AdminPass, cfg.JWTSecret)
 	studySvc := study.NewService(conn)
 
 	// Initialize user service with PostgreSQL repository
@@ -102,20 +93,7 @@ func main() {
 	aiAgentSvc := aiagent.NewService(deepSeekAPIKey)
 	log.Println("[donfra-api] AI agent service initialized")
 
-	// Start Redis Pub/Sub subscriber for headcount updates (if using Redis)
-	var subCancel context.CancelFunc
-	if redisClient != nil {
-		subCtx, cancel := context.WithCancel(context.Background())
-		subCancel = cancel
-		subscriber := room.NewHeadcountSubscriber(redisClient, roomRepo)
-		go func() {
-			if err := subscriber.Start(subCtx); err != nil && err != context.Canceled {
-				log.Printf("[pubsub] subscriber error: %v", err)
-			}
-		}()
-	}
-
-	r := router.New(cfg, roomSvc, studySvc, authSvc, userSvc, googleSvc, interviewSvc, livekitSvc, aiAgentSvc)
+	r := router.New(cfg, studySvc, userSvc, googleSvc, interviewSvc, livekitSvc, aiAgentSvc)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
@@ -137,11 +115,6 @@ func main() {
 	<-quit
 
 	log.Println("[donfra-api] shutting down gracefully...")
-
-	// Cancel Redis Pub/Sub subscriber if running
-	if subCancel != nil {
-		subCancel()
-	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

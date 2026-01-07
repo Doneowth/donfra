@@ -12,6 +12,7 @@ type Repository interface {
 	GetByRoomID(ctx context.Context, roomID string) (*InterviewRoom, error)
 	GetActiveByOwnerID(ctx context.Context, ownerID uint) (*InterviewRoom, error)
 	GetAllActiveByOwnerID(ctx context.Context, ownerID uint) ([]*InterviewRoom, error)
+	GetAllActive(ctx context.Context) ([]*InterviewRoom, error)
 	Update(ctx context.Context, room *InterviewRoom) error
 	SoftDelete(ctx context.Context, roomID string) error
 	UpdateHeadcount(ctx context.Context, roomID string, headcount int) error
@@ -63,6 +64,18 @@ func (r *repository) GetAllActiveByOwnerID(ctx context.Context, ownerID uint) ([
 	var rooms []*InterviewRoom
 	err := r.db.WithContext(ctx).
 		Where("owner_id = ?", ownerID).
+		Order("created_at DESC").
+		Find(&rooms).Error
+	if err != nil {
+		return nil, err
+	}
+	return rooms, nil
+}
+
+// GetAllActive retrieves all active (non-deleted) rooms
+func (r *repository) GetAllActive(ctx context.Context) ([]*InterviewRoom, error) {
+	var rooms []*InterviewRoom
+	err := r.db.WithContext(ctx).
 		Order("created_at DESC").
 		Find(&rooms).Error
 	if err != nil {

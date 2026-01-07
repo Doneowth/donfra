@@ -36,7 +36,6 @@ const Excalidraw = dynamic(() => import("@excalidraw/excalidraw").then((mod) => 
 export default function EditLessonClient({ slug }: { slug: string }) {
   const router = useRouter();
   const { user } = useAuth();
-  const [token, setToken] = useState<string | null>(null);
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -53,35 +52,22 @@ export default function EditLessonClient({ slug }: { slug: string }) {
   const [diagram, setDiagram] = useState<ExcalidrawData>(EMPTY_EXCALIDRAW);
   const diagramRef = useRef<ExcalidrawData>(EMPTY_EXCALIDRAW);
 
-  // Check if user is admin via user authentication OR admin token
-  const isUserAdmin = user?.role === "admin";
+  // Check if user is admin or above via user authentication
+  const isAdmin = user?.role === "admin" || user?.role === "god";
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const saved = localStorage.getItem("admin_token");
-    setToken(saved);
-    if (!saved && !isUserAdmin) {
+    if (!isAdmin) {
       setError("Admin login required to edit lessons.");
     }
-  }, [isUserAdmin]);
+  }, [isAdmin]);
 
   useEffect(() => {
-    // Skip fetching until token state is initialized
-    if (typeof window !== "undefined" && token === null && localStorage.getItem("admin_token")) {
-      return; // Token is being set, wait for next render
-    }
-
     (async () => {
       try {
         setError(null);
         setLoading(true);
 
-        const headers: HeadersInit = {};
-        if (token) {
-          headers.Authorization = `Bearer ${token}`;
-        }
-
-        const res = await fetch(`${API_ROOT}/lessons/${slug}`, { headers, credentials: 'include' });
+        const res = await fetch(`${API_ROOT}/lessons/${slug}`, { credentials: 'include' });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
         let excaliData = data.excalidraw;
@@ -123,10 +109,10 @@ export default function EditLessonClient({ slug }: { slug: string }) {
         setLoading(false);
       }
     })();
-  }, [slug, token]);
+  }, [slug]);
 
   const handleSave = async () => {
-    if (!token && !isUserAdmin) {
+    if (!isAdmin) {
       setError("Admin authentication required. Please login.");
       return;
     }
@@ -146,7 +132,7 @@ export default function EditLessonClient({ slug }: { slug: string }) {
         isVip,
         author: author.trim() || undefined,
         publishedDate: publishedDate || undefined,
-      }, token || "");
+      });
       setToast({ message: "Lesson updated successfully!", type: "success" });
       setTimeout(() => {
         router.push(`/library/${slug}`);

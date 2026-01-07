@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"donfra-api/internal/domain/interview"
 	"donfra-api/internal/pkg/httputil"
 	"donfra-api/internal/pkg/tracing"
@@ -183,6 +185,63 @@ func (h *Handlers) GetMyRoomsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get all active rooms for this user
 	rooms, err := h.interviewSvc.GetActiveRoomsByOwner(ctx, userID)
+	if err != nil {
+		tracing.RecordError(span, err)
+		httputil.WriteError(w, http.StatusInternalServerError, "failed to get rooms")
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"rooms": rooms,
+	})
+}
+
+// GetRoomStatusHandler handles GET /api/interview/rooms/:room_id/status
+// Returns the status of a specific room
+func (h *Handlers) GetRoomStatusHandler(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.StartSpan(r.Context(), "handler.GetRoomStatus")
+	defer span.End()
+
+	if h.interviewSvc == nil {
+		httputil.WriteError(w, http.StatusInternalServerError, "interview service unavailable")
+		return
+	}
+
+	// Get room_id from URL parameter
+	roomID := chi.URLParam(r, "room_id")
+	if roomID == "" {
+		httputil.WriteError(w, http.StatusBadRequest, "room_id is required")
+		return
+	}
+
+	// Get room status
+	status, err := h.interviewSvc.GetRoomStatus(ctx, roomID)
+	if err != nil {
+		tracing.RecordError(span, err)
+		if errors.Is(err, interview.ErrRoomNotFound) {
+			httputil.WriteError(w, http.StatusNotFound, "room not found")
+		} else {
+			httputil.WriteError(w, http.StatusInternalServerError, "failed to get room status")
+		}
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, status)
+}
+
+// GetAllRoomsHandler handles GET /api/interview/rooms/all
+// Returns all active rooms (admin only)
+func (h *Handlers) GetAllRoomsHandler(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.StartSpan(r.Context(), "handler.GetAllRooms")
+	defer span.End()
+
+	if h.interviewSvc == nil {
+		httputil.WriteError(w, http.StatusInternalServerError, "interview service unavailable")
+		return
+	}
+
+	// Get all active rooms
+	rooms, err := h.interviewSvc.GetAllRooms(ctx)
 	if err != nil {
 		tracing.RecordError(span, err)
 		httputil.WriteError(w, http.StatusInternalServerError, "failed to get rooms")

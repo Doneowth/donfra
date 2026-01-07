@@ -141,39 +141,25 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
   const [canRenderDiagram, setCanRenderDiagram] = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("markdown");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  // Check if user is admin via user authentication OR admin token
-  const isUserAdmin = user?.role === "admin";
-  const isAdmin = isUserAdmin || Boolean(token);
+  // Check if user is admin or above via user authentication
+  const isAdmin = user?.role === "admin" || user?.role === "god";
   const isVip = user?.role === "vip" || isAdmin;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const token = localStorage.getItem("admin_token");
-    setToken(token);
     setCanRenderDiagram(true);
   }, []);
 
   useEffect(() => {
-    // Skip fetching until token state is initialized
-    if (typeof window !== "undefined" && token === null && localStorage.getItem("admin_token")) {
-      return; // Token is being set, wait for next render
-    }
-
     (async () => {
       try {
         setError(null);
         setLoading(true);
 
-        const headers: HeadersInit = {};
-        if (token) {
-          headers.Authorization = `Bearer ${token}`;
-        }
-
-        const res = await fetch(`${API_ROOT}/lessons/${slug}`, { headers, credentials: 'include' });
+        const res = await fetch(`${API_ROOT}/lessons/${slug}`, { credentials: 'include' });
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
@@ -207,7 +193,7 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
         setLoading(false);
       }
     })();
-  }, [slug, token]);
+  }, [slug]);
 
   return (
     <main
@@ -299,7 +285,7 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
               </button>
               <button
                 onClick={async () => {
-                  if (!token && !isUserAdmin) {
+                  if (!isAdmin) {
                     setActionError("Admin authentication required. Please login.");
                     setToast({ message: "Admin authentication required. Please login.", type: "error" });
                     return;
@@ -308,7 +294,7 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
                   try {
                     setBusy(true);
                     setActionError(null);
-                    await api.study.delete(lesson.slug, token || "");
+                    await api.study.delete(lesson.slug);
                     setToast({ message: "Lesson deleted successfully!", type: "success" });
                     setTimeout(() => {
                       router.push("/library");

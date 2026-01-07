@@ -29,7 +29,6 @@ const Excalidraw = dynamic(() => import("@excalidraw/excalidraw").then((mod) => 
 export default function CreateLessonClient() {
   const router = useRouter();
   const { user } = useAuth();
-  const [token, setToken] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [markdown, setMarkdown] = useState("");
@@ -43,21 +42,17 @@ export default function CreateLessonClient() {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const excaliRef = useRef<ExcalidrawData>(EMPTY_EXCALIDRAW);
 
-  // Check if user is admin via user authentication OR admin token
-  const isUserAdmin = user?.role === "admin";
-  const isAdmin = isUserAdmin || Boolean(token);
+  // Check if user is admin or above via user authentication
+  const isAdmin = user?.role === "admin" || user?.role === "god";
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const saved = localStorage.getItem("admin_token");
-    setToken(saved);
-    if (!saved && !isUserAdmin) {
+    if (!isAdmin) {
       setError("Admin login required to create lessons.");
     }
-  }, [isUserAdmin]);
+  }, [isAdmin]);
 
   const handleSubmit = async () => {
-    if (!token && !isUserAdmin) {
+    if (!isAdmin) {
       setError("Admin authentication required. Please login.");
       return;
     }
@@ -81,7 +76,7 @@ export default function CreateLessonClient() {
         publishedDate: publishedDate || undefined,
       };
 
-      await api.study.create(payload, token || "");
+      await api.study.create(payload);
       setToast({ message: "Lesson created successfully!", type: "success" });
       setTimeout(() => {
         router.push(`/library/${payload.slug}`);

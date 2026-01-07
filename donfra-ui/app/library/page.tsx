@@ -32,7 +32,6 @@ function LibraryInner() {
   const [lessons, setLessons] = useState<LessonSummary[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
-  const [adminToken, setAdminToken] = useState<string | null>(null);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -40,17 +39,9 @@ function LibraryInner() {
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
 
-  // Check if user is admin via user authentication OR admin token
-  const isUserAdmin = user?.role === "admin";
-  const isAdmin = isUserAdmin || Boolean(adminToken);
+  // Check if user is admin or above via user authentication
+  const isAdmin = user?.role === "admin" || user?.role === "god";
   const isVip = user?.role === "vip" || isAdmin;
-
-  // Initialize admin token from localStorage on client side only
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setAdminToken(localStorage.getItem("admin_token"));
-    }
-  }, []);
 
   useEffect(() => {
     (async () => {

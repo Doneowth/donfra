@@ -5,27 +5,12 @@ import (
 	"net/http"
 
 	"donfra-api/internal/domain/aiagent"
-	"donfra-api/internal/domain/auth"
 	"donfra-api/internal/domain/google"
 	"donfra-api/internal/domain/interview"
 	"donfra-api/internal/domain/livekit"
-	"donfra-api/internal/domain/room"
 	"donfra-api/internal/domain/study"
 	"donfra-api/internal/domain/user"
 )
-
-// RoomService defines the interface for room operations.
-type RoomService interface {
-	Init(ctx context.Context, passcode string, size int) (inviteURL string, token string, err error)
-	IsOpen(ctx context.Context) bool
-	GetStatus(ctx context.Context) (*room.RoomState, error)
-	InviteLink(ctx context.Context) string
-	Headcount(ctx context.Context) int
-	Limit(ctx context.Context) int
-	Validate(ctx context.Context, token string) bool
-	Close(ctx context.Context) error
-	UpdateHeadcount(ctx context.Context, count int) error
-}
 
 // StudyService defines the interface for lesson operations.
 type StudyService interface {
@@ -41,12 +26,6 @@ type StudyService interface {
 	DeleteLessonBySlug(ctx context.Context, slug string) error
 }
 
-// AuthService defines the interface for authentication operations.
-type AuthService interface {
-	Validate(tokenStr string) (*auth.Claims, error)
-	IssueAdminToken(pass string) (string, error)
-}
-
 // UserService defines the interface for user operations.
 type UserService interface {
 	Register(ctx context.Context, req *user.RegisterRequest) (*user.User, error)
@@ -58,6 +37,9 @@ type UserService interface {
 	GetJWTSecret() string
 	GetJWTExpiry() int
 	UpdatePassword(ctx context.Context, userID uint, currentPassword, newPassword string) error
+	ListAllUsers(ctx context.Context) ([]*user.User, error)
+	UpdateUserRole(ctx context.Context, userID uint, newRole string) error
+	UpdateUserActiveStatus(ctx context.Context, userID uint, isActive bool) error
 }
 
 // GoogleService defines the interface for Google OAuth operations.
@@ -73,6 +55,8 @@ type InterviewService interface {
 	JoinRoom(ctx context.Context, inviteToken string) (*interview.JoinRoomResponse, error)
 	CloseRoom(ctx context.Context, roomID string, userID uint) error
 	GetRoomByID(ctx context.Context, roomID string) (*interview.InterviewRoom, error)
+	GetRoomStatus(ctx context.Context, roomID string) (*interview.RoomStatusResponse, error)
+	GetAllRooms(ctx context.Context) ([]*interview.InterviewRoom, error)
 	UpdateHeadcount(ctx context.Context, roomID string, headcount int) error
 	GetActiveRoomsByOwner(ctx context.Context, ownerID uint) ([]*interview.InterviewRoom, error)
 }
@@ -93,9 +77,7 @@ type AIAgentService interface {
 
 // Handlers holds all service dependencies for HTTP handlers.
 type Handlers struct {
-	roomSvc      RoomService
 	studySvc     StudyService
-	authSvc      AuthService
 	userSvc      UserService
 	googleSvc    GoogleService
 	interviewSvc InterviewService
@@ -104,11 +86,9 @@ type Handlers struct {
 }
 
 // New creates a new Handlers instance with the given services.
-func New(roomSvc RoomService, studySvc StudyService, authSvc AuthService, userSvc UserService, googleSvc GoogleService, interviewSvc InterviewService, livekitSvc LiveKitService, aiAgentSvc AIAgentService) *Handlers {
+func New(studySvc StudyService, userSvc UserService, googleSvc GoogleService, interviewSvc InterviewService, livekitSvc LiveKitService, aiAgentSvc AIAgentService) *Handlers {
 	return &Handlers{
-		roomSvc:      roomSvc,
 		studySvc:     studySvc,
-		authSvc:      authSvc,
 		userSvc:      userSvc,
 		googleSvc:    googleSvc,
 		interviewSvc: interviewSvc,

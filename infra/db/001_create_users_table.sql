@@ -71,10 +71,10 @@ ON CONFLICT (email) DO NOTHING;
 -- Mentor user
 INSERT INTO users (email, password, username, role, is_active)
 VALUES (
-    'dmen@d.com',
+    'dgod@d.com',
     '$2a$12$/.ZnTCSQ/htuc6xJtZmG9uyViBygcOyZzPlz2arLHRvZ27Hh7MLGS',
-    'dmen',
-    'mentor',
+    'dongod',
+    'god',
     true
 )
 ON CONFLICT (email) DO NOTHING;

@@ -66,6 +66,18 @@ func (r *PostgresRepository) Update(ctx context.Context, user *User) error {
 	return r.db.WithContext(ctx).Save(user).Error
 }
 
+// UpdateFields updates specific fields of a user by ID.
+func (r *PostgresRepository) UpdateFields(ctx context.Context, id uint, fields map[string]interface{}) error {
+	result := r.db.WithContext(ctx).Model(&User{}).Where("id = ?", id).Updates(fields)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
 // Delete soft-deletes a user by ID.
 func (r *PostgresRepository) Delete(ctx context.Context, id uint) error {
 	result := r.db.WithContext(ctx).Delete(&User{}, id)
@@ -83,4 +95,11 @@ func (r *PostgresRepository) ExistsByEmail(ctx context.Context, email string) (b
 	var count int64
 	err := r.db.WithContext(ctx).Model(&User{}).Where("email = ?", email).Count(&count).Error
 	return count > 0, err
+}
+
+// ListAll retrieves all users (for admin purposes).
+func (r *PostgresRepository) ListAll(ctx context.Context) ([]*User, error) {
+	var users []*User
+	err := r.db.WithContext(ctx).Order("created_at DESC").Find(&users).Error
+	return users, err
 }

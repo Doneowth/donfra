@@ -296,3 +296,26 @@ func (s *Service) GetUserByGoogleID(ctx context.Context, googleID string) (*User
 	}
 	return user, nil
 }
+
+// ListAllUsers retrieves all users (admin only).
+func (s *Service) ListAllUsers(ctx context.Context) ([]*User, error) {
+	return s.repo.ListAll(ctx)
+}
+
+// UpdateUserRole updates a user's role (god user only).
+func (s *Service) UpdateUserRole(ctx context.Context, userID uint, newRole string) error {
+	// Validate role
+	validRoles := map[string]bool{"user": true, "vip": true, "admin": true, "god": true}
+	if !validRoles[newRole] {
+		return errors.New("invalid role: must be 'user', 'vip', 'admin', or 'god'")
+	}
+
+	// Update only the role field to avoid unique constraint violations
+	return s.repo.UpdateFields(ctx, userID, map[string]interface{}{"role": newRole})
+}
+
+// UpdateUserActiveStatus updates a user's active status (god user only).
+func (s *Service) UpdateUserActiveStatus(ctx context.Context, userID uint, isActive bool) error {
+	// Update only the is_active field to avoid unique constraint violations
+	return s.repo.UpdateFields(ctx, userID, map[string]interface{}{"is_active": isActive})
+}
