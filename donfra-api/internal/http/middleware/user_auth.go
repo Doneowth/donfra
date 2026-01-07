@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"slices"
 
 	"donfra-api/internal/domain/user"
 	"donfra-api/internal/pkg/httputil"
@@ -74,7 +75,7 @@ func OptionalAuth(userSvc UserAuthService) func(http.Handler) http.Handler {
 
 // RequireRole is a middleware that requires the user to have a specific role.
 // Must be used after RequireAuth middleware.
-func RequireRole(requiredRole string) func(http.Handler) http.Handler {
+func RequireRole(requiredRoles []string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Get role from context (set by RequireAuth)
@@ -84,8 +85,7 @@ func RequireRole(requiredRole string) func(http.Handler) http.Handler {
 				return
 			}
 
-			// Check if user has required role
-			if role != requiredRole {
+			if !slices.Contains(requiredRoles, role) {
 				httputil.WriteError(w, http.StatusForbidden, "insufficient permissions")
 				return
 			}
@@ -98,27 +98,22 @@ func RequireRole(requiredRole string) func(http.Handler) http.Handler {
 // RequireVIPOrAbove is a middleware that requires the user to be VIP, admin, or god.
 // Must be used after RequireAuth middleware.
 func RequireVIPOrAbove() func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Get role from context (set by RequireAuth)
-			role, ok := r.Context().Value("user_role").(string)
-			if !ok {
-				httputil.WriteError(w, http.StatusUnauthorized, "authentication required")
-				return
-			}
-
-			// Check if user is VIP, admin, or god
-			if role != "vip" && role != "admin" && role != "god" {
-				httputil.WriteError(w, http.StatusForbidden, "VIP access required")
-				return
-			}
-
-			next.ServeHTTP(w, r)
-		})
-	}
+	return RequireRole([]string{"vip", "admin", "god"})
 }
 
 // RequireVIPOrAdmin is deprecated. Use RequireVIPOrAbove instead.
 func RequireVIPOrAdmin() func(http.Handler) http.Handler {
 	return RequireVIPOrAbove()
 }
+
+func RequireGodUser() func(http.Handler) http.Handler {
+	return RequireRole([]string{"god"})
+}
+
+// RequireAdminOrAbove requires the user to have role=admin or role=god.
+// This allows both admins and god users to access admin features.
+// Must be used after RequireAuth middleware.
+func RequireAdminOrAbove() func(http.Handler) http.Handler {
+	return RequireRole([]string{"admin", "god"})
+}
+

@@ -43,12 +43,15 @@ function InterviewContent() {
         const data = await response.json();
         setRoomId(data.room_id);
 
-        // Check if current user is the room owner (admin)
+        // Check if current user is the room owner by comparing user_id with owner_id
         try {
-          const userResponse = await api.auth.me();
-          setIsOwner(userResponse.user?.role === "admin");
+          const [userResponse, roomStatus] = await Promise.all([
+            api.auth.me(),
+            api.interview.getRoomStatus(data.room_id)
+          ]);
+          setIsOwner(userResponse.user?.id === roomStatus.owner_id);
         } catch (err) {
-          console.log("[Interview] Could not fetch user info, assuming non-owner");
+          console.log("[Interview] Could not fetch ownership info, assuming non-owner");
           setIsOwner(false);
         }
 

@@ -61,12 +61,6 @@ func New(cfg config.Config, studySvc *study.Service, userSvc *user.Service, goog
 	v1.With(middleware.RequireAuth(userSvc), middleware.RequireGodUser()).Patch("/admin/users/{id}/role", h.UpdateUserRoleHandler)
 	v1.With(middleware.RequireAuth(userSvc), middleware.RequireGodUser()).Patch("/admin/users/{id}/active", h.UpdateUserActiveStatusHandler)
 
-	// ===== Room Routes (DEPRECATED - use /interview/* instead) =====
-	// v1.Post("/room/init", h.RoomInit)
-	// v1.Get("/room/status", h.RoomStatus)
-	// v1.Post("/room/join", h.RoomJoin)
-	// v1.With(middleware.RequireAdminUser(authSvc, userSvc)).Post("/room/close", h.RoomClose)
-
 	// ===== Lesson Routes =====
 	// Public: list published lessons (with optional user auth)
 	v1.With(middleware.OptionalAuth(userSvc)).Get("/lessons/summary", h.ListLessonsSummaryHandler)

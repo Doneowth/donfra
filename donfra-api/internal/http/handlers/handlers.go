@@ -51,7 +51,7 @@ type GoogleService interface {
 
 // InterviewService defines the interface for interview room operations.
 type InterviewService interface {
-	InitRoom(ctx context.Context, userID uint, isAdmin bool) (*interview.InitRoomResponse, error)
+	InitRoom(ctx context.Context, userID uint) (*interview.InitRoomResponse, error)
 	JoinRoom(ctx context.Context, inviteToken string) (*interview.JoinRoomResponse, error)
 	CloseRoom(ctx context.Context, roomID string, userID uint) error
 	GetRoomByID(ctx context.Context, roomID string) (*interview.InterviewRoom, error)

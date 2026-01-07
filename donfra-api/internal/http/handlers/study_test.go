@@ -119,11 +119,11 @@ func TestListLessons_AsAdmin(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(nil, mockStudy, nil, nil, nil, nil, nil, nil)
+	h := handlers.New(mockStudy, nil, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons", nil)
 	// Simulate OptionalAdmin middleware setting admin context
-	ctx := context.WithValue(req.Context(), middleware.IsAdminContextKey, true)
+	ctx := context.WithValue(req.Context(), middleware.IsAdmi, true)
 	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 

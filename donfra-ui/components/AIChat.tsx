@@ -32,7 +32,7 @@ export default function AIChat({ codeContent, userRole }: AIChatProps) {
   const [error, setError] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const isVipOrAdmin = userRole === "vip" || userRole === "admin";
+  const isVipOrAbove = userRole === "vip" || userRole === "admin" || userRole === "god";
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -51,8 +51,8 @@ export default function AIChat({ codeContent, userRole }: AIChatProps) {
       return;
     }
 
-    if (!isVipOrAdmin) {
-      setError("VIP or admin access required");
+    if (!isVipOrAbove) {
+      setError("VIP access required");
       return;
     }
 
@@ -143,13 +143,13 @@ export default function AIChat({ codeContent, userRole }: AIChatProps) {
     handleSubmit(new Event("submit") as any, questionText);
   };
 
-  if (!isVipOrAdmin) {
+  if (!isVipOrAbove) {
     return (
       <div className="ai-chat-container">
         <div className="ai-chat-vip-notice">
           <div className="vip-icon">🌟</div>
           <h3>VIP Ask AI</h3>
-          <p>This feature is available to VIP and admin users only.</p>
+          <p>This feature is available to VIP users and above.</p>
           <p>Upgrade to VIP to unlock AI-powered code analysis and suggestions.</p>
         </div>
       </div>

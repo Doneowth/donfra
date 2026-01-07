@@ -612,7 +612,7 @@ export default function CodePad({ onExit, roomId }: Props) {
 
         <div className="terminal-pane" aria-label="terminal output">
           <div className="terminal-header">
-            {(userRole === "vip" || userRole === "admin") ? (
+            {(userRole === "vip" || userRole === "admin" || userRole === "god") ? (
               <div className="tab-buttons">
                 <button
                   className={`tab-button ${activeTab === "terminal" ? "active" : ""}`}
@@ -659,7 +659,7 @@ export default function CodePad({ onExit, roomId }: Props) {
               )}
               {!stdout && !stderr && <div className="empty">no output</div>}
             </div>
-            {(userRole === "vip" || userRole === "admin") && (
+            {(userRole === "vip" || userRole === "admin" || userRole === "god") && (
               <div style={{ display: activeTab === "ai" ? "block" : "none", height: "100%" }}>
                 <AIChat
                   codeContent={editorRef.current?.getValue() ?? ""}

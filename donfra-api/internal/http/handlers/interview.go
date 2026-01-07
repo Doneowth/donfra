@@ -31,17 +31,13 @@ func (h *Handlers) InitInterviewRoomHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Check if user is admin
-	userRole, _ := ctx.Value("user_role").(string)
-	isAdmin := userRole == "admin"
-
-	// Create room (only admin users can create)
-	resp, err := h.interviewSvc.InitRoom(ctx, userID, isAdmin)
+	// Create room (authorization already enforced by middleware)
+	resp, err := h.interviewSvc.InitRoom(ctx, userID)
 	if err != nil {
 		tracing.RecordError(span, err)
 		switch {
 		case errors.Is(err, interview.ErrAdminRequired):
-			httputil.WriteError(w, http.StatusForbidden, "only admin users can create interview rooms")
+			httputil.WriteError(w, http.StatusForbidden, "admin or god user required to create interview rooms")
 		case errors.Is(err, interview.ErrRoomAlreadyExists):
 			httputil.WriteError(w, http.StatusConflict, "user already has an active room")
 		default:

@@ -15,13 +15,13 @@ var (
 	ErrRoomNotFound      = errors.New("room not found")
 	ErrUnauthorized      = errors.New("unauthorized")
 	ErrInvalidToken      = errors.New("invalid invite token")
-	ErrAdminRequired     = errors.New("only admin users can create rooms")
+	ErrAdminRequired     = errors.New("admin or god user required to create rooms")
 	ErrRoomAlreadyExists = errors.New("user already has an active room")
 )
 
 // Service defines the interface for interview room business logic
 type Service interface {
-	InitRoom(ctx context.Context, userID uint, isAdmin bool) (*InitRoomResponse, error)
+	InitRoom(ctx context.Context, userID uint) (*InitRoomResponse, error)
 	JoinRoom(ctx context.Context, inviteToken string) (*JoinRoomResponse, error)
 	CloseRoom(ctx context.Context, roomID string, userID uint) error
 	GetRoomByID(ctx context.Context, roomID string) (*InterviewRoom, error)
@@ -48,13 +48,8 @@ func NewService(repo Repository, jwtSecret, baseURL string) Service {
 }
 
 // InitRoom creates a new interview room
-// Only admin users can create rooms
-func (s *service) InitRoom(ctx context.Context, userID uint, isAdmin bool) (*InitRoomResponse, error) {
-	// Only admin users can create rooms
-	if !isAdmin {
-		return nil, ErrAdminRequired
-	}
-
+// Authorization is enforced by middleware (RequireAdminOrAbove)
+func (s *service) InitRoom(ctx context.Context, userID uint) (*InitRoomResponse, error) {
 	// Check if user already has an active room
 	existingRoom, err := s.repo.GetActiveByOwnerID(ctx, userID)
 	if err == nil && existingRoom != nil {
