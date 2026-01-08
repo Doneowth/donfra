@@ -17,12 +17,12 @@
         - [ ]  existing user login
             - [ ]  user
             - [ ]  admin
-            - [ ]  super user
-            - [ ]  mentor
+            - [ ]  god
+            - [ ]  vip
     - [ ]  profile: https://donfra.dev/user
-        - [ ]  user, vip, mentor
+        - [ ]  user, vip
             - [ ]  update password
-        - [ ]  admin
+        - [ ]  admin, god
             - [ ]  update password
             - [ ]  create interview room
             - [ ]  copy interview room invite link
@@ -30,7 +30,7 @@
             - [ ]  close interview room
     - [ ]  sign out
 - [ ]  Library: https://donfra.dev/library
-    - [ ]  user, mentor
+    - [ ]  user
         - [ ]  view lesson: markdown, diagram, video, code working
             - [ ]  upgrade vip → user profile page
         - [ ]  lessons in order and page turning button working
@@ -38,7 +38,7 @@
         - [ ]  can not edit or create lessons
     - [ ]  vip
         - [ ]  can view vip lessons
-    - [ ]  admin
+    - [ ]  admin, god
         - [ ]  create, edit, delete lessons
             - [ ]  title, author, published date, video url, code url, isPublished, isVip, markdown, diagram
             - [ ]  save changes or cancel
@@ -52,6 +52,7 @@
     - [ ]  share room link
     - [ ]  headcount can not exceed limit?
     - [ ]  admin quit room → close room for others
+    - [ ]  AI coach
 - [ ]  /coding API
     - [ ]  join room with token
         - [ ]  display correct username
@@ -68,5 +69,16 @@
         - [ ]  join session with id and name
     - [ ]  microphone, camera, chat, share screen
     - [ ]  end live
-- [ ]  Admin dashboard: https://donfra.dev/admin-dashboard ?
-    - [ ]  refresh status
+- [ ]  Admin dashboard: https://donfra.dev/admin-dashboard
+    - [ ]  role-based access
+        - [ ]  god user only
+    - [ ]  interview rooms
+        - [ ]  refresh status
+        - [ ]  copy invite link
+        - [ ]  monitor participant headcount
+        - [ ]  close room
+    - [ ]  user management
+        - [ ]  refresh status
+        - [ ]  view user information
+        - [ ]  update user role
+        - [ ]  active/deactivate user
