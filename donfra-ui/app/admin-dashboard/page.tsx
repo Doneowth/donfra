@@ -20,8 +20,8 @@ type User = {
   email: string;
   username: string;
   role: string;
-  is_active: boolean;
-  created_at: string;
+  isActive: boolean;
+  createdAt: string;
 };
 
 type Tab = "rooms" | "users";
@@ -535,7 +535,7 @@ export default function AdminDashboard() {
                         border: "1px solid rgba(255,255,255,0.15)",
                         borderRadius: "8px",
                         padding: "16px 20px",
-                        backgroundColor: u.is_active ? "rgba(255,255,255,0.02)" : "rgba(255,0,0,0.05)",
+                        backgroundColor: u.isActive ? "rgba(255,255,255,0.02)" : "rgba(255,0,0,0.05)",
                         display: "grid",
                         gridTemplateColumns: "auto 1fr auto",
                         gap: "16px",
@@ -543,11 +543,11 @@ export default function AdminDashboard() {
                         transition: "all 0.2s",
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = u.is_active ? "rgba(255,255,255,0.05)" : "rgba(255,0,0,0.08)";
+                        e.currentTarget.style.backgroundColor = u.isActive ? "rgba(255,255,255,0.05)" : "rgba(255,0,0,0.08)";
                         e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)";
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = u.is_active ? "rgba(255,255,255,0.02)" : "rgba(255,0,0,0.05)";
+                        e.currentTarget.style.backgroundColor = u.isActive ? "rgba(255,255,255,0.02)" : "rgba(255,0,0,0.05)";
                         e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)";
                       }}
                     >
@@ -577,7 +577,7 @@ export default function AdminDashboard() {
                           </span>
                         </div>
                         <div style={{ fontSize: "12px", color: "#666" }}>
-                          Joined {new Date(u.created_at).toLocaleDateString()}
+                          Joined {new Date(u.createdAt).toLocaleDateString()}
                         </div>
                       </div>
 
@@ -614,14 +614,14 @@ export default function AdminDashboard() {
                         {/* Status Selector */}
                         <div style={{ position: "relative" }}>
                           <select
-                            value={String(u.is_active ?? true)}
-                            onChange={(e) => handleUpdateUserStatus(u.id, u.is_active ?? true, e.target.value, u.username)}
+                            value={String(u.isActive)}
+                            onChange={(e) => handleUpdateUserStatus(u.id, u.isActive, e.target.value, u.username)}
                             disabled={updatingUserId === u.id}
                             style={{
                               padding: "6px 28px 6px 12px",
                               borderRadius: "6px",
                               border: "1px solid rgba(255,255,255,0.2)",
-                              backgroundColor: u.is_active ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
+                              backgroundColor: u.isActive ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
                               color: "#fff",
                               fontSize: "13px",
                               fontWeight: "500",

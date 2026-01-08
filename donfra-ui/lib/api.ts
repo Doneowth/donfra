@@ -31,20 +31,9 @@ async function getJSON<T>(path: string): Promise<T> {
 }
 
 export const api = {
-  // DEPRECATED: room APIs - use interview APIs instead
-  room: {
-    init: (passcode: string, size: number) =>
-      postJSON<{ inviteUrl: string; roomId: string; token?: string }>("/room/init", { passcode, size }),
-    join: (token: string) => postJSON<{ success: boolean }>("/room/join", { token }),
-    close: (token?: string) => postJSON<{ open: boolean }>("/room/close", {}, token),
-    status: () =>
-      getJSON<{ open: boolean; roomId?: string; inviteLink?: string; headcount?: number; limit?: number }>("/room/status"),
-  },
-  // Removed: run.python and code.execute - code execution now via WebSocket in CodePad.tsx
   admin: {
-    login: (password: string) => postJSON<{ token: string }>("/admin/login", { password }),
     users: {
-      list: () => getJSON<{ users: Array<{ id: number; email: string; username: string; role: string; is_active: boolean; created_at: string }> }>("/admin/users"),
+      list: () => getJSON<{ users: Array<{ id: number; email: string; username: string; role: string; isActive: boolean; createdAt: string }> }>("/admin/users"),
       updateRole: (userId: number, role: string) =>
         fetch(`${API_BASE}/admin/users/${userId}/role`, {
           method: "PATCH",
@@ -70,19 +59,6 @@ export const api = {
     },
   },
   study: {
-    list: (page?: number, size?: number) => {
-      const params = new URLSearchParams();
-      if (page !== undefined) params.append("page", page.toString());
-      if (size !== undefined) params.append("size", size.toString());
-      const query = params.toString();
-      return getJSON<{
-        lessons: Array<{ id: number; slug: string; title: string; markdown: string; excalidraw: any; createdAt: string; updatedAt: string; isPublished: boolean; isVip: boolean; author?: string; publishedDate?: string }>;
-        total: number;
-        page: number;
-        size: number;
-        totalPages: number;
-      }>(`/lessons${query ? `?${query}` : ""}`);
-    },
     listSummary: (page?: number, size?: number) => {
       const params = new URLSearchParams();
       if (page !== undefined) params.append("page", page.toString());
@@ -164,13 +140,10 @@ export const api = {
       postJSON<{ message: string }>("/auth/logout", {}),
     me: () =>
       getJSON<{ user: { id: number; email: string; username: string; role: string; isActive: boolean; createdAt: string } | null }>("/auth/me"),
-    refresh: () =>
-      postJSON<{ token: string }>("/auth/refresh", {}),
     updatePassword: (currentPassword: string, newPassword: string) =>
       postJSON<{ message: string }>("/auth/update-password", { current_password: currentPassword, new_password: newPassword }),
     googleAuthURL: () =>
       getJSON<{ auth_url: string; state: string }>("/auth/google/url"),
-    // Note: googleCallback is handled by backend redirect, not used in frontend
   },
   interview: {
     init: () =>
@@ -195,14 +168,6 @@ export const api = {
       postJSON<{ session_id: string; ended_at: string; message: string }>("/live/end", { session_id: sessionId }),
   },
   ai: {
-    analyze: (codeContent: string, question?: string) =>
-      postJSON<{ response: string; model: string; conversation_id?: number }>("/ai/analyze", { code_content: codeContent, question: question || "" }),
-    chat: (codeContent: string | undefined, question: string, history: Array<{ role: string; content: string }>) =>
-      postJSON<{ response: string; model: string }>("/ai/chat", {
-        code_content: codeContent,
-        question,
-        history
-      }),
     chatStream: async (
       codeContent: string | undefined,
       question: string,
@@ -272,23 +237,6 @@ export const api = {
       } finally {
         reader.releaseLock();
       }
-    },
-    getConversations: (limit?: number) => {
-      const params = new URLSearchParams();
-      if (limit !== undefined) params.append("limit", limit.toString());
-      const query = params.toString();
-      return getJSON<{
-        conversations: Array<{
-          id: number;
-          user_id: number;
-          code_content: string;
-          question: string;
-          response: string;
-          model: string;
-          created_at: string;
-        }>;
-        count: number;
-      }>(`/ai/conversations${query ? `?${query}` : ""}`);
     },
   },
 };
