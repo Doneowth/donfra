@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import ConfirmModal from "@/components/ConfirmModal";
+import UserCard from "@/components/admin/UserCard";
 
 type InterviewRoom = {
   id: number;
@@ -313,50 +315,14 @@ export default function AdminDashboard() {
         )}
 
         {/* Confirmation Dialog */}
-        {confirmDialog.show && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0,0,0,0.7)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-            }}
-            onClick={hideConfirm}
-          >
-            <div
-              style={{
-                backgroundColor: "#1a1a1a",
-                border: "1px solid rgba(255,255,255,0.2)",
-                borderRadius: "12px",
-                padding: "24px",
-                maxWidth: "400px",
-                width: "90%",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 style={{ margin: "0 0 12px 0", fontSize: "18px", fontWeight: "600" }}>
-                {confirmDialog.title}
-              </h3>
-              <p style={{ margin: "0 0 24px 0", color: "#999", fontSize: "14px" }}>
-                {confirmDialog.message}
-              </p>
-              <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
-                <button className="btn-neutral" onClick={hideConfirm}>
-                  Cancel
-                </button>
-                <button className="btn-danger" onClick={confirmDialog.onConfirm}>
-                  Confirm
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <ConfirmModal
+          isOpen={confirmDialog.show}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={hideConfirm}
+          confirmStyle="danger"
+        />
 
         {/* Tab Navigation */}
         <div style={{ display: "flex", gap: "12px", marginBottom: "24px", alignItems: "center" }}>
@@ -529,115 +495,13 @@ export default function AdminDashboard() {
               ) : (
                 <div style={{ display: "grid", gap: "12px" }}>
                   {users.map((u) => (
-                    <div
+                    <UserCard
                       key={u.id}
-                      style={{
-                        border: "1px solid rgba(255,255,255,0.15)",
-                        borderRadius: "8px",
-                        padding: "16px 20px",
-                        backgroundColor: u.isActive ? "rgba(255,255,255,0.02)" : "rgba(255,0,0,0.05)",
-                        display: "grid",
-                        gridTemplateColumns: "auto 1fr auto",
-                        gap: "16px",
-                        alignItems: "center",
-                        transition: "all 0.2s",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = u.isActive ? "rgba(255,255,255,0.05)" : "rgba(255,0,0,0.08)";
-                        e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = u.isActive ? "rgba(255,255,255,0.02)" : "rgba(255,0,0,0.05)";
-                        e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)";
-                      }}
-                    >
-                      {/* User ID Badge */}
-                      <div
-                        style={{
-                          width: "40px",
-                          height: "40px",
-                          borderRadius: "8px",
-                          backgroundColor: "rgba(255,255,255,0.1)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontWeight: "600",
-                          fontSize: "14px",
-                        }}
-                      >
-                        #{u.id}
-                      </div>
-
-                      {/* User Info */}
-                      <div>
-                        <div style={{ marginBottom: "4px" }}>
-                          <span style={{ fontWeight: "600", fontSize: "15px" }}>{u.username}</span>
-                          <span className="mono" style={{ marginLeft: "12px", fontSize: "13px", color: "#999" }}>
-                            {u.email}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: "12px", color: "#666" }}>
-                          Joined {new Date(u.createdAt).toLocaleDateString()}
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                        {/* Role Selector */}
-                        <div style={{ position: "relative" }}>
-                          <select
-                            value={u.role}
-                            onChange={(e) => handleUpdateUserRole(u.id, u.role, e.target.value)}
-                            disabled={updatingUserId === u.id}
-                            style={{
-                              padding: "6px 28px 6px 12px",
-                              borderRadius: "6px",
-                              border: "1px solid rgba(255,255,255,0.2)",
-                              backgroundColor: "rgba(0,0,0,0.3)",
-                              color: "#fff",
-                              fontSize: "13px",
-                              fontWeight: "500",
-                              cursor: updatingUserId === u.id ? "not-allowed" : "pointer",
-                              appearance: "none",
-                            }}
-                          >
-                            <option value="user">User</option>
-                            <option value="vip">VIP</option>
-                            <option value="admin">Admin</option>
-                            <option value="god">God</option>
-                          </select>
-                          <span style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
-                            ▼
-                          </span>
-                        </div>
-
-                        {/* Status Selector */}
-                        <div style={{ position: "relative" }}>
-                          <select
-                            value={String(u.isActive)}
-                            onChange={(e) => handleUpdateUserStatus(u.id, u.isActive, e.target.value, u.username)}
-                            disabled={updatingUserId === u.id}
-                            style={{
-                              padding: "6px 28px 6px 12px",
-                              borderRadius: "6px",
-                              border: "1px solid rgba(255,255,255,0.2)",
-                              backgroundColor: u.isActive ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
-                              color: "#fff",
-                              fontSize: "13px",
-                              fontWeight: "500",
-                              cursor: updatingUserId === u.id ? "not-allowed" : "pointer",
-                              appearance: "none",
-                            }}
-                          >
-                            <option value="true">Active</option>
-                            <option value="false">Inactive</option>
-                          </select>
-                          <span style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
-                            ▼
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                      user={u}
+                      isUpdating={updatingUserId === u.id}
+                      onRoleChange={handleUpdateUserRole}
+                      onStatusChange={handleUpdateUserStatus}
+                    />
                   ))}
                 </div>
               )}

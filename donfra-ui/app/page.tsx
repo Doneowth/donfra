@@ -1,98 +1,12 @@
 'use client';
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { useAuth } from "@/lib/auth-context";
-import SignInModal from "@/components/auth/SignInModal";
-import SignUpModal from "@/components/auth/SignUpModal";
-
 
 export default function Home() {
   useEffect(() => { document.body.style.margin = "0"; }, []);
 
-  const router = useRouter();
-  const { user, logout } = useAuth();
-  const [showSignIn, setShowSignIn] = useState(false);
-  const [showSignUp, setShowSignUp] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-
-  const handleSwitchToSignUp = () => {
-    setShowSignIn(false);
-    setShowSignUp(true);
-  };
-
-  const handleSwitchToSignIn = () => {
-    setShowSignUp(false);
-    setShowSignIn(true);
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    setShowUserMenu(false);
-  };
-
   return (
-    <main className="app-root">
-      {/* ===== HEADER ===== */}
-      <header className="header">
-        <div className="container header-inner">
-          <div className="logo">
-            <img src="/donfra.png" alt="Donfra" style={{ height: 70, width: "auto", border: "none", outline: "none" }} />
-          </div>
-          <nav className="nav">
-            <a href="#top">Home</a>
-            <a href="/library">Library</a>
-            <a href="#pipeline">Mission Path</a>
-            <a href="#stories">Stories</a>
-            <a href="#contact">Contact</a>
-            <a href="/live">Live</a>
-
-            {user ? (
-              <div className="user-menu">
-                <span className="user-welcome">Welcome,</span>
-                <button className="user-button" onClick={() => setShowUserMenu(!showUserMenu)}>
-                  {user.username || user.email}
-                </button>
-                {showUserMenu && (
-                  <div className="user-dropdown">
-                    <div className="user-info">
-                      <p className="user-email">{user.email}</p>
-                      <p className="user-role">{user.role}</p>
-                    </div>
-                    <button className="dropdown-item" onClick={() => { router.push("/user"); setShowUserMenu(false); }}>
-                      Profile
-                    </button>
-                    <button className="dropdown-item" onClick={handleLogout}>
-                      Sign Out
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
-                <button className="nav-auth-btn" onClick={() => setShowSignIn(true)}>
-                  Sign In
-                </button>
-                <button className="nav-auth-btn nav-auth-btn-primary" onClick={() => setShowSignUp(true)}>
-                  Sign Up
-                </button>
-              </>
-            )}
-          </nav>
-        </div>
-      </header>
-
-      <SignInModal
-        isOpen={showSignIn}
-        onClose={() => setShowSignIn(false)}
-        onSwitchToSignUp={handleSwitchToSignUp}
-      />
-      <SignUpModal
-        isOpen={showSignUp}
-        onClose={() => setShowSignUp(false)}
-        onSwitchToSignIn={handleSwitchToSignIn}
-      />
-
+    <div className="app-root home-page">
       {/* ===== HERO ===== */}
       <section id="top" className="hero">
       <video
@@ -202,8 +116,6 @@ export default function Home() {
         </div>
       </div>
     </section>
-
-
-    </main>
+    </div>
   );
 }

@@ -22,6 +22,11 @@ body{
   margin:0;
 }
 .app-root{min-height:100vh; background:var(--bg); color:var(--ink);}
+.main-content{padding-top:72px; min-height:calc(100vh - 72px);}
+
+/* Home page special: hero extends under header */
+.home-page{margin-top:-72px;}
+.home-page .hero{padding-top:72px;}
 
 /* ==================== Typography ==================== */
 .display{
@@ -259,6 +264,11 @@ body{
 .nav a:hover{
   color:var(--brass);
   letter-spacing:1px;
+}
+.nav a.nav-active{
+  color:var(--brass);
+  border-bottom:2px solid var(--brass);
+  padding-bottom:4px;
 }
 
 /* Navigation Auth Buttons */
