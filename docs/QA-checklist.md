@@ -4,7 +4,66 @@
     - [ ]  navigation to page
         - [ ]  library
         - [ ]  live
-        - [ ]  profile
+        - [ ]  interview
+        - [ ]  admin (god user only)
+        - [ ]  user profile
+- [ ]  Library: https://donfra.dev/library
+    - [ ]  user
+        - [ ]  view lesson: markdown, diagram, video, code working
+            - [ ]  upgrade vip → user profile page
+        - [ ]  lessons in order and page turning button working
+        - [ ]  lessons count correct
+        - [ ]  can not edit or create lessons
+    - [ ]  vip
+        - [ ]  can view vip lessons
+    - [ ]  admin, god
+        - [ ]  create, edit, delete lessons
+            - [ ]  title, author, published date, video url, code url, isPublished, isVip, markdown, diagram
+            - [ ]  save changes or cancel
+            - [ ]  upload md
+    - [ ]  search by title, slug, author
+        - [ ]  sort by create date, update date, title, published date, id
+        - [ ]  order by desc / asc
+- [ ]  Live: https://donfra.dev/live
+    - [ ]  admin
+        - [ ]  create live session with title and name
+    - [ ]  users and visitors
+        - [ ]  join session with id and name
+    - [ ]  microphone, camera, chat, share screen
+    - [ ]  end live
+- [ ]  Interview
+    - [ ]  join room - correct headcount and cursor
+    - [ ]  execute code
+    - [ ]  clear output
+    - [ ]  exit room
+    - [ ]  re-join room
+        - [ ]  with correct code content left
+    - [ ]  share room link
+    - [ ]  headcount can not exceed limit?
+    - [ ]  admin quit room → close room for others
+    - [ ]  AI coach
+- [ ]  /coding API
+    - [ ]  join room with token
+        - [ ]  display correct username
+        - [ ]  if headcount == limit, should not join room
+    - [ ]  join room with invite token in link
+    - [ ]  see other users and view code if any
+    - [ ]  run code
+    - [ ]  clear output
+    - [ ]  quit
+- [ ]  Admin dashboard: https://donfra.dev/admin-dashboard
+    - [ ]  role-based access
+        - [ ]  god user only
+    - [ ]  interview rooms
+        - [ ]  refresh status
+        - [ ]  copy invite link
+        - [ ]  monitor participant headcount
+        - [ ]  close room
+    - [ ]  user management
+        - [ ]  refresh status
+        - [ ]  view user information
+        - [ ]  update user role
+        - [ ]  active/deactivate user
 - [ ]  User
     - [ ]  SSO
         - [ ]  google login
@@ -29,56 +88,3 @@
             - [ ]  join interview room
             - [ ]  close interview room
     - [ ]  sign out
-- [ ]  Library: https://donfra.dev/library
-    - [ ]  user
-        - [ ]  view lesson: markdown, diagram, video, code working
-            - [ ]  upgrade vip → user profile page
-        - [ ]  lessons in order and page turning button working
-        - [ ]  lessons count correct
-        - [ ]  can not edit or create lessons
-    - [ ]  vip
-        - [ ]  can view vip lessons
-    - [ ]  admin, god
-        - [ ]  create, edit, delete lessons
-            - [ ]  title, author, published date, video url, code url, isPublished, isVip, markdown, diagram
-            - [ ]  save changes or cancel
-- [ ]  Interview
-    - [ ]  join room - correct headcount and cursor
-    - [ ]  execute code
-    - [ ]  clear output
-    - [ ]  exit room
-    - [ ]  re-join room
-        - [ ]  with correct code content left
-    - [ ]  share room link
-    - [ ]  headcount can not exceed limit?
-    - [ ]  admin quit room → close room for others
-    - [ ]  AI coach
-- [ ]  /coding API
-    - [ ]  join room with token
-        - [ ]  display correct username
-        - [ ]  if headcount == limit, should not join room
-    - [ ]  join room with invite token in link
-    - [ ]  see other users and view code if any
-    - [ ]  run code
-    - [ ]  clear output
-    - [ ]  quit
-- [ ]  Live: https://donfra.dev/live
-    - [ ]  admin
-        - [ ]  create live session with title and name
-    - [ ]  users and visitors
-        - [ ]  join session with id and name
-    - [ ]  microphone, camera, chat, share screen
-    - [ ]  end live
-- [ ]  Admin dashboard: https://donfra.dev/admin-dashboard
-    - [ ]  role-based access
-        - [ ]  god user only
-    - [ ]  interview rooms
-        - [ ]  refresh status
-        - [ ]  copy invite link
-        - [ ]  monitor participant headcount
-        - [ ]  close room
-    - [ ]  user management
-        - [ ]  refresh status
-        - [ ]  view user information
-        - [ ]  update user role
-        - [ ]  active/deactivate user
