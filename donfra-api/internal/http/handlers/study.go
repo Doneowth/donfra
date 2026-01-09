@@ -54,13 +54,21 @@ func (h *Handlers) ListLessonsSummaryHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Parse pagination params from query string
-	_, parseSpan := tracing.StartSpan(ctx, "handler.ParsePaginationParams")
-	page := parsePaginationParam(r.URL.Query().Get("page"), 1)
-	size := parsePaginationParam(r.URL.Query().Get("size"), 10)
+	// Parse query params
+	_, parseSpan := tracing.StartSpan(ctx, "handler.ParseQueryParams")
+	query := r.URL.Query()
+	page := parsePaginationParam(query.Get("page"), 1)
+	size := parsePaginationParam(query.Get("size"), 10)
+	sortBy := query.Get("sort_by")
+	sortDesc := query.Get("sort_desc") != "false" // Default to true (descending)
+	search := query.Get("search")
+
 	parseSpan.SetAttributes(
 		attribute.Int("page", page),
 		attribute.Int("size", size),
+		attribute.String("sort_by", sortBy),
+		attribute.Bool("sort_desc", sortDesc),
+		attribute.String("search", search),
 	)
 	parseSpan.End()
 
@@ -70,10 +78,13 @@ func (h *Handlers) ListLessonsSummaryHandler(w http.ResponseWriter, r *http.Requ
 	authSpan.SetAttributes(tracing.AttrIsAdmin.Bool(isAdmin))
 	authSpan.End()
 
-	// Build pagination params
+	// Build pagination params with sort and search
 	params := study.PaginationParams{
-		Page: page,
-		Size: size,
+		Page:     page,
+		Size:     size,
+		SortBy:   sortBy,
+		SortDesc: sortDesc,
+		Search:   search,
 	}
 
 	var response *study.PaginatedLessonsSummaryResponse

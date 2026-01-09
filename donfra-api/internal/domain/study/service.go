@@ -18,6 +18,48 @@ func NewService(db *gorm.DB) *Service {
 	return &Service{db: db}
 }
 
+// buildSortOrder builds the ORDER BY clause based on pagination params
+func buildSortOrder(params PaginationParams) string {
+	// Validate and default sortBy
+	sortBy := params.SortBy
+	validSortFields := map[string]bool{
+		"created_at":     true,
+		"updated_at":     true,
+		"title":          true,
+		"id":             true,
+		"published_date": true,
+	}
+	if !validSortFields[sortBy] {
+		sortBy = "created_at"
+	}
+
+	// Determine sort direction
+	direction := "DESC"
+	if !params.SortDesc {
+		direction = "ASC"
+	}
+
+	// Special handling for published_date (nulls last)
+	if sortBy == "published_date" {
+		return sortBy + " " + direction + " NULLS LAST"
+	}
+
+	return sortBy + " " + direction
+}
+
+// applySearchFilter applies search filter to query if search term is provided
+func (s *Service) applySearchFilter(query *gorm.DB, search string) *gorm.DB {
+	if search == "" {
+		return query
+	}
+	// Search in title, slug, and author (case-insensitive)
+	searchPattern := "%" + search + "%"
+	return query.Where(
+		"LOWER(title) LIKE LOWER(?) OR LOWER(slug) LIKE LOWER(?) OR LOWER(author) LIKE LOWER(?)",
+		searchPattern, searchPattern, searchPattern,
+	)
+}
+
 // GetLessonBySlug retrieves a lesson by its slug.
 // If hasVipAccess is false and lesson is VIP-only, returns lesson with empty markdown/excalidraw.
 func (s *Service) GetLessonBySlug(ctx context.Context, slug string, hasVipAccess bool) (*Lesson, error) {
@@ -290,12 +332,13 @@ func (s *Service) ListPublishedLessonsSummaryPaginated(ctx context.Context, para
 		params.Size = 10
 	}
 
-	// Count total items
+	// Build base query with search filter
+	baseQuery := s.db.WithContext(ctx).Model(&Lesson{}).Where("is_published = ?", true)
+	baseQuery = s.applySearchFilter(baseQuery, params.Search)
+
+	// Count total items with filter
 	var total int64
-	if err := s.db.WithContext(ctx).
-		Model(&Lesson{}).
-		Where("is_published = ?", true).
-		Count(&total).Error; err != nil {
+	if err := baseQuery.Count(&total).Error; err != nil {
 		tracing.RecordError(span, err)
 		return nil, err
 	}
@@ -304,14 +347,14 @@ func (s *Service) ListPublishedLessonsSummaryPaginated(ctx context.Context, para
 	offset := (params.Page - 1) * params.Size
 	totalPages := int((total + int64(params.Size) - 1) / int64(params.Size))
 
+	// Build sort order
+	sortOrder := buildSortOrder(params)
+
 	// Fetch only the fields needed for list view (exclude markdown and excalidraw)
-	// Sort by published_date DESC (nulls last), then created_at DESC
 	var summaries []LessonSummary
-	if err := s.db.WithContext(ctx).
-		Model(&Lesson{}).
+	if err := baseQuery.
 		Select("id, slug, title, is_published, is_vip, author, published_date, created_at, updated_at").
-		Where("is_published = ?", true).
-		Order("published_date DESC NULLS LAST, created_at DESC").
+		Order(sortOrder).
 		Limit(params.Size).
 		Offset(offset).
 		Find(&summaries).Error; err != nil {
@@ -345,11 +388,13 @@ func (s *Service) ListAllLessonsSummaryPaginated(ctx context.Context, params Pag
 		params.Size = 10
 	}
 
-	// Count total items
+	// Build base query with search filter
+	baseQuery := s.db.WithContext(ctx).Model(&Lesson{})
+	baseQuery = s.applySearchFilter(baseQuery, params.Search)
+
+	// Count total items with filter
 	var total int64
-	if err := s.db.WithContext(ctx).
-		Model(&Lesson{}).
-		Count(&total).Error; err != nil {
+	if err := baseQuery.Count(&total).Error; err != nil {
 		tracing.RecordError(span, err)
 		return nil, err
 	}
@@ -358,13 +403,14 @@ func (s *Service) ListAllLessonsSummaryPaginated(ctx context.Context, params Pag
 	offset := (params.Page - 1) * params.Size
 	totalPages := int((total + int64(params.Size) - 1) / int64(params.Size))
 
+	// Build sort order
+	sortOrder := buildSortOrder(params)
+
 	// Fetch only the fields needed for list view (exclude markdown and excalidraw)
-	// Sort by published_date DESC (nulls last), then created_at DESC
 	var summaries []LessonSummary
-	if err := s.db.WithContext(ctx).
-		Model(&Lesson{}).
+	if err := baseQuery.
 		Select("id, slug, title, is_published, is_vip, author, published_date, created_at, updated_at").
-		Order("published_date DESC NULLS LAST, created_at DESC").
+		Order(sortOrder).
 		Limit(params.Size).
 		Offset(offset).
 		Find(&summaries).Error; err != nil {

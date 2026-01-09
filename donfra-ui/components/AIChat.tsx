@@ -236,6 +236,16 @@ export default function AIChat({ codeContent, userRole }: AIChatProps) {
                           </code>
                         );
                       },
+                      p: ({ children }) => <p style={{ margin: "8px 0" }}>{children}</p>,
+                      ul: ({ children }) => <ul style={{ margin: "8px 0", paddingLeft: "24px" }}>{children}</ul>,
+                      ol: ({ children }) => <ol style={{ margin: "8px 0", paddingLeft: "24px" }}>{children}</ol>,
+                      li: ({ children }) => <li style={{ margin: "4px 0" }}>{children}</li>,
+                      h1: ({ children }) => <h1 style={{ margin: "16px 0 8px", fontSize: "20px", fontWeight: "600" }}>{children}</h1>,
+                      h2: ({ children }) => <h2 style={{ margin: "16px 0 8px", fontSize: "18px", fontWeight: "600" }}>{children}</h2>,
+                      h3: ({ children }) => <h3 style={{ margin: "12px 0 6px", fontSize: "16px", fontWeight: "600" }}>{children}</h3>,
+                      blockquote: ({ children }) => <blockquote style={{ margin: "12px 0", padding: "8px 12px", borderLeft: "4px solid #0e639c", background: "rgba(14, 99, 156, 0.1)", fontStyle: "italic", color: "#b8b8b8" }}>{children}</blockquote>,
+                      strong: ({ children }) => <strong style={{ fontWeight: "600", color: "#fff" }}>{children}</strong>,
+                      em: ({ children }) => <em style={{ fontStyle: "italic", color: "#d4d4d4" }}>{children}</em>,
                     }}
                   >
                     {msg.content}

@@ -39,6 +39,11 @@ function LibraryInner() {
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
 
+  // Search and sort state
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("created_at");
+  const [sortDesc, setSortDesc] = useState(true);
+
   // Check if user is admin or above via user authentication
   const isAdmin = user?.role === "admin" || user?.role === "god";
   const isVip = user?.role === "vip" || isAdmin;
@@ -47,7 +52,7 @@ function LibraryInner() {
     (async () => {
       try {
         setLoadingList(true);
-        const response = await api.study.listSummary(currentPage, pageSize);
+        const response = await api.study.listSummary(currentPage, pageSize, sortBy, sortDesc, search);
         setLessons(response.lessons);
         setTotal(response.total);
         setTotalPages(response.totalPages);
@@ -57,7 +62,13 @@ function LibraryInner() {
         setLoadingList(false);
       }
     })();
-  }, [currentPage, pageSize]);
+  }, [currentPage, pageSize, sortBy, sortDesc, search]);
+
+  // Handle search input with debounce
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setCurrentPage(1); // Reset to first page on search
+  };
 
   return (
     <main className="admin-shell" style={{ paddingTop: 100 }}>
@@ -97,6 +108,88 @@ function LibraryInner() {
             </button>
           </div>
         )}
+
+        {/* Search and Sort Controls */}
+        <div style={{ marginBottom: 16, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          {/* Search Input */}
+          <input
+            type="text"
+            placeholder="Search by title, slug, or author..."
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            style={{
+              flex: "1 1 300px",
+              padding: "10px 14px",
+              borderRadius: 8,
+              border: "1px solid rgba(169,142,100,0.3)",
+              background: "rgba(0,0,0,0.3)",
+              color: "#fff",
+              fontSize: 14,
+            }}
+          />
+
+          {/* Sort By Dropdown */}
+          <select
+            value={sortBy}
+            onChange={(e) => {
+              setSortBy(e.target.value);
+              setCurrentPage(1);
+            }}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 8,
+              border: "1px solid rgba(169,142,100,0.3)",
+              background: "rgba(0,0,0,0.3)",
+              color: "#fff",
+              fontSize: 14,
+              cursor: "pointer",
+            }}
+          >
+            <option value="created_at">Sort by: Created Date</option>
+            <option value="updated_at">Sort by: Updated Date</option>
+            <option value="title">Sort by: Title</option>
+            <option value="published_date">Sort by: Published Date</option>
+            <option value="id">Sort by: ID</option>
+          </select>
+
+          {/* Sort Direction Toggle */}
+          <button
+            onClick={() => {
+              setSortDesc(!sortDesc);
+              setCurrentPage(1);
+            }}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 8,
+              border: "1px solid rgba(169,142,100,0.3)",
+              background: "rgba(169,142,100,0.08)",
+              color: "#f4d18c",
+              cursor: "pointer",
+              fontSize: 14,
+              fontWeight: 600,
+            }}
+          >
+            {sortDesc ? "↓ Desc" : "↑ Asc"}
+          </button>
+
+          {/* Clear Search */}
+          {search && (
+            <button
+              onClick={() => handleSearchChange("")}
+              style={{
+                padding: "10px 14px",
+                borderRadius: 8,
+                border: "1px solid rgba(255,100,100,0.3)",
+                background: "rgba(255,100,100,0.08)",
+                color: "#ff6464",
+                cursor: "pointer",
+                fontSize: 14,
+              }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
 
         <section
           className="admin-card"
@@ -175,7 +268,7 @@ function LibraryInner() {
                 {lessons.length === 0 && (
                   <tr>
                     <td colSpan={4} style={{ padding: "10px 6px", color: "#aaa" }}>
-                      No lessons found.
+                      {search ? `No lessons found matching "${search}"` : "No lessons found."}
                     </td>
                   </tr>
                 )}
@@ -187,7 +280,7 @@ function LibraryInner() {
           {!loadingList && !listError && totalPages > 1 && (
             <div style={{ marginTop: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ color: "#aaa", fontSize: 14 }}>
-                {total} lessons total, page {currentPage} of {totalPages}
+                {total} lessons total{search && ` matching "${search}"`}, page {currentPage} of {totalPages}
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button

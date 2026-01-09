@@ -59,10 +59,13 @@ export const api = {
     },
   },
   study: {
-    listSummary: (page?: number, size?: number) => {
+    listSummary: (page?: number, size?: number, sortBy?: string, sortDesc?: boolean, search?: string) => {
       const params = new URLSearchParams();
       if (page !== undefined) params.append("page", page.toString());
       if (size !== undefined) params.append("size", size.toString());
+      if (sortBy) params.append("sort_by", sortBy);
+      if (sortDesc !== undefined) params.append("sort_desc", sortDesc.toString());
+      if (search) params.append("search", search);
       const query = params.toString();
       return getJSON<{
         lessons: Array<{ id: number; slug: string; title: string; isPublished: boolean; isVip: boolean; author?: string; publishedDate?: string; createdAt: string; updatedAt: string }>;

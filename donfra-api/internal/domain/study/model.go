@@ -58,8 +58,11 @@ type UpdateLessonResponse struct {
 
 // PaginationParams represents pagination parameters for listing lessons.
 type PaginationParams struct {
-	Page int // 1-based page number
-	Size int // number of items per page
+	Page     int    // 1-based page number
+	Size     int    // number of items per page
+	SortBy   string // Field to sort by: "created_at", "updated_at", "title", "id" (default: "created_at")
+	SortDesc bool   // Sort descending (default: true for dates, false for title)
+	Search   string // Search query for title/slug/author
 }
 
 // LessonSummary is a lightweight version of Lesson for list views.

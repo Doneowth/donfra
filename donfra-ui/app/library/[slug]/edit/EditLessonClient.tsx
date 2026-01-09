@@ -51,6 +51,7 @@ export default function EditLessonClient({ slug }: { slug: string }) {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [diagram, setDiagram] = useState<ExcalidrawData>(EMPTY_EXCALIDRAW);
   const diagramRef = useRef<ExcalidrawData>(EMPTY_EXCALIDRAW);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Check if user is admin or above via user authentication
   const isAdmin = user?.role === "admin" || user?.role === "god";
@@ -110,6 +111,30 @@ export default function EditLessonClient({ slug }: { slug: string }) {
       }
     })();
   }, [slug]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.name.endsWith('.md') && !file.name.endsWith('.markdown')) {
+      setToast({ message: "Please upload a .md or .markdown file", type: "error" });
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      setMarkdown(text);
+      setToast({ message: `Loaded ${file.name} successfully!`, type: "success" });
+    } catch (err: any) {
+      setToast({ message: `Failed to read file: ${err.message}`, type: "error" });
+    }
+
+    // Reset file input so the same file can be uploaded again if needed
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   const handleSave = async () => {
     if (!isAdmin) {
@@ -257,7 +282,33 @@ export default function EditLessonClient({ slug }: { slug: string }) {
           <div className="edit-content-grid">
             {/* Markdown 编辑器 */}
             <div className="edit-content-column">
-              <h4>Markdown</h4>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <h4 style={{ margin: 0 }}>Markdown</h4>
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".md,.markdown"
+                    onChange={handleFileUpload}
+                    style={{ display: "none" }}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: 6,
+                      border: "1px solid rgba(169,142,100,0.4)",
+                      background: "rgba(169,142,100,0.1)",
+                      color: "#f4d18c",
+                      cursor: "pointer",
+                      fontSize: 13,
+                      fontWeight: 600,
+                    }}
+                  >
+                    📁 Upload .md file
+                  </button>
+                </div>
+              </div>
               <textarea
                 className="edit-markdown-editor"
                 value={markdown}
