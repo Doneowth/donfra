@@ -1,9 +1,14 @@
 /* ==========================================
    Design Tokens - Donfra UI System
    Unified design variables for consistent styling
+   Using rem for scalability, % for fluidity
+   Base: 1rem = 16px (desktop), 14px (mobile)
    ========================================== */
 
 :root {
+  /* ===== Base Font Size ===== */
+  font-size: 16px;
+
   /* ===== Colors ===== */
   /* Background */
   --color-bg-primary: #0B0C0C;
@@ -44,15 +49,16 @@
   --font-mono: 'IBM Plex Mono', monospace;
   --font-code: 'Share Tech Mono', monospace;
 
-  /* Font Sizes - Mobile First */
-  --font-size-xs: 11px;
-  --font-size-sm: 12px;
-  --font-size-base: 14px;
-  --font-size-md: 16px;
-  --font-size-lg: 18px;
-  --font-size-xl: 20px;
-  --font-size-2xl: 24px;
-  --font-size-3xl: 32px;
+  /* Font Sizes - rem based (scales with root font-size) */
+  --font-size-xs: 0.6875rem;   /* 11px at 16px base */
+  --font-size-sm: 0.75rem;     /* 12px */
+  --font-size-base: 0.875rem;  /* 14px */
+  --font-size-md: 1rem;        /* 16px */
+  --font-size-lg: 1.125rem;    /* 18px */
+  --font-size-xl: 1.25rem;     /* 20px */
+  --font-size-2xl: 1.5rem;     /* 24px */
+  --font-size-3xl: 2rem;       /* 32px */
+  --font-size-4xl: 2.5rem;     /* 40px */
 
   /* Font Weights */
   --font-weight-normal: 400;
@@ -71,34 +77,49 @@
   --letter-spacing-normal: 0;
   --letter-spacing-wide: 0.04em;
   --letter-spacing-wider: 0.05em;
-  --letter-spacing-widest: 1px;
+  --letter-spacing-widest: 0.0625rem;
 
-  /* ===== Spacing ===== */
+  /* ===== Spacing - rem based ===== */
   --space-0: 0;
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-10: 40px;
-  --space-12: 48px;
-  --space-16: 64px;
+  --space-1: 0.25rem;    /* 4px */
+  --space-2: 0.5rem;     /* 8px */
+  --space-3: 0.75rem;    /* 12px */
+  --space-4: 1rem;       /* 16px */
+  --space-5: 1.25rem;    /* 20px */
+  --space-6: 1.5rem;     /* 24px */
+  --space-8: 2rem;       /* 32px */
+  --space-10: 2.5rem;    /* 40px */
+  --space-12: 3rem;      /* 48px */
+  --space-16: 4rem;      /* 64px */
 
-  /* ===== Border Radius ===== */
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
-  --radius-xl: 12px;
+  /* ===== Layout - percentage based ===== */
+  --width-quarter: 25%;
+  --width-third: 33.333%;
+  --width-half: 50%;
+  --width-two-thirds: 66.666%;
+  --width-three-quarters: 75%;
+  --width-full: 100%;
+
+  /* Container max-widths */
+  --container-sm: 40rem;    /* 640px */
+  --container-md: 48rem;    /* 768px */
+  --container-lg: 64rem;    /* 1024px */
+  --container-xl: 80rem;    /* 1280px */
+
+  /* ===== Border Radius - rem based ===== */
+  --radius-sm: 0.375rem;   /* 6px */
+  --radius-md: 0.5rem;     /* 8px */
+  --radius-lg: 0.625rem;   /* 10px */
+  --radius-xl: 0.75rem;    /* 12px */
+  --radius-2xl: 1rem;      /* 16px */
   --radius-full: 9999px;
 
   /* ===== Shadows ===== */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.16);
-  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.25);
-  --shadow-xl: 0 10px 40px rgba(0, 0, 0, 0.55);
-  --shadow-glow: 0 0 25px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.16);
+  --shadow-lg: 0 0.625rem 1.25rem rgba(0, 0, 0, 0.25);
+  --shadow-xl: 0 0.625rem 2.5rem rgba(0, 0, 0, 0.55);
+  --shadow-glow: 0 0 1.5rem rgba(0, 0, 0, 0.5);
 
   /* ===== Transitions ===== */
   --transition-fast: 0.15s ease;
@@ -113,27 +134,99 @@
   --z-popover: 1100;
   --z-tooltip: 1200;
 
-  /* ===== Breakpoints (for reference in JS) ===== */
-  --breakpoint-mobile: 480px;
-  --breakpoint-tablet: 768px;
-  --breakpoint-desktop: 1024px;
-  --breakpoint-wide: 1280px;
+  /* ===== Component Sizes ===== */
+  --header-height: 4.5rem;     /* 72px */
+  --sidebar-width: 16rem;      /* 256px */
+  --input-height-sm: 2rem;     /* 32px */
+  --input-height-md: 2.5rem;   /* 40px */
+  --input-height-lg: 3rem;     /* 48px */
+  --button-height-sm: 2rem;    /* 32px */
+  --button-height-md: 2.5rem;  /* 40px */
+  --button-height-lg: 3rem;    /* 48px */
+
+  /* ===== Breakpoints (for reference) ===== */
+  --breakpoint-xs: 20rem;      /* 320px */
+  --breakpoint-sm: 30rem;      /* 480px */
+  --breakpoint-md: 48rem;      /* 768px */
+  --breakpoint-lg: 64rem;      /* 1024px */
+  --breakpoint-xl: 80rem;      /* 1280px */
 }
 
-/* ===== Tablet Breakpoint ===== */
-@media (min-width: 768px) {
+/* ===== Mobile - Small screens ===== */
+@media (max-width: 480px) {
   :root {
-    --font-size-base: 16px;
-    --font-size-lg: 18px;
-    --font-size-xl: 22px;
-    --font-size-2xl: 28px;
-    --font-size-3xl: 36px;
+    font-size: 14px;  /* Slightly smaller base */
+
+    /* Tighter spacing on mobile */
+    --space-6: 1.25rem;
+    --space-8: 1.5rem;
+    --space-12: 2rem;
+
+    /* Smaller header */
+    --header-height: 3.5rem;
   }
 }
 
-/* ===== Desktop Breakpoint ===== */
-@media (min-width: 1024px) {
+/* ===== Tablet ===== */
+@media (min-width: 481px) and (max-width: 768px) {
   :root {
-    --font-size-3xl: 40px;
+    font-size: 15px;
   }
+}
+
+/* ===== Desktop - Large screens ===== */
+@media (min-width: 1280px) {
+  :root {
+    font-size: 17px;  /* Slightly larger for big screens */
+  }
+}
+
+/* ===== Utility Classes ===== */
+/* These use the token variables */
+
+/* Width utilities */
+.w-quarter { width: var(--width-quarter); }
+.w-third { width: var(--width-third); }
+.w-half { width: var(--width-half); }
+.w-two-thirds { width: var(--width-two-thirds); }
+.w-three-quarters { width: var(--width-three-quarters); }
+.w-full { width: var(--width-full); }
+
+/* Max-width containers */
+.container-sm { max-width: var(--container-sm); margin-inline: auto; }
+.container-md { max-width: var(--container-md); margin-inline: auto; }
+.container-lg { max-width: var(--container-lg); margin-inline: auto; }
+.container-xl { max-width: var(--container-xl); margin-inline: auto; }
+
+/* Responsive padding using clamp() */
+.p-responsive {
+  padding: clamp(var(--space-3), 4vw, var(--space-6));
+}
+.px-responsive {
+  padding-inline: clamp(var(--space-3), 5vw, var(--space-8));
+}
+.py-responsive {
+  padding-block: clamp(var(--space-4), 4vh, var(--space-8));
+}
+
+/* Responsive gap */
+.gap-responsive {
+  gap: clamp(var(--space-2), 2vw, var(--space-4));
+}
+
+/* Fluid typography using clamp() */
+.text-fluid-sm {
+  font-size: clamp(var(--font-size-sm), 1.5vw, var(--font-size-base));
+}
+.text-fluid-md {
+  font-size: clamp(var(--font-size-base), 2vw, var(--font-size-lg));
+}
+.text-fluid-lg {
+  font-size: clamp(var(--font-size-lg), 2.5vw, var(--font-size-2xl));
+}
+.text-fluid-xl {
+  font-size: clamp(var(--font-size-xl), 3vw, var(--font-size-3xl));
+}
+.text-fluid-2xl {
+  font-size: clamp(var(--font-size-2xl), 4vw, var(--font-size-4xl));
 }

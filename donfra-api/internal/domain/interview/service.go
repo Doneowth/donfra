@@ -33,17 +33,22 @@ type Service interface {
 
 // service implements Service interface
 type service struct {
-	repo      Repository
-	jwtSecret []byte
-	baseURL   string
+	repo                   Repository
+	jwtSecret              []byte
+	baseURL                string
+	inviteTokenExpiryHours int
 }
 
 // NewService creates a new interview room service
-func NewService(repo Repository, jwtSecret, baseURL string) Service {
+func NewService(repo Repository, jwtSecret, baseURL string, inviteTokenExpiryHours int) Service {
+	if inviteTokenExpiryHours <= 0 {
+		inviteTokenExpiryHours = 24 // Default: 24 hours
+	}
 	return &service{
-		repo:      repo,
-		jwtSecret: []byte(jwtSecret),
-		baseURL:   baseURL,
+		repo:                   repo,
+		jwtSecret:              []byte(jwtSecret),
+		baseURL:                baseURL,
+		inviteTokenExpiryHours: inviteTokenExpiryHours,
 	}
 }
 
@@ -214,7 +219,7 @@ func (s *service) generateInviteToken(roomID string) (string, error) {
 		RoomID: roomID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   "interview_room",
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(s.inviteTokenExpiryHours) * time.Hour)),
 			Issuer:    "donfra-api",
 		},
 	}

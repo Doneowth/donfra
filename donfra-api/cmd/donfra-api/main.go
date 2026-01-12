@@ -59,17 +59,17 @@ func main() {
 
 	// Initialize user service with PostgreSQL repository
 	userRepo := user.NewPostgresRepository(conn)
-	userSvc := user.NewService(userRepo, cfg.JWTSecret, 168) // 168 hours = 7 days
-	log.Println("[donfra-api] user service initialized")
+	userSvc := user.NewService(userRepo, cfg.JWTSecret, cfg.JWTExpiryHours, cfg.CookieMaxAgeDays)
+	log.Printf("[donfra-api] user service initialized (JWT expiry: %d hours, cookie: %d days)", cfg.JWTExpiryHours, cfg.CookieMaxAgeDays)
 
 	// Initialize interview room service with PostgreSQL repository
 	interviewRepo := interview.NewRepository(conn)
-	interviewSvc := interview.NewService(interviewRepo, cfg.JWTSecret, cfg.BaseURL)
-	log.Println("[donfra-api] interview room service initialized")
+	interviewSvc := interview.NewService(interviewRepo, cfg.JWTSecret, cfg.BaseURL, cfg.InviteTokenExpiryHours)
+	log.Printf("[donfra-api] interview room service initialized (invite token expiry: %d hours)", cfg.InviteTokenExpiryHours)
 
 	// Initialize LiveKit service (use PublicURL for client connections)
-	livekitSvc := livekit.NewService(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret, cfg.LiveKitPublicURL)
-	log.Println("[donfra-api] livekit service initialized")
+	livekitSvc := livekit.NewService(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret, cfg.LiveKitPublicURL, cfg.LiveKitTokenExpiryHours)
+	log.Printf("[donfra-api] livekit service initialized (token expiry: %d hours)", cfg.LiveKitTokenExpiryHours)
 
 	// Initialize Google OAuth service
 	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
@@ -78,11 +78,11 @@ func main() {
 	if googleRedirectURL == "" {
 		googleRedirectURL = "http://localhost:8080/api/auth/google/callback"
 	}
-	googleSvc := google.NewGoogleOAuthService(googleClientID, googleClientSecret, googleRedirectURL, cfg.FrontendURL, redisClient)
+	googleSvc := google.NewGoogleOAuthService(googleClientID, googleClientSecret, googleRedirectURL, cfg.FrontendURL, redisClient, cfg.OAuthStateExpiryMins)
 	if redisClient != nil {
-		log.Printf("[donfra-api] google oauth service initialized with Redis (redirect: %s, frontend: %s)", googleRedirectURL, cfg.FrontendURL)
+		log.Printf("[donfra-api] google oauth service initialized with Redis (state expiry: %d mins)", cfg.OAuthStateExpiryMins)
 	} else {
-		log.Printf("[donfra-api] google oauth service initialized with in-memory storage (redirect: %s, frontend: %s)", googleRedirectURL, cfg.FrontendURL)
+		log.Printf("[donfra-api] google oauth service initialized with in-memory storage (state expiry: %d mins)", cfg.OAuthStateExpiryMins)
 	}
 
 	// Initialize AI agent service

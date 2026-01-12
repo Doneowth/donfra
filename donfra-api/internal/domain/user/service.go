@@ -31,20 +31,25 @@ var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-
 
 // Service handles user business logic.
 type Service struct {
-	repo        Repository
-	jwtSecret   string
-	jwtExpiry   int // JWT expiry in hours
+	repo             Repository
+	jwtSecret        string
+	jwtExpiry        int // JWT expiry in hours
+	cookieMaxAgeDays int // Cookie max age in days
 }
 
 // NewService creates a new user service.
-func NewService(repo Repository, jwtSecret string, jwtExpiry int) *Service {
+func NewService(repo Repository, jwtSecret string, jwtExpiry int, cookieMaxAgeDays int) *Service {
 	if jwtExpiry <= 0 {
 		jwtExpiry = 168 // Default: 7 days
 	}
+	if cookieMaxAgeDays <= 0 {
+		cookieMaxAgeDays = 7 // Default: 7 days
+	}
 	return &Service{
-		repo:      repo,
-		jwtSecret: jwtSecret,
-		jwtExpiry: jwtExpiry,
+		repo:             repo,
+		jwtSecret:        jwtSecret,
+		jwtExpiry:        jwtExpiry,
+		cookieMaxAgeDays: cookieMaxAgeDays,
 	}
 }
 
@@ -169,6 +174,11 @@ func (s *Service) GetJWTSecret() string {
 // GetJWTExpiry returns the JWT expiry duration in hours.
 func (s *Service) GetJWTExpiry() int {
 	return s.jwtExpiry
+}
+
+// GetCookieMaxAgeDays returns the cookie max age in days.
+func (s *Service) GetCookieMaxAgeDays() int {
+	return s.cookieMaxAgeDays
 }
 
 // UpdatePassword updates a user's password after verifying the current password.

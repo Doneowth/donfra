@@ -11,17 +11,22 @@ import (
 
 // Service handles LiveKit live streaming business logic
 type Service struct {
-	apiKey    string
-	apiSecret string
-	serverURL string
+	apiKey           string
+	apiSecret        string
+	serverURL        string
+	tokenExpiryHours int
 }
 
 // NewService creates a new LiveKit service
-func NewService(apiKey, apiSecret, serverURL string) *Service {
+func NewService(apiKey, apiSecret, serverURL string, tokenExpiryHours int) *Service {
+	if tokenExpiryHours <= 0 {
+		tokenExpiryHours = 24 // Default: 24 hours
+	}
 	return &Service{
-		apiKey:    apiKey,
-		apiSecret: apiSecret,
-		serverURL: serverURL,
+		apiKey:           apiKey,
+		apiSecret:        apiSecret,
+		serverURL:        serverURL,
+		tokenExpiryHours: tokenExpiryHours,
 	}
 }
 
@@ -112,7 +117,7 @@ func (s *Service) generateAccessToken(sessionID, userName, role string) (string,
 	at.SetVideoGrant(grant).
 		SetIdentity(userName).
 		SetName(userName).
-		SetValidFor(24 * time.Hour)
+		SetValidFor(time.Duration(s.tokenExpiryHours) * time.Hour)
 		
 	return at.ToJWT()
 }

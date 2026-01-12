@@ -75,9 +75,9 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 		Name:     "auth_token",
 		Value:    token,
 		Path:     "/",
-		MaxAge:   7 * 24 * 60 * 60, // 7 days in seconds
-		HttpOnly: true,              // Prevent XSS attacks
-		Secure:   false,             // Set to true in production with HTTPS
+		MaxAge:   h.userSvc.GetCookieMaxAgeDays() * 24 * 60 * 60, // days to seconds
+		HttpOnly: true,                                            // Prevent XSS attacks
+		Secure:   false,                                           // Set to true in production with HTTPS
 		SameSite: http.SameSiteLaxMode,
 	})
 
@@ -171,7 +171,7 @@ func (h *Handlers) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		Name:     "auth_token",
 		Value:    token,
 		Path:     "/",
-		MaxAge:   7 * 24 * 60 * 60,
+		MaxAge:   h.userSvc.GetCookieMaxAgeDays() * 24 * 60 * 60,
 		HttpOnly: true,
 		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
@@ -284,7 +284,7 @@ func (h *Handlers) GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		Name:     "auth_token",
 		Value:    token,
 		Path:     "/",
-		MaxAge:   7 * 24 * 60 * 60, // 7 days in seconds
+		MaxAge:   h.userSvc.GetCookieMaxAgeDays() * 24 * 60 * 60,
 		HttpOnly: true,
 		Secure:   false, // Set to true in production with HTTPS
 		SameSite: http.SameSiteLaxMode,

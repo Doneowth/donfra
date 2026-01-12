@@ -36,6 +36,7 @@ type UserService interface {
 	GetUserByEmail(ctx context.Context, email string) (*user.User, error)
 	GetJWTSecret() string
 	GetJWTExpiry() int
+	GetCookieMaxAgeDays() int
 	UpdatePassword(ctx context.Context, userID uint, currentPassword, newPassword string) error
 	ListAllUsers(ctx context.Context) ([]*user.User, error)
 	UpdateUserRole(ctx context.Context, userID uint, newRole string) error

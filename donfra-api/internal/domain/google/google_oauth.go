@@ -25,9 +25,10 @@ var (
 
 // GoogleOAuthService handles Google OAuth login flow
 type GoogleOAuthService struct {
-	config      *oauth2.Config
-	frontendURL string       // Frontend URL for OAuth callback redirect
-	redisClient *redis.Client // Redis client for state storage (nil = use in-memory)
+	config           *oauth2.Config
+	frontendURL      string        // Frontend URL for OAuth callback redirect
+	redisClient      *redis.Client // Redis client for state storage (nil = use in-memory)
+	stateExpiryMins  int           // OAuth state expiry in minutes
 
 	// In-memory state storage (fallback when Redis is not available)
 	states   map[string]*StateData
@@ -51,7 +52,10 @@ type GoogleUserInfo struct {
 }
 
 // NewGoogleOAuthService creates a new Google OAuth service
-func NewGoogleOAuthService(clientID, clientSecret, redirectURL, frontendURL string, redisClient *redis.Client) *GoogleOAuthService {
+func NewGoogleOAuthService(clientID, clientSecret, redirectURL, frontendURL string, redisClient *redis.Client, stateExpiryMins int) *GoogleOAuthService {
+	if stateExpiryMins <= 0 {
+		stateExpiryMins = 10 // Default: 10 minutes
+	}
 	svc := &GoogleOAuthService{
 		config: &oauth2.Config{
 			ClientID:     clientID,
@@ -63,10 +67,11 @@ func NewGoogleOAuthService(clientID, clientSecret, redirectURL, frontendURL stri
 			},
 			Endpoint: google.Endpoint,
 		},
-		frontendURL: frontendURL,
-		redisClient: redisClient,
-		states:      make(map[string]*StateData),
-		statesMu:    &sync.RWMutex{},
+		frontendURL:     frontendURL,
+		redisClient:     redisClient,
+		stateExpiryMins: stateExpiryMins,
+		states:          make(map[string]*StateData),
+		statesMu:        &sync.RWMutex{},
 	}
 
 	// Start cleanup goroutine for expired states (only for in-memory mode)
@@ -80,7 +85,7 @@ func NewGoogleOAuthService(clientID, clientSecret, redirectURL, frontendURL stri
 // GenerateAuthURL generates a Google OAuth authorization URL
 func (s *GoogleOAuthService) GenerateAuthURL() (string, string, error) {
 	state := s.generateState()
-	expiration := 10 * time.Minute
+	expiration := time.Duration(s.stateExpiryMins) * time.Minute
 
 	// Store state with expiration (Redis or in-memory)
 	if s.redisClient != nil {
