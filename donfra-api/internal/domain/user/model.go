@@ -28,23 +28,26 @@ func (User) TableName() string {
 
 // UserPublic represents the public user information returned to clients.
 type UserPublic struct {
-	ID        uint      `json:"id"`
-	Email     string    `json:"email"`
-	Username  string    `json:"username"`
-	Role      string    `json:"role"`
-	IsActive  bool      `json:"isActive"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID         uint      `json:"id"`
+	Email      string    `json:"email"`
+	Username   string    `json:"username"`
+	Role       string    `json:"role"`
+	IsActive   bool      `json:"isActive"`
+	CanStealth bool      `json:"canStealth"`
+	CreatedAt  time.Time `json:"createdAt"`
 }
 
 // ToPublic converts a User to UserPublic (safe for API responses).
 func (u *User) ToPublic() *UserPublic {
+	canStealth := u.Role == "admin" || u.Role == "god"
 	return &UserPublic{
-		ID:        u.ID,
-		Email:     u.Email,
-		Username:  u.Username,
-		Role:      u.Role,
-		IsActive:  u.IsActive,
-		CreatedAt: u.CreatedAt,
+		ID:         u.ID,
+		Email:      u.Email,
+		Username:   u.Username,
+		Role:       u.Role,
+		IsActive:   u.IsActive,
+		CanStealth: canStealth,
+		CreatedAt:  u.CreatedAt,
 	}
 }
 

@@ -6,27 +6,21 @@ import { useRouter } from "next/navigation";
 import ReactMarkdown, {
   type Components as MarkdownComponents,
 } from "react-markdown";
-import { API_BASE, api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  fetchLessonRequest,
+  deleteLessonRequest,
+} from "@/features/lessons/lessonsSlice";
+import {
+  selectLessonBySlug,
+  selectDetailLoading,
+  selectDetailError,
+  selectDeleting,
+} from "@/features/lessons/lessonsSelectors";
 import { EMPTY_EXCALIDRAW, sanitizeExcalidraw } from "@/lib/utils/excalidraw";
 import Toast from "@/components/Toast";
 import "./lesson-detail.css";
-
-type Lesson = {
-  id: number;
-  slug: string;
-  title: string;
-  markdown?: string;
-  excalidraw?: any;
-  videoUrl?: string;
-  codeTemplate?: {
-    language: string;
-    externalUrl?: string;  // URL to CodeSandbox, Replit, StackBlitz, etc.
-  };
-  isVip?: boolean;
-};
-
-const API_ROOT = API_BASE || "/api";
 
 const Excalidraw = dynamic(
   () => import("@excalidraw/excalidraw").then((mod) => mod.Excalidraw),
@@ -36,16 +30,6 @@ const Excalidraw = dynamic(
   }
 );
 
-// No longer needed - using external IDEs instead of Monaco
-// const MonacoEditor = dynamic(
-//   () => import("@monaco-editor/react"),
-//   {
-//     ssr: false,
-//     loading: () => <div style={{ color: "#aaa", padding: 12 }}>Loading editor…</div>,
-//   }
-// );
-
-// 不再用 CodeComponent 类型，自己定义一个 props 就行
 type CodeProps = React.ComponentProps<"code"> & {
   inline?: boolean;
   node?: any;
@@ -53,7 +37,6 @@ type CodeProps = React.ComponentProps<"code"> & {
 
 const CodeBlock = ({ inline, className, children, ...props }: CodeProps) => {
   if (inline) {
-    // `inline code`
     return (
       <code
         className={className}
@@ -71,7 +54,6 @@ const CodeBlock = ({ inline, className, children, ...props }: CodeProps) => {
     );
   }
 
-  // ```block code```
   return (
     <pre
       style={{
@@ -133,14 +115,17 @@ type TabType = "markdown" | "diagram" | "video" | "code";
 
 export default function LessonDetailClient({ slug }: { slug: string }) {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const { user } = useAuth();
 
-  const [lesson, setLesson] = useState<Lesson | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Redux state
+  const lesson = useAppSelector(selectLessonBySlug(slug));
+  const loading = useAppSelector(selectDetailLoading);
+  const error = useAppSelector(selectDetailError);
+  const deleting = useAppSelector(selectDeleting);
+
+  // Local UI state
   const [canRenderDiagram, setCanRenderDiagram] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("markdown");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
@@ -148,52 +133,40 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
   const isAdmin = user?.role === "admin" || user?.role === "god";
   const isVip = user?.role === "vip" || isAdmin;
 
+  const isDeleting = deleting === slug;
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     setCanRenderDiagram(true);
   }, []);
 
+  // Fetch lesson on mount
   useEffect(() => {
-    (async () => {
-      try {
-        setError(null);
-        setLoading(true);
+    dispatch(fetchLessonRequest(slug));
+  }, [dispatch, slug]);
 
-        const res = await fetch(`${API_ROOT}/lessons/${slug}`, { credentials: 'include' });
-        const data = await res.json().catch(() => ({}));
+  // Handle delete
+  const handleDelete = () => {
+    if (!isAdmin) {
+      setToast({ message: "Admin authentication required. Please login.", type: "error" });
+      return;
+    }
+    if (!window.confirm("Delete this lesson? This cannot be undone.")) return;
+    dispatch(deleteLessonRequest(slug));
+    setToast({ message: "Lesson deleted successfully!", type: "success" });
+    setTimeout(() => {
+      router.push("/library");
+    }, 1000);
+  };
 
-        if (!res.ok) {
-          throw new Error(data?.error || `HTTP ${res.status}`);
-        }
-
-        let excaliData = data.excalidraw;
-        if (typeof excaliData === "string") {
-          try {
-            excaliData = JSON.parse(excaliData);
-          } catch {
-            excaliData = null;
-          }
-        }
-
-        setLesson({
-          id: data.id,
-          slug: data.slug ?? slug,
-          title: data.title ?? slug,
-          markdown: data.markdown ?? "",
-          excalidraw: sanitizeExcalidraw(excaliData),
-          videoUrl: data.videoUrl,
-          codeTemplate: data.codeTemplate,
-          isVip: data.isVip ?? false,
-        });
-      } catch (err: any) {
-        console.error("Failed to load lesson:", err);
-        setError(err?.message || "Failed to load lesson");
-        setLesson(null);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [slug]);
+  // Process excalidraw data
+  const processedExcalidraw = lesson?.excalidraw
+    ? sanitizeExcalidraw(
+        typeof lesson.excalidraw === "string"
+          ? JSON.parse(lesson.excalidraw)
+          : lesson.excalidraw
+      )
+    : EMPTY_EXCALIDRAW;
 
   return (
     <main
@@ -205,7 +178,7 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
         minHeight: "100vh",
       }}
     >
-      {/* 面包屑 */}
+      {/* Breadcrumb */}
       <div style={{ marginBottom: 10, color: "#ccc" }}>
         <button
           onClick={() => router.push("/library")}
@@ -218,7 +191,7 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
             textDecoration: "underline",
           }}
         >
-          Library 
+          Library
         </button>
         <span style={{ margin: "0 8px" }}>/</span>
         <span>{slug}</span>
@@ -264,7 +237,7 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
               fontSize: 14,
             }}
           >
-            Slug: {lesson.slug} · ID: {lesson.id}
+            Slug: {lesson.slug}
           </p>
 
           {isAdmin && (
@@ -284,30 +257,8 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
                 Edit lesson
               </button>
               <button
-                onClick={async () => {
-                  if (!isAdmin) {
-                    setActionError("Admin authentication required. Please login.");
-                    setToast({ message: "Admin authentication required. Please login.", type: "error" });
-                    return;
-                  }
-                  if (!window.confirm("Delete this lesson? This cannot be undone.")) return;
-                  try {
-                    setBusy(true);
-                    setActionError(null);
-                    await api.study.delete(lesson.slug);
-                    setToast({ message: "Lesson deleted successfully!", type: "success" });
-                    setTimeout(() => {
-                      router.push("/library");
-                    }, 1000);
-                  } catch (err: any) {
-                    const errorMsg = err?.message || "Failed to delete lesson";
-                    setActionError(errorMsg);
-                    setToast({ message: errorMsg, type: "error" });
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-                disabled={busy}
+                onClick={handleDelete}
+                disabled={isDeleting}
                 style={{
                   padding: "8px 14px",
                   borderRadius: 6,
@@ -316,15 +267,12 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
                   color: "#f88",
                   cursor: "pointer",
                   fontWeight: 600,
-                  opacity: busy ? 0.7 : 1,
+                  opacity: isDeleting ? 0.7 : 1,
                 }}
               >
-                {busy ? "Deleting…" : "Delete"}
+                {isDeleting ? "Deleting…" : "Delete"}
               </button>
             </div>
-          )}
-          {actionError && (
-            <div style={{ color: "#f88", marginBottom: 12 }}>{actionError}</div>
           )}
 
           {/* VIP Content Lock */}
@@ -470,7 +418,7 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
                         overflow: "hidden",
                       }}>
                         <Excalidraw
-                          initialData={lesson.excalidraw || EMPTY_EXCALIDRAW}
+                          initialData={processedExcalidraw}
                           zenModeEnabled
                           gridModeEnabled
                         />

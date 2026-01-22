@@ -1,5 +1,6 @@
 import "@excalidraw/excalidraw/index.css";
 import { AuthProvider } from "@/lib/auth-context";
+import StoreProvider from "@/store/StoreProvider";
 import Header from "@/components/Header";
 
 export const metadata = {
@@ -21,10 +22,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="stylesheet" href="/styles/main.css" />
       </head>
       <body>
-        <AuthProvider>
-          <Header />
-          <main className="main-content">{children}</main>
-        </AuthProvider>
+        <StoreProvider>
+          <AuthProvider>
+            <Header />
+            <main className="main-content">{children}</main>
+          </AuthProvider>
+        </StoreProvider>
       </body>
     </html>
   );

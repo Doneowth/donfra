@@ -3,30 +3,24 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { API_BASE, api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  fetchLessonRequest,
+  updateLessonRequest,
+  clearSaveError,
+} from "@/features/lessons/lessonsSlice";
+import {
+  selectLessonBySlug,
+  selectDetailLoading,
+  selectDetailError,
+  selectSaving,
+  selectSaveError,
+} from "@/features/lessons/lessonsSelectors";
+import type { LessonUpdateData } from "@/features/lessons/lessonsTypes";
 import { EMPTY_EXCALIDRAW, sanitizeExcalidraw, type ExcalidrawData } from "@/lib/utils/excalidraw";
 import Toast from "@/components/Toast";
 import "./edit-lesson.css";
-
-type Lesson = {
-  id: number;
-  slug: string;
-  title: string;
-  markdown?: string;
-  excalidraw?: any;
-  videoUrl?: string;
-  codeTemplate?: {
-    language?: string;
-    externalUrl?: string;
-  };
-  isPublished?: boolean;
-  isVip?: boolean;
-  author?: string;
-  publishedDate?: string;
-};
-
-const API_ROOT = API_BASE || "/api";
 
 const Excalidraw = dynamic(() => import("@excalidraw/excalidraw").then((mod) => mod.Excalidraw), {
   ssr: false,
@@ -35,11 +29,17 @@ const Excalidraw = dynamic(() => import("@excalidraw/excalidraw").then((mod) => 
 
 export default function EditLessonClient({ slug }: { slug: string }) {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const { user } = useAuth();
-  const [lesson, setLesson] = useState<Lesson | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  // Redux state
+  const lesson = useAppSelector(selectLessonBySlug(slug));
+  const loading = useAppSelector(selectDetailLoading);
+  const detailError = useAppSelector(selectDetailError);
+  const saving = useAppSelector(selectSaving);
+  const saveError = useAppSelector(selectSaveError);
+
+  // Local form state
   const [title, setTitle] = useState("");
   const [markdown, setMarkdown] = useState("");
   const [isPublished, setIsPublished] = useState(true);
@@ -48,75 +48,65 @@ export default function EditLessonClient({ slug }: { slug: string }) {
   const [publishedDate, setPublishedDate] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [codeUrl, setCodeUrl] = useState("");
+  const [localError, setLocalError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [diagram, setDiagram] = useState<ExcalidrawData>(EMPTY_EXCALIDRAW);
   const diagramRef = useRef<ExcalidrawData>(EMPTY_EXCALIDRAW);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [formInitialized, setFormInitialized] = useState(false);
 
   // Check if user is admin or above via user authentication
   const isAdmin = user?.role === "admin" || user?.role === "god";
 
   useEffect(() => {
     if (!isAdmin) {
-      setError("Admin login required to edit lessons.");
+      setLocalError("Admin login required to edit lessons.");
     }
   }, [isAdmin]);
 
+  // Fetch lesson on mount
   useEffect(() => {
-    (async () => {
-      try {
-        setError(null);
-        setLoading(true);
+    dispatch(fetchLessonRequest(slug));
+  }, [dispatch, slug]);
 
-        const res = await fetch(`${API_ROOT}/lessons/${slug}`, { credentials: 'include' });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-        let excaliData = data.excalidraw;
-        if (typeof excaliData === "string") {
-          try {
-            excaliData = JSON.parse(excaliData);
-          } catch {
-            excaliData = null;
-          }
+  // Initialize form when lesson loads
+  useEffect(() => {
+    if (lesson && !formInitialized) {
+      setTitle(lesson.title || slug);
+      setMarkdown(lesson.markdown || "");
+      setIsPublished(lesson.isPublished ?? true);
+      setIsVip(lesson.isVip ?? false);
+      setAuthor(lesson.author || "");
+      setPublishedDate(lesson.publishedDate || "");
+      setVideoUrl(lesson.videoUrl || "");
+      setCodeUrl(lesson.codeTemplate?.externalUrl || "");
+
+      let excaliData = lesson.excalidraw;
+      if (typeof excaliData === "string") {
+        try {
+          excaliData = JSON.parse(excaliData);
+        } catch {
+          excaliData = null;
         }
-        const lessonData: Lesson = {
-          id: data.id,
-          slug: data.slug ?? slug,
-          title: data.title ?? slug,
-          markdown: data.markdown ?? "",
-          excalidraw: sanitizeExcalidraw(excaliData),
-          videoUrl: data.videoUrl,
-          codeTemplate: data.codeTemplate,
-          isPublished: data.isPublished ?? true,
-          isVip: data.isVip ?? false,
-          author: data.author,
-          publishedDate: data.publishedDate,
-        };
-        setLesson(lessonData);
-        setTitle(data.title ?? slug);
-        setMarkdown(lessonData.markdown ?? "");
-        setIsPublished(data.isPublished ?? true);
-        setIsVip(data.isVip ?? false);
-        setAuthor(data.author ?? "");
-        setPublishedDate(data.publishedDate ?? "");
-        setVideoUrl(data.videoUrl ?? "");
-        setCodeUrl(data.codeTemplate?.externalUrl ?? "");
-        const sanitized = lessonData.excalidraw || EMPTY_EXCALIDRAW;
-        diagramRef.current = sanitized;
-        setDiagram(sanitized);
-      } catch (err: any) {
-        setError(err?.message || "Failed to load lesson");
-      } finally {
-        setLoading(false);
       }
-    })();
-  }, [slug]);
+      const sanitized = sanitizeExcalidraw(excaliData) || EMPTY_EXCALIDRAW;
+      diagramRef.current = sanitized;
+      setDiagram(sanitized);
+      setFormInitialized(true);
+    }
+  }, [lesson, slug, formInitialized]);
+
+  // Clear Redux error on unmount
+  useEffect(() => {
+    return () => {
+      dispatch(clearSaveError());
+    };
+  }, [dispatch]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.name.endsWith('.md') && !file.name.endsWith('.markdown')) {
       setToast({ message: "Please upload a .md or .markdown file", type: "error" });
       return;
@@ -130,49 +120,42 @@ export default function EditLessonClient({ slug }: { slug: string }) {
       setToast({ message: `Failed to read file: ${err.message}`, type: "error" });
     }
 
-    // Reset file input so the same file can be uploaded again if needed
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!isAdmin) {
-      setError("Admin authentication required. Please login.");
+      setLocalError("Admin authentication required. Please login.");
       return;
     }
-    try {
-      setSaving(true);
-      setError(null);
-      await api.study.update(slug, {
-        title: title.trim(),
-        markdown,
-        excalidraw: diagramRef.current,
-        videoUrl: videoUrl.trim() || undefined,
-        codeTemplate: codeUrl.trim() ? {
-          language: "Python",
-          externalUrl: codeUrl.trim()
-        } : undefined,
-        isPublished,
-        isVip,
-        author: author.trim() || undefined,
-        publishedDate: publishedDate || undefined,
-      });
-      setToast({ message: "Lesson updated successfully!", type: "success" });
-      setTimeout(() => {
-        router.push(`/library/${slug}`);
-      }, 1000);
-    } catch (err: any) {
-      const errorMsg = err?.message || "Failed to save";
-      setError(errorMsg);
-      setToast({ message: errorMsg, type: "error" });
-    } finally {
-      setSaving(false);
-    }
+
+    setLocalError(null);
+    const data: LessonUpdateData = {
+      title: title.trim(),
+      markdown,
+      excalidraw: diagramRef.current,
+      videoUrl: videoUrl.trim() || undefined,
+      codeTemplate: codeUrl.trim() ? {
+        language: "Python",
+        externalUrl: codeUrl.trim()
+      } : undefined,
+      isPublished,
+      isVip,
+      author: author.trim() || undefined,
+      publishedDate: publishedDate || undefined,
+    };
+
+    dispatch(updateLessonRequest({ slug, data }));
+    setToast({ message: "Saving changes...", type: "success" });
+
+    setTimeout(() => {
+      router.push(`/library/${slug}`);
+    }, 1500);
   };
 
-  useEffect(() => {
-  }, []);
+  const error = localError || detailError || saveError;
 
   return (
     <main
@@ -278,9 +261,9 @@ export default function EditLessonClient({ slug }: { slug: string }) {
             </div>
           </div>
 
-          {/* 水平布局：左边Markdown编辑器，右边Diagram */}
+          {/* Horizontal layout: Markdown editor on left, Diagram on right */}
           <div className="edit-content-grid">
-            {/* Markdown 编辑器 */}
+            {/* Markdown editor */}
             <div className="edit-content-column">
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <h4 style={{ margin: 0 }}>Markdown</h4>
@@ -305,7 +288,7 @@ export default function EditLessonClient({ slug }: { slug: string }) {
                       fontWeight: 600,
                     }}
                   >
-                    📁 Upload .md file
+                    Upload .md file
                   </button>
                 </div>
               </div>
@@ -316,7 +299,7 @@ export default function EditLessonClient({ slug }: { slug: string }) {
               />
             </div>
 
-            {/* Excalidraw 区域 */}
+            {/* Excalidraw area */}
             <div className="edit-content-column">
               <h4>Diagram</h4>
               {diagram ? (

@@ -47,6 +47,7 @@ func (h *Handlers) JoinLiveSession(w http.ResponseWriter, r *http.Request) {
 		SessionID string `json:"session_id"`
 		UserName  string `json:"user_name"`
 		IsHost    bool   `json:"is_host"`
+		IsHidden  bool   `json:"is_hidden"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -64,7 +65,19 @@ func (h *Handlers) JoinLiveSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.livekitSvc.JoinSession(ctx, req.SessionID, req.UserName, req.IsHost)
+	// Check if user has stealth permission (admin or god)
+	var canStealth bool
+	if userID, ok := ctx.Value("user_id").(uint); ok {
+		user, err := h.userSvc.GetUserByID(ctx, userID)
+		if err == nil {
+			canStealth = user.Role == "admin" || user.Role == "god"
+		}
+	}
+
+	// Only users with permission can actually be hidden
+	isHidden := req.IsHidden && canStealth
+
+	resp, err := h.livekitSvc.JoinSession(ctx, req.SessionID, req.UserName, req.IsHost, isHidden, canStealth)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

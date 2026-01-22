@@ -16,7 +16,7 @@ let YWebsocketNS: typeof import("y-websocket") | null = null;
 let YMonacoNS: typeof import("y-monaco") | null = null;
 
 type Props = { onExit?: () => void; roomId?: string };
-type Peer = { name: string; color: string; colorLight?: string };
+type Peer = { name: string; color: string; colorLight?: string; isHidden?: boolean };
 type RightPaneTab = "terminal" | "ai";
 
 export default function CodePad({ onExit, roomId }: Props) {
@@ -35,6 +35,11 @@ export default function CodePad({ onExit, roomId }: Props) {
 
   // User role for VIP check
   const [userRole, setUserRole] = useState<string>("");
+
+  // Stealth mode for admins
+  const [isStealthMode, setIsStealthMode] = useState(false);
+  const [canStealth, setCanStealth] = useState(false);
+  const canStealthRef = useRef(false);
 
   // 本地 userName（用于标注 runner）
   const userNameRef = useRef<string>("");
@@ -196,6 +201,25 @@ export default function CodePad({ onExit, roomId }: Props) {
     onExit?.();
   };
 
+  // 隐身模式切换
+  const toggleStealth = useCallback(() => {
+    const awareness = providerRef.current?.awareness;
+    if (!awareness) return;
+
+    const newStealthMode = !isStealthMode;
+    setIsStealthMode(newStealthMode);
+
+    // 更新 awareness 状态
+    const currentState = awareness.getLocalState();
+    awareness.setLocalState({
+      ...currentState,
+      user: {
+        ...currentState?.user,
+        isHidden: newStealthMode
+      }
+    });
+  }, [isStealthMode]);
+
   // Monaco onMount：绑定 Yjs + Awareness
   const onMount = useCallback(async (editor: MonacoEditor.IStandaloneCodeEditor, monacoNS: any) => {
     editorRef.current = editor;
@@ -248,6 +272,8 @@ export default function CodePad({ onExit, roomId }: Props) {
         if (data.user && data.user.username) {
           userName = data.user.username;
           setUserRole(data.user.role || "");
+          setCanStealth(data.user.canStealth || false);
+          canStealthRef.current = data.user.canStealth || false;
         }
       }
     } catch (err) {
@@ -285,12 +311,19 @@ export default function CodePad({ onExit, roomId }: Props) {
       }
     });
 
-    // 在线同伴列表
+    // 在线同伴列表（过滤隐身用户）
     const applyPeers = () => {
       const states = Array.from(awareness.getStates().entries());
+      const localClientId = doc.clientID;
       const users = states
         .map(([clientId, state]: [number, any]) => {
-          return state?.user;
+          const user = state?.user;
+          if (!user) return null;
+          // 如果是隐身用户且当前用户没有隐身权限，过滤掉（除非是自己）
+          if (user.isHidden && clientId !== localClientId && !canStealthRef.current) {
+            return null;
+          }
+          return user;
         })
         .filter(Boolean) as Peer[];
       setPeers(users);
@@ -325,7 +358,13 @@ export default function CodePad({ onExit, roomId }: Props) {
       const styles: string[] = [];
       awareness.getStates().forEach((state, clientId) => {
         if (clientId !== doc.clientID && state.user) {
-          const { color, colorLight, name } = state.user;
+          // 隐身用户的光标不渲染（对无权限用户）
+          if (state.user.isHidden && !canStealthRef.current) {
+            return;
+          }
+          const { color, colorLight, name, isHidden } = state.user;
+          // 为隐身用户添加特殊标识（对有权限的观察者）
+          const displayName = isHidden ? `👻 ${name}` : name;
           // Selection background
           styles.push(`
             .yRemoteSelection-${clientId} {
@@ -341,7 +380,7 @@ export default function CodePad({ onExit, roomId }: Props) {
           // Cursor label with username
           styles.push(`
             .yRemoteSelectionHead-${clientId}::after {
-              content: "${name}";
+              content: "${displayName}";
               background-color: ${color} !important;
             }
           `);
@@ -579,12 +618,22 @@ export default function CodePad({ onExit, roomId }: Props) {
           <span className="brand-sub">CodePad</span>
         </div>
         <div className="right">
+          {/* 隐身按钮（仅 admin/god 可见） */}
+          {canStealth && (
+            <button
+              className={`btn ${isStealthMode ? 'stealth-active' : 'ghost'}`}
+              onClick={toggleStealth}
+              title={isStealthMode ? "退出隐身模式" : "进入隐身模式"}
+            >
+              {isStealthMode ? "👻 隐身中" : "👁️ 隐身"}
+            </button>
+          )}
           {/* 在线协作者 */}
           <div className="peers">
             {peers.map((p, i) => (
-              <span key={i} className="peer">
+              <span key={i} className={`peer ${p.isHidden ? 'peer-hidden' : ''}`}>
                 <i className="dot" style={{ background: p.color }} />
-                {p.name}
+                {p.isHidden ? `👻 ${p.name}` : p.name}
               </span>
             ))}
           </div>

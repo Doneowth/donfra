@@ -65,7 +65,7 @@ type InterviewService interface {
 // LiveKitService defines the interface for LiveKit live streaming operations.
 type LiveKitService interface {
 	CreateSession(ctx context.Context, title string, ownerName string) (*livekit.CreateSessionResponse, error)
-	JoinSession(ctx context.Context, sessionID, userName string, isHost bool) (*livekit.JoinSessionResponse, error)
+	JoinSession(ctx context.Context, sessionID, userName string, isHost, isHidden, canStealth bool) (*livekit.JoinSessionResponse, error)
 	EndSession(ctx context.Context, sessionID string) (*livekit.EndSessionResponse, error)
 }
 

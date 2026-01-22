@@ -33,6 +33,22 @@ function LivePageContent() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Stealth mode
+  const [canStealth, setCanStealth] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
+
+  // Check if user has stealth permission
+  useEffect(() => {
+    fetch("/api/auth/me", { credentials: "include" })
+      .then(res => res.json())
+      .then(data => {
+        if (data.user?.canStealth) {
+          setCanStealth(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (sessionIdFromUrl) {
       setMode("join");
@@ -75,7 +91,7 @@ function LivePageContent() {
 
     try {
       const isHost = roleFromUrl === "host";
-      const response = await api.live.join(formData.sessionId, formData.userName, isHost);
+      const response = await api.live.join(formData.sessionId, formData.userName, isHost, isHidden);
 
       setRoomData({
         sessionId: response.session_id,
@@ -211,6 +227,19 @@ function LivePageContent() {
                 className="form-input"
               />
             </div>
+
+            {canStealth && (
+              <div className="form-group">
+                <label className="form-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={isHidden}
+                    onChange={(e) => setIsHidden(e.target.checked)}
+                  />
+                  <span className="checkbox-label">👻 Stealth Mode (others won't see you)</span>
+                </label>
+              </div>
+            )}
 
             <button
               type="submit"

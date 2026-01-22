@@ -3,23 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { API_BASE, api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { createLessonRequest, clearSaveError } from "@/features/lessons/lessonsSlice";
+import { selectSaving, selectSaveError } from "@/features/lessons/lessonsSelectors";
+import type { LessonCreateData } from "@/features/lessons/lessonsTypes";
 import { EMPTY_EXCALIDRAW, sanitizeExcalidraw, type ExcalidrawData } from "@/lib/utils/excalidraw";
 import Toast from "@/components/Toast";
 import "../[slug]/edit/edit-lesson.css";
-
-type LessonPayload = {
-  slug: string;
-  title: string;
-  markdown: string;
-  excalidraw: any;
-  videoUrl?: string;
-  isPublished: boolean;
-  isVip: boolean;
-  author?: string;
-  publishedDate?: string;
-};
 
 const Excalidraw = dynamic(() => import("@excalidraw/excalidraw").then((mod) => mod.Excalidraw), {
   ssr: false,
@@ -28,7 +19,14 @@ const Excalidraw = dynamic(() => import("@excalidraw/excalidraw").then((mod) => 
 
 export default function CreateLessonClient() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const { user } = useAuth();
+
+  // Redux state
+  const saving = useAppSelector(selectSaving);
+  const saveError = useAppSelector(selectSaveError);
+
+  // Local form state
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [markdown, setMarkdown] = useState("");
@@ -37,8 +35,7 @@ export default function CreateLessonClient() {
   const [author, setAuthor] = useState("");
   const [publishedDate, setPublishedDate] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const excaliRef = useRef<ExcalidrawData>(EMPTY_EXCALIDRAW);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -48,15 +45,21 @@ export default function CreateLessonClient() {
 
   useEffect(() => {
     if (!isAdmin) {
-      setError("Admin login required to create lessons.");
+      setLocalError("Admin login required to create lessons.");
     }
   }, [isAdmin]);
+
+  // Clear Redux error on unmount
+  useEffect(() => {
+    return () => {
+      dispatch(clearSaveError());
+    };
+  }, [dispatch]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.name.endsWith('.md') && !file.name.endsWith('.markdown')) {
       setToast({ message: "Please upload a .md or .markdown file", type: "error" });
       return;
@@ -70,50 +73,44 @@ export default function CreateLessonClient() {
       setToast({ message: `Failed to read file: ${err.message}`, type: "error" });
     }
 
-    // Reset file input so the same file can be uploaded again if needed
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!isAdmin) {
-      setError("Admin authentication required. Please login.");
+      setLocalError("Admin authentication required. Please login.");
       return;
     }
     if (!slug.trim() || !title.trim()) {
-      setError("Slug and Title are required.");
+      setLocalError("Slug and Title are required.");
       return;
     }
 
-    try {
-      setSaving(true);
-      setError(null);
-      const payload: LessonPayload = {
-        slug: slug.trim(),
-        title: title.trim(),
-        markdown,
-        excalidraw: excaliRef.current,
-        videoUrl: videoUrl.trim() || undefined,
-        isPublished,
-        isVip,
-        author: author.trim() || undefined,
-        publishedDate: publishedDate || undefined,
-      };
+    setLocalError(null);
+    const payload: LessonCreateData = {
+      slug: slug.trim(),
+      title: title.trim(),
+      markdown,
+      excalidraw: excaliRef.current,
+      videoUrl: videoUrl.trim() || undefined,
+      isPublished,
+      isVip,
+      author: author.trim() || undefined,
+      publishedDate: publishedDate || undefined,
+    };
 
-      await api.study.create(payload);
-      setToast({ message: "Lesson created successfully!", type: "success" });
-      setTimeout(() => {
-        router.push(`/library/${payload.slug}`);
-      }, 1000);
-    } catch (err: any) {
-      const errorMsg = err?.message || "Failed to create lesson";
-      setError(errorMsg);
-      setToast({ message: errorMsg, type: "error" });
-    } finally {
-      setSaving(false);
-    }
+    dispatch(createLessonRequest(payload));
+    setToast({ message: "Creating lesson...", type: "success" });
+
+    // Navigate after a short delay (saga will handle the API call)
+    setTimeout(() => {
+      router.push(`/library/${payload.slug}`);
+    }, 1500);
   };
+
+  const error = localError || saveError;
 
   return (
     <main
@@ -212,9 +209,9 @@ export default function CreateLessonClient() {
           </div>
         </div>
 
-        {/* 水平布局：左边Markdown编辑器，右边Diagram */}
+        {/* Horizontal layout: Markdown editor on left, Diagram on right */}
         <div className="edit-content-grid">
-          {/* Markdown 编辑器 */}
+          {/* Markdown editor */}
           <div className="edit-content-column">
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
               <h4 style={{ margin: 0 }}>Markdown</h4>
@@ -239,7 +236,7 @@ export default function CreateLessonClient() {
                     fontWeight: 600,
                   }}
                 >
-                  📁 Upload .md file
+                  Upload .md file
                 </button>
               </div>
             </div>
@@ -251,7 +248,7 @@ export default function CreateLessonClient() {
             />
           </div>
 
-          {/* Excalidraw 区域 */}
+          {/* Excalidraw area */}
           <div className="edit-content-column">
             <h4>Diagram</h4>
             <div className="edit-diagram-container">

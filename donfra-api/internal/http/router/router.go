@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"donfra-api/internal/config"
 	"donfra-api/internal/domain/aiagent"
@@ -23,6 +24,9 @@ func New(cfg config.Config, studySvc *study.Service, userSvc *user.Service, goog
 	// Tracing middleware (must be first to capture all requests)
 	root.Use(middleware.Tracing("donfra-api"))
 
+	// Metrics middleware (after tracing)
+	root.Use(middleware.Metrics)
+
 	root.Use(cors.Handler(cors.Options{
 		// AllowedOrigins:   []string{"http://localhost", "http://localhost:3000", "http://localhost:7777", "http://donfra.local", "http://97.107.136.151:80"},
 		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
@@ -37,6 +41,9 @@ func New(cfg config.Config, studySvc *study.Service, userSvc *user.Service, goog
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
+
+	// Prometheus metrics endpoint
+	root.Handle("/metrics", promhttp.Handler())
 
 	h := handlers.New(studySvc, userSvc, googleSvc, interviewSvc, livekitSvc, aiAgentSvc)
 	v1 := chi.NewRouter()

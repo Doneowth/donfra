@@ -35,8 +35,8 @@ func (s *Service) CreateSession(ctx context.Context, title string, ownerName str
 	// Generate unique session ID
 	sessionID := uuid.New().String()
 
-	// Generate host access token
-	hostToken, err := s.generateAccessToken(sessionID, ownerName, "host")
+	// Generate host access token (host is not hidden by default, but has stealth capability)
+	hostToken, err := s.generateAccessToken(sessionID, ownerName, "host", false, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate host token: %w", err)
 	}
@@ -51,23 +51,26 @@ func (s *Service) CreateSession(ctx context.Context, title string, ownerName str
 }
 
 // JoinSession allows a user to join an existing session
-func (s *Service) JoinSession(ctx context.Context, sessionID, userName string, isHost bool) (*JoinSessionResponse, error) {
+func (s *Service) JoinSession(ctx context.Context, sessionID, userName string, isHost, isHidden, canStealth bool) (*JoinSessionResponse, error) {
 	role := "viewer"
 	if isHost {
 		role = "host"
 	}
 
-	accessToken, err := s.generateAccessToken(sessionID, userName, role)
+	accessToken, err := s.generateAccessToken(sessionID, userName, role, isHidden, canStealth)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate access token: %w", err)
 	}
+
+	// Hidden users cannot publish video/audio
+	canPublish := isHost && !isHidden
 
 	return &JoinSessionResponse{
 		SessionID:    sessionID,
 		AccessToken:  accessToken,
 		ServerURL:    s.serverURL,
 		Role:         role,
-		CanPublish:   isHost,  // Host can publish audio/video/screen
+		CanPublish:   canPublish,
 		CanSubscribe: true,    // Everyone can subscribe (watch)
 		Message:      "Joined session successfully",
 	}, nil
@@ -89,13 +92,13 @@ func (s *Service) EndSession(ctx context.Context, sessionID string) (*EndSession
 }
 
 // generateAccessToken generates a LiveKit access token with permissions
-func (s *Service) generateAccessToken(sessionID, userName, role string) (string, error) {
+func (s *Service) generateAccessToken(sessionID, userName, role string, isHidden, canStealth bool) (string, error) {
 	at := auth.NewAccessToken(s.apiKey, s.apiSecret)
 
-	// Set permissions based on role
-	canPublish := role == "host"
+	// Hidden users cannot publish video/audio
+	canPublish := role == "host" && !isHidden
 	canSubscribe := true
-	canPublishData := true  // Allow chat/data
+	canPublishData := true // Allow chat/data
 
 	grant := &auth.VideoGrant{
 		RoomJoin:       true,
@@ -110,14 +113,14 @@ func (s *Service) generateAccessToken(sessionID, userName, role string) (string,
 		grant.RoomAdmin = true
 	}
 
-	// at.AddGrant(grant).
-	// 	SetIdentity(userName).
-	// 	SetName(userName).
-	// 	SetValidFor(24 * time.Hour)
+	// Set metadata with stealth info (JSON format)
+	metadata := fmt.Sprintf(`{"isHidden":%t,"canStealth":%t}`, isHidden, canStealth)
+
 	at.SetVideoGrant(grant).
 		SetIdentity(userName).
 		SetName(userName).
+		SetMetadata(metadata).
 		SetValidFor(time.Duration(s.tokenExpiryHours) * time.Hour)
-		
+
 	return at.ToJWT()
 }

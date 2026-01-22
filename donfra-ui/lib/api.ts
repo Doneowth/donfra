@@ -165,8 +165,8 @@ export const api = {
   live: {
     create: (title: string, ownerName: string) =>
       postJSON<{ session_id: string; server_url: string; host_token: string; created_at: string; message: string }>("/live/create", { title, owner_name: ownerName }),
-    join: (sessionId: string, userName: string, isHost: boolean = false) =>
-      postJSON<{ session_id: string; access_token: string; server_url: string; role: string; can_publish: boolean; can_subscribe: boolean; message: string }>("/live/join", { session_id: sessionId, user_name: userName, is_host: isHost }),
+    join: (sessionId: string, userName: string, isHost: boolean = false, isHidden: boolean = false) =>
+      postJSON<{ session_id: string; access_token: string; server_url: string; role: string; can_publish: boolean; can_subscribe: boolean; message: string }>("/live/join", { session_id: sessionId, user_name: userName, is_host: isHost, is_hidden: isHidden }),
     end: (sessionId: string) =>
       postJSON<{ session_id: string; ended_at: string; message: string }>("/live/end", { session_id: sessionId }),
   },

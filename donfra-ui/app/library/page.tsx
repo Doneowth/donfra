@@ -1,21 +1,26 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-
-type LessonSummary = {
-  id: number;
-  slug: string;
-  title: string;
-  isPublished: boolean;
-  isVip: boolean;
-  author?: string;
-  publishedDate?: string;
-  createdAt: string;
-  updatedAt: string;
-};
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  fetchLessonsRequest,
+  setPage,
+  setSearch,
+  setSortBy,
+} from "@/features/lessons/lessonsSlice";
+import {
+  selectLessons,
+  selectLessonsLoading,
+  selectLessonsError,
+  selectCurrentPage,
+  selectTotalPages,
+  selectTotal,
+  selectSearch,
+  selectSortBy,
+  selectSortDesc,
+} from "@/features/lessons/lessonsSelectors";
 
 export default function LibraryPage() {
   return (
@@ -27,47 +32,46 @@ export default function LibraryPage() {
 
 function LibraryInner() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const { user } = useAuth();
 
-  const [lessons, setLessons] = useState<LessonSummary[]>([]);
-  const [loadingList, setLoadingList] = useState(true);
-  const [listError, setListError] = useState<string | null>(null);
-
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10);
-  const [totalPages, setTotalPages] = useState(0);
-  const [total, setTotal] = useState(0);
-
-  // Search and sort state
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("created_at");
-  const [sortDesc, setSortDesc] = useState(true);
+  // Redux state
+  const lessons = useAppSelector(selectLessons);
+  const loading = useAppSelector(selectLessonsLoading);
+  const error = useAppSelector(selectLessonsError);
+  const currentPage = useAppSelector(selectCurrentPage);
+  const totalPages = useAppSelector(selectTotalPages);
+  const total = useAppSelector(selectTotal);
+  const search = useAppSelector(selectSearch);
+  const sortBy = useAppSelector(selectSortBy);
+  const sortDesc = useAppSelector(selectSortDesc);
 
   // Check if user is admin or above via user authentication
   const isAdmin = user?.role === "admin" || user?.role === "god";
-  const isVip = user?.role === "vip" || isAdmin;
 
+  // Fetch lessons on mount
   useEffect(() => {
-    (async () => {
-      try {
-        setLoadingList(true);
-        const response = await api.study.listSummary(currentPage, pageSize, sortBy, sortDesc, search);
-        setLessons(response.lessons);
-        setTotal(response.total);
-        setTotalPages(response.totalPages);
-      } catch (err: any) {
-        setListError(err?.message || "Failed to load lessons");
-      } finally {
-        setLoadingList(false);
-      }
-    })();
-  }, [currentPage, pageSize, sortBy, sortDesc, search]);
+    dispatch(fetchLessonsRequest());
+  }, [dispatch]);
 
-  // Handle search input with debounce
+  // Handle search input
   const handleSearchChange = (value: string) => {
-    setSearch(value);
-    setCurrentPage(1); // Reset to first page on search
+    dispatch(setSearch(value));
+  };
+
+  // Handle sort change
+  const handleSortByChange = (field: string) => {
+    dispatch(setSortBy({ field, desc: sortDesc }));
+  };
+
+  // Handle sort direction toggle
+  const handleSortDescToggle = () => {
+    dispatch(setSortBy({ field: sortBy, desc: !sortDesc }));
+  };
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    dispatch(setPage(page));
   };
 
   return (
@@ -131,10 +135,7 @@ function LibraryInner() {
           {/* Sort By Dropdown */}
           <select
             value={sortBy}
-            onChange={(e) => {
-              setSortBy(e.target.value);
-              setCurrentPage(1);
-            }}
+            onChange={(e) => handleSortByChange(e.target.value)}
             style={{
               padding: "10px 14px",
               borderRadius: 8,
@@ -154,10 +155,7 @@ function LibraryInner() {
 
           {/* Sort Direction Toggle */}
           <button
-            onClick={() => {
-              setSortDesc(!sortDesc);
-              setCurrentPage(1);
-            }}
+            onClick={handleSortDescToggle}
             style={{
               padding: "10px 14px",
               borderRadius: 8,
@@ -195,9 +193,9 @@ function LibraryInner() {
           className="admin-card"
           style={{ padding: 18, backdropFilter: "blur(4px)", background: "rgba(26,33,30,0.65)" }}
         >
-          {loadingList && <div style={{ color: "#ccc" }}>Loading lessons…</div>}
-          {listError && <div style={{ color: "#f88" }}>{listError}</div>}
-          {!loadingList && !listError && (
+          {loading && <div style={{ color: "#ccc" }}>Loading lessons…</div>}
+          {error && <div style={{ color: "#f88" }}>{error}</div>}
+          {!loading && !error && (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ textAlign: "left", borderBottom: "1px solid rgba(169,142,100,0.25)" }}>
@@ -277,14 +275,14 @@ function LibraryInner() {
           )}
 
           {/* Pagination Controls */}
-          {!loadingList && !listError && totalPages > 1 && (
+          {!loading && !error && totalPages > 1 && (
             <div style={{ marginTop: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ color: "#aaa", fontSize: 14 }}>
                 {total} lessons total{search && ` matching "${search}"`}, page {currentPage} of {totalPages}
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button
-                  onClick={() => setCurrentPage(1)}
+                  onClick={() => handlePageChange(1)}
                   disabled={currentPage === 1}
                   style={{
                     padding: "8px 12px",
@@ -299,7 +297,7 @@ function LibraryInner() {
                   First
                 </button>
                 <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}
                   style={{
                     padding: "8px 12px",
@@ -314,7 +312,7 @@ function LibraryInner() {
                   Previous
                 </button>
                 <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
                   style={{
                     padding: "8px 12px",
@@ -329,7 +327,7 @@ function LibraryInner() {
                   Next
                 </button>
                 <button
-                  onClick={() => setCurrentPage(totalPages)}
+                  onClick={() => handlePageChange(totalPages)}
                   disabled={currentPage === totalPages}
                   style={{
                     padding: "8px 12px",
