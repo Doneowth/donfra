@@ -9,7 +9,9 @@ import {
   ControlBar,
   useTracks,
   useLocalParticipant,
+  VideoTrack,
   TrackRefContext,
+  isTrackReference,
 } from "@livekit/components-react";
 import "@livekit/components-styles";
 import { Track } from "livekit-client";
@@ -36,7 +38,7 @@ function parseMetadata(metadata: string | undefined): ParticipantMetadata {
   }
 }
 
-// Custom video grid that filters hidden participants
+// Custom video grid that filters hidden participants and supports focus mode for screen shares
 function StealthAwareVideoGrid() {
   const { localParticipant } = useLocalParticipant();
   const localMeta = parseMetadata(localParticipant?.metadata);
@@ -59,8 +61,64 @@ function StealthAwareVideoGrid() {
     });
   }, [tracks, canStealth]);
 
+  // Separate screen share tracks from camera tracks
+  const screenShareTracks = useMemo(() => {
+    return visibleTracks.filter(
+      track => isTrackReference(track) && track.source === Track.Source.ScreenShare
+    );
+  }, [visibleTracks]);
+
+  const cameraTracks = useMemo(() => {
+    return visibleTracks.filter(
+      track => !isTrackReference(track) || track.source !== Track.Source.ScreenShare
+    );
+  }, [visibleTracks]);
+
+  // If there's an active screen share, use focus layout
+  if (screenShareTracks.length > 0) {
+    const screenShare = screenShareTracks[0];
+
+    // Check if this is a valid, published screen share track
+    const hasValidScreenShare = isTrackReference(screenShare) && screenShare.publication;
+
+    return (
+      <div className="lk-focus-layout" style={{ height: "calc(100vh - 80px)" }}>
+        {/* Main screen share area */}
+        <div className="lk-focus-main">
+          {hasValidScreenShare ? (
+            <TrackRefContext.Provider value={screenShare}>
+              <VideoTrack
+                trackRef={screenShare}
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+              <div className="lk-screen-share-label">
+                {screenShare.participant.name || screenShare.participant.identity} is sharing screen
+              </div>
+            </TrackRefContext.Provider>
+          ) : (
+            <div className="lk-screen-share-loading">
+              Connecting to screen share...
+            </div>
+          )}
+        </div>
+        {/* Camera feeds in sidebar */}
+        {cameraTracks.length > 0 && (
+          <div className="lk-focus-sidebar">
+            <GridLayout tracks={cameraTracks}>
+              <ParticipantTile />
+            </GridLayout>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Default grid layout when no screen share
   return (
-    <GridLayout tracks={visibleTracks} style={{ height: "calc(100vh - 80px)" }}>
+    <GridLayout
+      tracks={visibleTracks}
+      style={{ height: "calc(100vh - 80px)" }}
+    >
       <ParticipantTile />
     </GridLayout>
   );
@@ -207,7 +265,7 @@ export default function LiveRoom({
           onClick={() => setShowParticipants(!showParticipants)}
           title={showParticipants ? "Hide participants" : "Show participants"}
         >
-          👥 {showParticipants ? "Hide" : "Show"} Participants
+          {showParticipants ? "Hide" : "Show"} Participants
         </button>
         <RoomAudioRenderer />
       </LiveKitRoom>
