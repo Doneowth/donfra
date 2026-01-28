@@ -50,7 +50,7 @@ func Load() Config {
 	return Config{
 		Addr:             getenv("ADDR", ":8080"),
 		Passcode:         getenv("PASSCODE", "7777"),
-		BaseURL:          getenv("BASE_URL", "http://donfra.local"),
+		BaseURL:          getenv("BASE_URL", ""),
 		FrontendURL:      getenv("FRONTEND_URL", "http://localhost"),
 		CORSOrigin:       getenv("CORS_ORIGIN", "http://localhost:3000"),
 		AdminPass:        getenv("ADMIN_PASS", "admin"),

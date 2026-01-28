@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import ConfirmModal from "@/components/ConfirmModal";
 import UserCard from "@/components/admin/UserCard";
+import Toast, { ToastType } from "@/components/Toast";
 
 type InterviewRoom = {
   id: number;
@@ -27,11 +28,6 @@ type User = {
 };
 
 type Tab = "rooms" | "users";
-
-type Toast = {
-  message: string;
-  type: "success" | "error" | "info";
-};
 
 type ConfirmDialog = {
   show: boolean;
@@ -56,7 +52,6 @@ export default function AdminDashboard() {
 
   // UI state
   const [error, setError] = useState<string>("");
-  const [toast, setToast] = useState<Toast | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>({
     show: false,
     title: "",
@@ -64,19 +59,18 @@ export default function AdminDashboard() {
     onConfirm: () => {},
   });
 
+  // Toast state
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<ToastType>("info");
+
   // Check if user is god user via user authentication (admin-dashboard is god-only)
   const isGodUser = user?.role === "god";
 
-  // Auto-hide toast after 3 seconds
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
-
-  const showToast = (message: string, type: Toast["type"] = "success") => {
-    setToast({ message, type });
+  const showToast = (message: string, type: ToastType) => {
+    setToastMessage(message);
+    setToastType(type);
+    setToastOpen(true);
   };
 
   const showConfirm = (title: string, message: string, onConfirm: () => void) => {
@@ -293,27 +287,6 @@ export default function AdminDashboard() {
           <p className="lede">Manage interview rooms and user accounts.</p>
         </div>
 
-        {/* Toast Notification */}
-        {toast && (
-          <div
-            style={{
-              position: "fixed",
-              top: "20px",
-              right: "20px",
-              padding: "12px 24px",
-              borderRadius: "8px",
-              backgroundColor: toast.type === "success" ? "#10b981" : toast.type === "error" ? "#ef4444" : "#3b82f6",
-              color: "white",
-              fontWeight: "500",
-              boxShadow: "0 4px 6px rgba(0,0,0,0.3)",
-              zIndex: 1000,
-              animation: "slideIn 0.3s ease-out",
-            }}
-          >
-            {toast.message}
-          </div>
-        )}
-
         {/* Confirmation Dialog */}
         <ConfirmModal
           isOpen={confirmDialog.show}
@@ -526,6 +499,14 @@ export default function AdminDashboard() {
           }
         }
       `}</style>
+
+      {/* Toast Notification */}
+      <Toast
+        message={toastMessage}
+        type={toastType}
+        isOpen={toastOpen}
+        onClose={() => setToastOpen(false)}
+      />
     </main>
   );
 }

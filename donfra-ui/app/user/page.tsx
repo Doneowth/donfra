@@ -130,9 +130,14 @@ export default function UserPage() {
     );
   };
 
-  const handleCopyInviteLink = (inviteLink: string) => {
-    navigator.clipboard.writeText(inviteLink);
+  const handleCopyInviteLink = async (inviteLink: string) => {
+    try {
+      await navigator.clipboard.writeText(inviteLink);
     showToast("Invite link copied to clipboard!", "success");
+    } catch (error) {
+      console.error("Failed to copy:", error);
+      showToast("Failed to copy link. Please try manually. ", "error");
+    }
   };
 
   const handlePasswordUpdate = async (e: React.FormEvent) => {
