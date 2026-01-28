@@ -30,7 +30,7 @@ export const EMPTY_EXCALIDRAW: ExcalidrawData = {
  * @returns Sanitized ExcalidrawData object
  */
 export function sanitizeExcalidraw(raw: any): ExcalidrawData {
-  if (!raw || typeof raw !== 'object') {
+  if (!raw || typeof raw !== "object") {
     return { ...EMPTY_EXCALIDRAW };
   }
 
@@ -38,13 +38,14 @@ export function sanitizeExcalidraw(raw: any): ExcalidrawData {
 
   // Ensure collaborators is a Map (Excalidraw requires this)
   // JSON.parse converts Map to plain object, so we need to restore it
-  if (!(appState.collaborators instanceof Map)) {
-    appState.collaborators = new Map();
+  const safeAppState = { ...appState }; // shallow clone
+  if (!(safeAppState.collaborators instanceof Map)) {
+    safeAppState.collaborators = new Map();
   }
 
   return {
     elements: Array.isArray(raw.elements) ? raw.elements : [],
-    appState,
+    appState: safeAppState,
     files: raw.files || null,
   };
 }
