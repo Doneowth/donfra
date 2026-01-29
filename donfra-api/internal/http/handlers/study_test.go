@@ -13,7 +13,6 @@ import (
 
 	"donfra-api/internal/domain/study"
 	"donfra-api/internal/http/handlers"
-	"donfra-api/internal/http/middleware"
 )
 
 // MockStudyService for testing
@@ -122,8 +121,8 @@ func TestListLessons_AsAdmin(t *testing.T) {
 	h := handlers.New(mockStudy, nil, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons", nil)
-	// Simulate OptionalAdmin middleware setting admin context
-	ctx := context.WithValue(req.Context(), middleware.IsAdmi, true)
+	// Simulate admin user by setting user_role in context
+	ctx := context.WithValue(req.Context(), "user_role", "admin")
 	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
@@ -159,7 +158,7 @@ func TestListLessons_AsRegularUser(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(nil, mockStudy, nil, nil, nil, nil, nil, nil)
+	h := handlers.New(mockStudy, nil, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons", nil)
 	w := httptest.NewRecorder()
@@ -186,7 +185,7 @@ func TestListLessons_DatabaseError(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(nil, mockStudy, nil, nil, nil, nil, nil, nil)
+	h := handlers.New(mockStudy, nil, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons", nil)
 	w := httptest.NewRecorder()
@@ -215,7 +214,7 @@ func TestGetLessonBySlug_Published(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(nil, mockStudy, nil, nil, nil, nil, nil, nil)
+	h := handlers.New(mockStudy, nil, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons/test-lesson", nil)
 	rctx := chi.NewRouteContext()
@@ -251,7 +250,7 @@ func TestGetLessonBySlug_UnpublishedAsRegularUser(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(nil, mockStudy, nil, nil, nil, nil, nil, nil)
+	h := handlers.New(mockStudy, nil, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons/unpublished-lesson", nil)
 	rctx := chi.NewRouteContext()
@@ -281,14 +280,14 @@ func TestGetLessonBySlug_UnpublishedAsAdmin(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(nil, mockStudy, nil, nil, nil, nil, nil, nil)
+	h := handlers.New(mockStudy, nil, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons/unpublished-lesson", nil)
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("slug", "unpublished-lesson")
 	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
-	// Simulate admin context
-	ctx = context.WithValue(ctx, middleware.IsAdminContextKey, true)
+	// Simulate admin user by setting user_role in context
+	ctx = context.WithValue(ctx, "user_role", "admin")
 	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
@@ -307,7 +306,7 @@ func TestGetLessonBySlug_NotFound(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(nil, mockStudy, nil, nil, nil, nil, nil, nil)
+	h := handlers.New(mockStudy, nil, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons/nonexistent", nil)
 	rctx := chi.NewRouteContext()
