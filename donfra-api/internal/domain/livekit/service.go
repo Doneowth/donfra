@@ -62,8 +62,8 @@ func (s *Service) JoinSession(ctx context.Context, sessionID, userName string, i
 		return nil, fmt.Errorf("failed to generate access token: %w", err)
 	}
 
-	// Hidden users cannot publish video/audio
-	canPublish := isHost && !isHidden
+	// Hidden users cannot publish video/audio (stealth observers)
+	canPublish := !isHidden
 
 	return &JoinSessionResponse{
 		SessionID:    sessionID,
@@ -95,8 +95,8 @@ func (s *Service) EndSession(ctx context.Context, sessionID string) (*EndSession
 func (s *Service) generateAccessToken(sessionID, userName, role string, isHidden, canStealth bool) (string, error) {
 	at := auth.NewAccessToken(s.apiKey, s.apiSecret)
 
-	// Hidden users cannot publish video/audio
-	canPublish := role == "host" && !isHidden
+	// Hidden users cannot publish video/audio (stealth observers)
+	canPublish := !isHidden
 	canSubscribe := true
 	canPublishData := true // Allow chat/data
 
@@ -106,11 +106,18 @@ func (s *Service) generateAccessToken(sessionID, userName, role string, isHidden
 		CanPublish:     &canPublish,
 		CanSubscribe:   &canSubscribe,
 		CanPublishData: &canPublishData,
+		// Note: NOT using grant.Hidden because we need admins to see hidden participants
+		// Hidden status is handled via metadata + frontend filtering
 	}
 
 	// Host gets admin privileges
 	if role == "host" {
 		grant.RoomAdmin = true
+	}
+
+	// Admins with stealth capability can update their own metadata (to toggle hidden status)
+	if canStealth {
+		grant.SetCanUpdateOwnMetadata(true)
 	}
 
 	// Set metadata with stealth info (JSON format)

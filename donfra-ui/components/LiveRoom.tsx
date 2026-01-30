@@ -124,55 +124,63 @@ function StealthAwareVideoGrid() {
   );
 }
 
-// Custom participant list that filters hidden participants
-function StealthAwareParticipantList() {
+// Stealth toggle button for admins
+function StealthToggle() {
   const { localParticipant } = useLocalParticipant();
-  const localMeta = parseMetadata(localParticipant?.metadata);
-  const canStealth = localMeta.canStealth || false;
+  const [isHidden, setIsHidden] = useState(false);
+  const [canStealth, setCanStealth] = useState(false);
 
-  const tracks = useTracks(
-    [{ source: Track.Source.Camera, withPlaceholder: true }],
-    { onlySubscribed: false }
-  );
+  // Sync local state with participant metadata
+  useEffect(() => {
+    if (!localParticipant) return;
 
-  // Get unique participants
-  const participants = useMemo(() => {
-    const seen = new Set<string>();
-    return tracks
-      .filter(track => {
-        if (seen.has(track.participant.identity)) return false;
-        seen.add(track.participant.identity);
-        const meta = parseMetadata(track.participant.metadata);
-        return !meta.isHidden || canStealth;
-      })
-      .map(track => ({
-        identity: track.participant.identity,
-        name: track.participant.name || track.participant.identity,
-        isHidden: parseMetadata(track.participant.metadata).isHidden || false,
-        isLocal: track.participant.identity === localParticipant?.identity,
-      }));
-  }, [tracks, canStealth, localParticipant?.identity]);
+    const updateFromMetadata = () => {
+      const meta = parseMetadata(localParticipant.metadata);
+      setCanStealth(meta.canStealth || false);
+      setIsHidden(meta.isHidden || false);
+    };
+
+    // Initial sync
+    updateFromMetadata();
+
+    // Listen for metadata changes
+    const handleMetadataChanged = () => updateFromMetadata();
+    localParticipant.on("participantMetadataChanged", handleMetadataChanged);
+
+    return () => {
+      localParticipant.off("participantMetadataChanged", handleMetadataChanged);
+    };
+  }, [localParticipant]);
+
+  // Only show for users with stealth capability
+  if (!canStealth) return null;
+
+  const toggleStealth = async () => {
+    if (!localParticipant) return;
+
+    const newIsHidden = !isHidden;
+    const currentMeta = parseMetadata(localParticipant.metadata);
+
+    const newMetadata = JSON.stringify({
+      ...currentMeta,
+      isHidden: newIsHidden,
+    });
+
+    // Update local state immediately for responsive UI
+    setIsHidden(newIsHidden);
+
+    // Then sync to server
+    await localParticipant.setMetadata(newMetadata);
+  };
 
   return (
-    <div className="lk-participant-list-container">
-      <div className="lk-participant-list-header">
-        Participants ({participants.length})
-      </div>
-      <div className="lk-participant-list">
-        {participants.map(p => (
-          <div
-            key={p.identity}
-            className={`lk-participant-item ${p.isHidden ? "lk-participant-hidden" : ""}`}
-          >
-            {p.isHidden && <span className="lk-hidden-badge">👻</span>}
-            <span className="lk-participant-name">
-              {p.name}
-              {p.isLocal && " (You)"}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
+    <button
+      className={`lk-stealth-toggle ${isHidden ? "lk-stealth-active" : ""}`}
+      onClick={toggleStealth}
+      title={isHidden ? "Exit stealth mode" : "Enter stealth mode"}
+    >
+      {isHidden ? "👻 Stealth ON" : "👤 Stealth OFF"}
+    </button>
   );
 }
 
@@ -184,7 +192,6 @@ export default function LiveRoom({
   onDisconnected,
 }: LiveRoomProps) {
   const [mounted, setMounted] = useState(false);
-  const [showParticipants, setShowParticipants] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -244,11 +251,6 @@ export default function LiveRoom({
           <div className="lk-main-content">
             <StealthAwareVideoGrid />
           </div>
-          {showParticipants && (
-            <div className="lk-sidebar">
-              <StealthAwareParticipantList />
-            </div>
-          )}
         </div>
         <ControlBar
           variation="minimal"
@@ -260,13 +262,7 @@ export default function LiveRoom({
             chat: false,
           }}
         />
-        <button
-          className="lk-participants-toggle"
-          onClick={() => setShowParticipants(!showParticipants)}
-          title={showParticipants ? "Hide participants" : "Show participants"}
-        >
-          {showParticipants ? "Hide" : "Show"} Participants
-        </button>
+        <StealthToggle />
         <RoomAudioRenderer />
       </LiveKitRoom>
     </div>

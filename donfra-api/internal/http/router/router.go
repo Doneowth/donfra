@@ -92,8 +92,8 @@ func New(cfg config.Config, studySvc *study.Service, userSvc *user.Service, goog
 	// Admin or God: create and end sessions
 	v1.With(middleware.RequireAuth(userSvc), middleware.RequireAdminOrAbove()).Post("/live/create", h.CreateLiveSession)
 	v1.With(middleware.RequireAuth(userSvc), middleware.RequireAdminOrAbove()).Post("/live/end", h.EndLiveSession)
-	// Public: anyone can join with session ID
-	v1.Post("/live/join", h.JoinLiveSession)
+	// Public: anyone can join with session ID (OptionalAuth to detect admin/god for stealth capability)
+	v1.With(middleware.OptionalAuth(userSvc)).Post("/live/join", h.JoinLiveSession)
 
 	// ===== AI Agent Routes =====
 	// VIP and Admin only: AI-powered code analysis and chat

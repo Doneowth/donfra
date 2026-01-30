@@ -1311,3 +1311,77 @@ body{
   .hero .display{font-size:24px;}
   .lead{font-size:14px;}
 }
+
+/* ==================== LiveKit Room ==================== */
+.lk-participants-toggle,
+.lk-stealth-toggle {
+  position: fixed;
+  bottom: 80px;
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 100;
+}
+
+.lk-participants-toggle {
+  right: 20px;
+}
+
+.lk-stealth-toggle {
+  right: 180px;
+}
+
+.lk-participants-toggle:hover,
+.lk-stealth-toggle:hover {
+  background: var(--panel-deeper);
+  border-color: var(--brass);
+}
+
+.lk-stealth-toggle.lk-stealth-active {
+  background: rgba(169, 142, 100, 0.2);
+  border-color: var(--brass);
+  color: var(--brass);
+}
+
+.lk-participant-list-container {
+  padding: 16px;
+  background: var(--panel);
+  border-radius: 8px;
+  height: 100%;
+}
+
+.lk-participant-list-header {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.lk-participant-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(192,192,192,0.1);
+}
+
+.lk-participant-item.lk-participant-hidden {
+  opacity: 0.6;
+}
+
+.lk-hidden-badge {
+  font-size: 16px;
+}
+
+.lk-participant-name {
+  font-size: 14px;
+  color: var(--ink);
+}
