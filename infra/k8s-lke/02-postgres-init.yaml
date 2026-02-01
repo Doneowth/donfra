@@ -1,0 +1,125 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-scripts
+  namespace: donfra-eng
+data:
+  000_seed_lessons.sql: |
+    -- Create lessons table if it doesn't exist (compatible with GORM defaults)
+    CREATE TABLE IF NOT EXISTS lessons (
+        id SERIAL PRIMARY KEY,
+        slug TEXT NOT NULL,
+        title TEXT NOT NULL,
+        markdown TEXT NOT NULL,
+        excalidraw JSONB NOT NULL,
+        video_url TEXT,
+        code_template JSONB,
+        is_published BOOLEAN NOT NULL DEFAULT FALSE,
+        is_vip BOOLEAN NOT NULL DEFAULT FALSE,
+        author TEXT,
+        published_date DATE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_lessons_slug ON lessons (slug);
+    CREATE INDEX IF NOT EXISTS idx_lessons_is_vip ON lessons(is_vip);
+    CREATE INDEX IF NOT EXISTS idx_lessons_author ON lessons(author);
+    CREATE INDEX IF NOT EXISTS idx_lessons_published_date ON lessons(published_date);
+
+    INSERT INTO lessons (slug, title, markdown, excalidraw, video_url, code_template, is_published, is_vip, author, published_date)
+    VALUES
+        ('python-hello-world',
+         'Python: Hello World',
+         '# Welcome to Python!
+
+    This is your first Python lesson.',
+         '{"type":"excalidraw","version":2,"source":"","elements":[],"appState":{},"files":{}}'::jsonb,
+         NULL,
+         '{"language": "Python", "externalUrl": "https://codesandbox.io/p/devbox/k5f42n"}'::jsonb,
+         TRUE, FALSE, 'Donfra Team', '2025-12-30'),
+
+        ('intro-to-donfra', 'Intro to Donfra', '# Welcome
+
+    This is a sample lesson for testing.',
+         '{"type":"excalidraw","version":2,"source":"","elements":[],"appState":{},"files":{}}'::jsonb,
+         NULL, NULL, TRUE, FALSE, 'Donfra Team', '2025-01-15')
+    ON CONFLICT (slug) DO UPDATE
+    SET
+        code_template = EXCLUDED.code_template,
+        markdown = EXCLUDED.markdown,
+        title = EXCLUDED.title,
+        updated_at = NOW();
+
+  001_create_users_table.sql: |
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE,
+        password VARCHAR(255),
+        username VARCHAR(255),
+        role VARCHAR(50) NOT NULL DEFAULT 'user',
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        google_id VARCHAR(255) UNIQUE,
+        google_avatar TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        deleted_at TIMESTAMPTZ
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+    CREATE INDEX IF NOT EXISTS idx_users_deleted_at ON users(deleted_at);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id) WHERE google_id IS NOT NULL AND google_id != '';
+
+    CREATE OR REPLACE FUNCTION update_updated_at_column()
+    RETURNS TRIGGER AS $$
+    BEGIN
+        NEW.updated_at = NOW();
+        RETURN NEW;
+    END;
+    $$ language 'plpgsql';
+
+    DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+    CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+    INSERT INTO users (email, password, username, role, is_active)
+    VALUES (
+        'admin@donfra.com',
+        '$2a$12$/.ZnTCSQ/htuc6xJtZmG9uyViBygcOyZzPlz2arLHRvZ27Hh7MLGS',
+        'admin',
+        'admin',
+        true
+    )
+    ON CONFLICT (email) DO NOTHING;
+
+  002_create_interview_rooms.sql: |
+    CREATE TABLE IF NOT EXISTS interview_rooms (
+        id SERIAL PRIMARY KEY,
+        room_id VARCHAR(255) UNIQUE NOT NULL,
+        owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        headcount INTEGER DEFAULT 0,
+        code_snapshot TEXT DEFAULT '',
+        invite_link VARCHAR(500),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        deleted_at TIMESTAMP NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_interview_rooms_room_id ON interview_rooms(room_id);
+    CREATE INDEX IF NOT EXISTS idx_interview_rooms_owner_id ON interview_rooms(owner_id);
+    CREATE INDEX IF NOT EXISTS idx_interview_rooms_deleted_at ON interview_rooms(deleted_at);
+
+    CREATE OR REPLACE FUNCTION update_interview_rooms_updated_at()
+    RETURNS TRIGGER AS $$
+    BEGIN
+        NEW.updated_at = CURRENT_TIMESTAMP;
+        RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+
+    DROP TRIGGER IF EXISTS trigger_update_interview_rooms_updated_at ON interview_rooms;
+    CREATE TRIGGER trigger_update_interview_rooms_updated_at
+        BEFORE UPDATE ON interview_rooms
+        FOR EACH ROW
+        EXECUTE FUNCTION update_interview_rooms_updated_at();

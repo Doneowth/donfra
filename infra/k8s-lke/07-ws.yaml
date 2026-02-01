@@ -1,0 +1,69 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ws
+  namespace: donfra-eng
+  labels:
+    app: ws
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ws
+  template:
+    metadata:
+      labels:
+        app: ws
+    spec:
+      containers:
+        - name: ws
+          image: doneowth/donfra-ws:1.0.0
+          ports:
+            - containerPort: 6789
+              name: ws
+          env:
+            - name: PORT
+              value: "6789"
+            - name: PRODUCTION
+              value: "true"
+            - name: WS_PATH
+              value: "/ws"
+            - name: ROOM_UPDATE_URL
+              value: "http://api:8080/api/room/update-count"
+            - name: API_TARGET
+              value: "http://api:8080"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          # livenessProbe:
+          #   tcpSocket:
+          #     port: 6789
+          #   initialDelaySeconds: 10
+          #   periodSeconds: 30
+          # readinessProbe:
+          #   tcpSocket:
+          #     port: 6789
+          #   initialDelaySeconds: 5
+          #   periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ws
+  namespace: donfra-eng
+  labels:
+    app: ws
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6789
+      targetPort: 6789
+      name: ws
+  selector:
+    app: ws

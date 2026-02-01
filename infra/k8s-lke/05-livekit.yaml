@@ -1,0 +1,82 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: livekit
+  namespace: donfra-eng
+  labels:
+    app: livekit
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: livekit
+  template:
+    metadata:
+      labels:
+        app: livekit
+    spec:
+      containers:
+        - name: livekit
+          image: livekit/livekit-server:latest
+          args:
+            - --config
+            - /etc/livekit.yaml
+          env:
+            # Override K8s auto-generated LIVEKIT_PORT (which is set to service URL)
+            - name: LIVEKIT_PORT
+              value: "7880"
+          ports:
+            - containerPort: 7880
+              name: http
+            # UDP ports for RTC - these need NodePort or hostNetwork in production
+          volumeMounts:
+            - name: livekit-config
+              mountPath: /etc/livekit.yaml
+              subPath: livekit.yaml
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          # livenessProbe:
+          #   httpGet:
+          #     path: /
+          #     port: 7880
+          #   initialDelaySeconds: 10
+          #   periodSeconds: 30
+          # readinessProbe:
+          #   httpGet:
+          #     path: /
+          #     port: 7880
+          #   initialDelaySeconds: 5
+          #   periodSeconds: 10
+      volumes:
+        - name: livekit-config
+          configMap:
+            name: livekit-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: livekit
+  namespace: donfra-eng
+  labels:
+    app: livekit
+spec:
+  type: ClusterIP
+  ports:
+    - port: 7880
+      targetPort: 7880
+      name: http
+  selector:
+    app: livekit
+
+# Note: For production LiveKit with WebRTC, you'll need:
+# 1. A NodePort or LoadBalancer service for UDP ports 50000-50020
+# 2. Or use hostNetwork: true with proper node selection
+# 3. Configure TURN servers for NAT traversal
+# For now, WebSocket signaling will work, but direct RTC may have issues

@@ -1,0 +1,74 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  namespace: donfra-eng
+data:
+  ADDR: ":8080"
+  REDIS_ADDR: "redis:6379"
+  USE_REDIS: "true"
+  # Update BASE_URL to your LKE LoadBalancer IP/domain later
+  BASE_URL: "http://143.42.179.122"
+  FRONTEND_URL: "http://143.42.179.122"
+  GOOGLE_REDIRECT_URL: "http://143.42.179.122/api/auth/google/callback"
+
+  # Token Expiration Settings
+  JWT_EXPIRY_HOURS: "1"
+  COOKIE_MAX_AGE_DAYS: "7"
+  OAUTH_STATE_EXPIRY_MINS: "3"
+  INVITE_TOKEN_EXPIRY_HOURS: "1"
+  LIVEKIT_TOKEN_EXPIRY_HOURS: "1"
+
+  # LiveKit (internal service URL)
+  LIVEKIT_SERVER_URL: "ws://livekit:7880"
+  # Update this to your public URL when you have LoadBalancer IP
+  LIVEKIT_PUBLIC_URL: "ws://143.42.179.122/livekit"
+
+  # Jaeger (optional - comment out if not using)
+  # JAEGER_ENDPOINT: "jaeger:4318"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ui-config
+  namespace: donfra-eng
+data:
+  NEXT_PUBLIC_API_BASE_URL: "/api"
+  NEXT_PUBLIC_COLLAB_WS: "/yjs"
+  API_PROXY_TARGET: "http://api:8080"
+  WS_PROXY_TARGET: "http://ws:6789"
+  LIVEKIT_PROXY_TARGET: "http://livekit:7880"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: livekit-config
+  namespace: donfra-eng
+data:
+  livekit.yaml: |
+    port: 7880
+    bind_addresses:
+      - "0.0.0.0"
+
+    rtc:
+      port_range_start: 50000
+      port_range_end: 50020
+      use_external_ip: true
+      # For production, you may need TURN servers
+      stun_servers:
+        - stun.l.google.com:19302
+
+    keys:
+      devkeydevkeydevkeydevkeydevkeydevkey: APISECRETdevkeyAPISECRETdevkeyAPISECRETdevkey
+
+    room:
+      auto_create: true
+      empty_timeout: 300
+      max_participants: 100
+
+    logging:
+      level: info
+      sample: false

@@ -7,9 +7,9 @@ COMPOSE_FILE ?= infra/docker-compose.local.yml
 PROD_COMPOSE_FILE ?= infra/docker-compose.yml
 
 # UI Image Tag
-UI_IMAGE_TAG ?= 1.0.26
+UI_IMAGE_TAG ?= 1.0.27
 # API Image Tag
-API_IMAGE_TAG ?= 1.0.8
+API_IMAGE_TAG ?= 1.0.9
 # Allow overriding compose command (support `docker-compose` or `docker compose`)
 DOCKER_COMPOSE ?= docker-compose
 
@@ -108,7 +108,7 @@ localdev-logs-redis:
 
 docker-build-ui:
 	@echo "Building UI container"
-	cd donfra-ui ; docker build -t doneowth/donfra-ui:$(UI_IMAGE_TAG) .
+	cd donfra-ui ; docker build --build-arg API_PROXY_TARGET=http://api:8080 --build-arg WS_PROXY_TARGET=http://ws:6789 --build-arg LIVEKIT_PROXY_TARGET=http://livekit:7880 -t doneowth/donfra-ui:$(UI_IMAGE_TAG) .
 
 docker-push-ui:
 	@echo "Pushing UI container to Docker Hub"

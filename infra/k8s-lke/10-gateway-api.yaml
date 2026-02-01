@@ -1,0 +1,212 @@
+# ============================================================
+# Gateway API + Envoy Gateway + cert-manager + Cloudflare
+# ============================================================
+#
+# Gateway API is the next-generation Kubernetes ingress API,
+# designed to be more expressive and extensible than Ingress.
+#
+# Prerequisites:
+#
+# 1. Install Gateway API CRDs:
+#    kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/standard-install.yaml
+#
+# 2. Install Envoy Gateway:
+#    helm install eg oci://docker.io/envoyproxy/gateway-helm --version v1.2.4 -n envoy-gateway-system --create-namespace
+#
+# 3. Install cert-manager (if not already):
+#    kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.3/cert-manager.yaml
+#
+# 4. Apply Cloudflare secret:
+#    kubectl apply -f 09-cloudflare-secret.yaml
+#
+# 5. Apply this file:
+#    kubectl apply -f 10-gateway-api.yaml
+#
+# ============================================================
+
+---
+# GatewayClass - defines which controller handles the Gateway
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: envoy-gateway
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+
+---
+# ClusterIssuer for Let's Encrypt with Cloudflare DNS-01
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-cloudflare
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: don.liang2018@gmail.com
+    privateKeySecretRef:
+      name: letsencrypt-cloudflare-key
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+
+---
+# Certificate for donfra.dev
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: donfra-tls
+  namespace: donfra-eng
+spec:
+  secretName: donfra-tls-secret
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
+  dnsNames:
+    - donfra.dev
+    - "*.donfra.dev"
+
+---
+# Gateway - the actual load balancer entry point
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: donfra-gateway
+  namespace: donfra-eng
+spec:
+  gatewayClassName: envoy-gateway
+  listeners:
+    # HTTP listener - redirects to HTTPS
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: Same
+    # HTTPS listener
+    - name: https
+      protocol: HTTPS
+      port: 443
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: donfra-tls-secret
+            kind: Secret
+      allowedRoutes:
+        namespaces:
+          from: Same
+
+---
+# HTTP to HTTPS redirect
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: http-redirect
+  namespace: donfra-eng
+spec:
+  parentRefs:
+    - name: donfra-gateway
+      sectionName: http
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301
+
+---
+# API routes
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: api-route
+  namespace: donfra-eng
+spec:
+  parentRefs:
+    - name: donfra-gateway
+      sectionName: https
+  hostnames:
+    - donfra.dev
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+      backendRefs:
+        - name: api
+          port: 8080
+
+---
+# WebSocket routes (Yjs collaboration)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: ws-route
+  namespace: donfra-eng
+spec:
+  parentRefs:
+    - name: donfra-gateway
+      sectionName: https
+  hostnames:
+    - donfra.dev
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /yjs
+      backendRefs:
+        - name: ws
+          port: 6789
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /ws
+      backendRefs:
+        - name: ws
+          port: 6789
+
+---
+# LiveKit routes
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: livekit-route
+  namespace: donfra-eng
+spec:
+  parentRefs:
+    - name: donfra-gateway
+      sectionName: https
+  hostnames:
+    - donfra.dev
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /livekit
+      backendRefs:
+        - name: livekit
+          port: 7880
+
+---
+# UI routes (default, catch-all)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: ui-route
+  namespace: donfra-eng
+spec:
+  parentRefs:
+    - name: donfra-gateway
+      sectionName: https
+  hostnames:
+    - donfra.dev
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: ui
+          port: 3000
