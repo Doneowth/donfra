@@ -8,10 +8,9 @@ data:
   ADDR: ":8080"
   REDIS_ADDR: "redis:6379"
   USE_REDIS: "true"
-  # Update BASE_URL to your LKE LoadBalancer IP/domain later
-  BASE_URL: "http://143.42.179.122"
-  FRONTEND_URL: "http://143.42.179.122"
-  GOOGLE_REDIRECT_URL: "http://143.42.179.122/api/auth/google/callback"
+  BASE_URL: "https://donfra.dev"
+  FRONTEND_URL: "https://donfra.dev"
+  GOOGLE_REDIRECT_URL: "https://donfra.dev/api/auth/google/callback"
 
   # Token Expiration Settings
   JWT_EXPIRY_HOURS: "1"
@@ -22,8 +21,8 @@ data:
 
   # LiveKit (internal service URL)
   LIVEKIT_SERVER_URL: "ws://livekit:7880"
-  # Update this to your public URL when you have LoadBalancer IP
-  LIVEKIT_PUBLIC_URL: "ws://143.42.179.122/livekit"
+  # Public URL for client connections (via Gateway)
+  LIVEKIT_PUBLIC_URL: "wss://donfra.dev/livekit"
 
   # Jaeger (optional - comment out if not using)
   # JAEGER_ENDPOINT: "jaeger:4318"

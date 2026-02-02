@@ -96,7 +96,7 @@ spec:
             kind: Secret
       allowedRoutes:
         namespaces:
-          from: Same
+          from: All
 
 ---
 # HTTP to HTTPS redirect
@@ -185,6 +185,12 @@ spec:
         - path:
             type: PathPrefix
             value: /livekit
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
       backendRefs:
         - name: livekit
           port: 7880
