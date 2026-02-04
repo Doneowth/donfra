@@ -1,0 +1,34 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# 按依赖顺序列出所有资源
+resources:
+  # 1. Namespace (其他资源都依赖它)
+  - 00-namespace.yaml
+
+  # 2. Secrets (其他服务需要读取)
+  - 01-secrets-sealed.yaml
+  - 09-cloudflare-secret-sealed.yaml
+
+  # 3. ConfigMaps
+  - 02-configmaps.yaml
+  - 02-postgres-init.yaml
+
+  # 4. 数据库
+  - 03-postgres.yaml
+  - 04-redis.yaml
+
+  # 5. 应用服务
+  - 05-livekit.yaml
+  - 06-api.yaml
+  - 07-ws.yaml
+  - 08-ui.yaml
+
+  # 6. Gateway & Routes
+  - 10-gateway-api.yaml
+  - 11-grafana-route.yaml
+  - 12-prometheus-route.yaml  # 未启用，需要先配置认证
+
+# 给所有资源加统一标签 (可选)
+commonLabels:
+  project: donfra
