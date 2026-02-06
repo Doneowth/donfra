@@ -55,8 +55,9 @@ export default function EditLessonClient({ slug }: { slug: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [formInitialized, setFormInitialized] = useState(false);
 
-  // Check if user is admin or above via user authentication
+  // Check user roles
   const isAdmin = user?.role === "admin" || user?.role === "god";
+  const isGod = user?.role === "god";
 
   useEffect(() => {
     if (!isAdmin) {
@@ -239,16 +240,26 @@ export default function EditLessonClient({ slug }: { slug: string }) {
                 placeholder="https://codesandbox.io/p/devbox/... (optional)"
               />
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <input
-                id="isPublished"
-                type="checkbox"
-                checked={isPublished}
-                onChange={(e) => setIsPublished(e.target.checked)}
-                style={{ width: 16, height: 16 }}
-              />
-              <label htmlFor="isPublished" style={{ color: "#ccc", margin: 0 }}>Published</label>
-            </div>
+            {(isGod || lesson?.isPublished) ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  id="isPublished"
+                  type="checkbox"
+                  checked={isPublished}
+                  onChange={(e) => setIsPublished(e.target.checked)}
+                  style={{ width: 16, height: 16 }}
+                  disabled={!isGod && !lesson?.isPublished && lesson?.reviewStatus !== "approved"}
+                />
+                <label htmlFor="isPublished" style={{ color: "#ccc", margin: 0 }}>Published</label>
+                {!isGod && !lesson?.isPublished && lesson?.reviewStatus !== "approved" && (
+                  <span style={{ color: "#888", fontSize: 12 }}>(requires review approval)</span>
+                )}
+              </div>
+            ) : (
+              <div style={{ color: "#888", fontSize: 13 }}>
+                Publishing requires review approval. Use the detail page to manage review workflow.
+              </div>
+            )}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <input
                 id="isVip"

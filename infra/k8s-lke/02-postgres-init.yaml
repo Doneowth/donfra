@@ -18,6 +18,11 @@ data:
         is_vip BOOLEAN NOT NULL DEFAULT FALSE,
         author TEXT,
         published_date DATE,
+        review_status VARCHAR(20) NOT NULL DEFAULT 'draft',
+        submitted_by INTEGER,
+        reviewed_by INTEGER,
+        submitted_at TIMESTAMPTZ,
+        reviewed_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
@@ -26,8 +31,9 @@ data:
     CREATE INDEX IF NOT EXISTS idx_lessons_is_vip ON lessons(is_vip);
     CREATE INDEX IF NOT EXISTS idx_lessons_author ON lessons(author);
     CREATE INDEX IF NOT EXISTS idx_lessons_published_date ON lessons(published_date);
+    CREATE INDEX IF NOT EXISTS idx_lessons_review_status ON lessons(review_status);
 
-    INSERT INTO lessons (slug, title, markdown, excalidraw, video_url, code_template, is_published, is_vip, author, published_date)
+    INSERT INTO lessons (slug, title, markdown, excalidraw, video_url, code_template, is_published, is_vip, author, published_date, review_status)
     VALUES
         ('python-hello-world',
          'Python: Hello World',
@@ -37,13 +43,13 @@ data:
          '{"type":"excalidraw","version":2,"source":"","elements":[],"appState":{},"files":{}}'::jsonb,
          NULL,
          '{"language": "Python", "externalUrl": "https://codesandbox.io/p/devbox/k5f42n"}'::jsonb,
-         TRUE, FALSE, 'Donfra Team', '2025-12-30'),
+         TRUE, FALSE, 'Donfra Team', '2025-12-30', 'approved'),
 
         ('intro-to-donfra', 'Intro to Donfra', '# Welcome
 
     This is a sample lesson for testing.',
          '{"type":"excalidraw","version":2,"source":"","elements":[],"appState":{},"files":{}}'::jsonb,
-         NULL, NULL, TRUE, FALSE, 'Donfra Team', '2025-01-15')
+         NULL, NULL, TRUE, FALSE, 'Donfra Team', '2025-01-15', 'approved')
     ON CONFLICT (slug) DO UPDATE
     SET
         code_template = EXCLUDED.code_template,

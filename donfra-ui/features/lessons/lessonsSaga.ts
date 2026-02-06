@@ -10,6 +10,7 @@ import {
   fetchLessonRequest,
   fetchLessonSuccess,
   fetchLessonFailure,
+  clearLessonDetail,
   createLessonRequest,
   createLessonSuccess,
   createLessonFailure,
@@ -19,6 +20,15 @@ import {
   deleteLessonRequest,
   deleteLessonSuccess,
   deleteLessonFailure,
+  submitForReviewRequest,
+  submitForReviewSuccess,
+  submitForReviewFailure,
+  reviewLessonRequest,
+  reviewLessonSuccess,
+  reviewLessonFailure,
+  fetchPendingReviewRequest,
+  fetchPendingReviewSuccess,
+  fetchPendingReviewFailure,
   setPage,
   setPageSize,
   setSearch,
@@ -41,7 +51,7 @@ function* fetchLessonsSaga() {
       search || undefined
     );
 
-    yield put(fetchLessonsSuccess(result));
+    yield put(fetchLessonsSuccess(result as any));
   } catch (error) {
     yield put(
       fetchLessonsFailure(
@@ -132,6 +142,69 @@ function* deleteLessonSaga(action: PayloadAction<string>) {
   }
 }
 
+// ============ Submit for Review ============
+function* submitForReviewSaga(action: PayloadAction<string>) {
+  try {
+    const slug = action.payload;
+    const result: Awaited<ReturnType<typeof api.study.submitForReview>> =
+      yield call(api.study.submitForReview, slug);
+    yield put(submitForReviewSuccess(result));
+    // Invalidate cache and refresh
+    yield put(clearLessonDetail(slug));
+    yield put(fetchLessonRequest(slug));
+    yield put(fetchLessonsRequest());
+  } catch (error) {
+    yield put(
+      submitForReviewFailure(
+        error instanceof Error ? error.message : "Failed to submit for review"
+      )
+    );
+  }
+}
+
+// ============ Review Lesson (Approve/Reject) ============
+function* reviewLessonSaga(
+  action: PayloadAction<{ slug: string; action: "approve" | "reject" }>
+) {
+  try {
+    const { slug, action: reviewAction } = action.payload;
+    const result: Awaited<ReturnType<typeof api.study.review>> = yield call(
+      api.study.review,
+      slug,
+      reviewAction
+    );
+    yield put(reviewLessonSuccess(result));
+    yield put(fetchPendingReviewRequest());
+    yield put(fetchLessonsRequest());
+  } catch (error) {
+    yield put(
+      reviewLessonFailure(
+        error instanceof Error ? error.message : "Failed to review lesson"
+      )
+    );
+  }
+}
+
+// ============ Fetch Pending Review ============
+function* fetchPendingReviewSaga() {
+  try {
+    const state: RootState = yield select();
+    const { currentPage, pageSize } = state.lessons.pendingReviewPagination;
+
+    const result: Awaited<ReturnType<typeof api.study.listPendingReview>> =
+      yield call(api.study.listPendingReview, currentPage, pageSize);
+    yield put(fetchPendingReviewSuccess(result as any));
+  } catch (error) {
+    yield put(
+      fetchPendingReviewFailure(
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch pending reviews"
+      )
+    );
+  }
+}
+
 // ============ Refetch on Filter/Pagination Change ============
 function* refetchOnChangeSaga() {
   yield put(fetchLessonsRequest());
@@ -149,6 +222,11 @@ export default function* lessonsSaga() {
   yield takeEvery(createLessonRequest.type, createLessonSaga);
   yield takeEvery(updateLessonRequest.type, updateLessonSaga);
   yield takeEvery(deleteLessonRequest.type, deleteLessonSaga);
+
+  // Review workflow
+  yield takeEvery(submitForReviewRequest.type, submitForReviewSaga);
+  yield takeEvery(reviewLessonRequest.type, reviewLessonSaga);
+  yield takeLatest(fetchPendingReviewRequest.type, fetchPendingReviewSaga);
 
   // Refetch on pagination/filter changes
   yield takeLatest(setPage.type, refetchOnChangeSaga);

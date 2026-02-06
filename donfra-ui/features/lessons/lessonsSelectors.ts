@@ -34,6 +34,21 @@ export const selectSaveError = (state: RootState) => state.lessons.saveError;
 export const selectDeleting = (state: RootState) => state.lessons.deleting;
 export const selectDeleteError = (state: RootState) => state.lessons.deleteError;
 
+// ============ Review Workflow Selectors ============
+export const selectSubmittingForReview = (state: RootState) =>
+  state.lessons.submittingForReview;
+export const selectSubmitReviewError = (state: RootState) =>
+  state.lessons.submitReviewError;
+export const selectReviewing = (state: RootState) => state.lessons.reviewing;
+export const selectReviewError = (state: RootState) =>
+  state.lessons.reviewError;
+export const selectPendingReviewItems = (state: RootState) =>
+  state.lessons.pendingReviewItems;
+export const selectPendingReviewLoading = (state: RootState) =>
+  state.lessons.pendingReviewLoading;
+export const selectPendingReviewPagination = (state: RootState) =>
+  state.lessons.pendingReviewPagination;
+
 // ============ Computed Selectors ============
 export const selectHasLessons = (state: RootState) =>
   state.lessons.items.length > 0;

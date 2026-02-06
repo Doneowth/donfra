@@ -28,7 +28,6 @@ func New(cfg config.Config, studySvc *study.Service, userSvc *user.Service, goog
 	root.Use(middleware.Metrics)
 
 	root.Use(cors.Handler(cors.Options{
-		// AllowedOrigins:   []string{"http://localhost", "http://localhost:3000", "http://localhost:7777", "http://donfra.local", "http://97.107.136.151:80"},
 		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Content-Type", "X-CSRF-Token", "Authorization"},
 		ExposedHeaders:   []string{"X-Request-Id"},
@@ -72,6 +71,13 @@ func New(cfg config.Config, studySvc *study.Service, userSvc *user.Service, goog
 	// Public: list published lessons (with optional user auth)
 	v1.With(middleware.OptionalAuth(userSvc)).Get("/lessons/summary", h.ListLessonsSummaryHandler)
 	v1.With(middleware.OptionalAuth(userSvc)).Get("/lessons", h.ListLessonsHandler)
+
+	// Admin or God: review workflow routes (must be registered before /lessons/{slug})
+	v1.With(middleware.RequireAuth(userSvc), middleware.RequireAdminOrAbove()).Get("/lessons/pending-review", h.ListPendingReviewHandler)
+	v1.With(middleware.RequireAuth(userSvc), middleware.RequireAdminOrAbove()).Post("/lessons/{slug}/submit-review", h.SubmitLessonForReviewHandler)
+	v1.With(middleware.RequireAuth(userSvc), middleware.RequireAdminOrAbove()).Post("/lessons/{slug}/review", h.ReviewLessonHandler)
+
+	// Public: get lesson by slug
 	v1.With(middleware.OptionalAuth(userSvc)).Get("/lessons/{slug}", h.GetLessonBySlugHandler)
 
 	// Admin or God: CRUD operations for lessons

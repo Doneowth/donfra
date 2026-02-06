@@ -68,7 +68,7 @@ export const api = {
       if (search) params.append("search", search);
       const query = params.toString();
       return getJSON<{
-        lessons: Array<{ id: number; slug: string; title: string; isPublished: boolean; isVip: boolean; author?: string; publishedDate?: string; createdAt: string; updatedAt: string }>;
+        lessons: Array<{ id: number; slug: string; title: string; isPublished: boolean; isVip: boolean; author?: string; publishedDate?: string; reviewStatus: string; createdAt: string; updatedAt: string }>;
         total: number;
         page: number;
         size: number;
@@ -76,7 +76,7 @@ export const api = {
       }>(`/lessons/summary${query ? `?${query}` : ""}`);
     },
     get: (slug: string) =>
-      getJSON<{ slug: string; title: string; markdown: string; excalidraw: any; videoUrl?: string; codeTemplate?: any; createdAt: string; updatedAt: string; isPublished: boolean; isVip: boolean; author?: string; publishedDate?: string }>(`/lessons/${slug}`),
+      getJSON<{ slug: string; title: string; markdown: string; excalidraw: any; videoUrl?: string; codeTemplate?: any; createdAt: string; updatedAt: string; isPublished: boolean; isVip: boolean; author?: string; publishedDate?: string; reviewStatus: string; submittedBy?: number; reviewedBy?: number; submittedAt?: string; reviewedAt?: string }>(`/lessons/${slug}`),
     create: (data: { slug: string; title: string; markdown: string; excalidraw: any; videoUrl?: string; codeTemplate?: any; isPublished?: boolean; isVip?: boolean; author?: string; publishedDate?: string }) =>
       fetch(`${API_BASE}/lessons`, {
         method: "POST",
@@ -133,6 +133,24 @@ export const api = {
         if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
         return body;
       }),
+    submitForReview: (slug: string) =>
+      postJSON<{ slug: string; reviewStatus: string }>(`/lessons/${slug}/submit-review`, {}),
+    review: (slug: string, action: 'approve' | 'reject') =>
+      postJSON<{ slug: string; reviewStatus: string }>(`/lessons/${slug}/review`, { action }),
+    listPendingReview: (page?: number, size?: number, search?: string) => {
+      const params = new URLSearchParams();
+      if (page !== undefined) params.append("page", page.toString());
+      if (size !== undefined) params.append("size", size.toString());
+      if (search) params.append("search", search);
+      const query = params.toString();
+      return getJSON<{
+        lessons: Array<{ id: number; slug: string; title: string; isPublished: boolean; isVip: boolean; author?: string; publishedDate?: string; reviewStatus: string; createdAt: string; updatedAt: string }>;
+        total: number;
+        page: number;
+        size: number;
+        totalPages: number;
+      }>(`/lessons/pending-review${query ? `?${query}` : ""}`);
+    },
   },
   auth: {
     register: (email: string, password: string, username?: string) =>

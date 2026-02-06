@@ -1,11 +1,13 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchLessonsRequest,
+  fetchPendingReviewRequest,
+  reviewLessonRequest,
   setPage,
   setSearch,
   setSortBy,
@@ -20,7 +22,11 @@ import {
   selectSearch,
   selectSortBy,
   selectSortDesc,
+  selectPendingReviewItems,
+  selectPendingReviewLoading,
+  selectReviewing,
 } from "@/features/lessons/lessonsSelectors";
+import ReviewStatusBadge from "@/components/ReviewStatusBadge";
 
 export default function LibraryPage() {
   return (
@@ -34,6 +40,7 @@ function LibraryInner() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<"all" | "pending">("all");
 
   // Redux state
   const lessons = useAppSelector(selectLessons);
@@ -45,6 +52,9 @@ function LibraryInner() {
   const search = useAppSelector(selectSearch);
   const sortBy = useAppSelector(selectSortBy);
   const sortDesc = useAppSelector(selectSortDesc);
+  const pendingReviewItems = useAppSelector(selectPendingReviewItems);
+  const pendingReviewLoading = useAppSelector(selectPendingReviewLoading);
+  const reviewing = useAppSelector(selectReviewing);
 
   // Check if user is admin or above via user authentication
   const isAdmin = user?.role === "admin" || user?.role === "god";
@@ -52,7 +62,10 @@ function LibraryInner() {
   // Fetch lessons on mount
   useEffect(() => {
     dispatch(fetchLessonsRequest());
-  }, [dispatch]);
+    if (isAdmin) {
+      dispatch(fetchPendingReviewRequest());
+    }
+  }, [dispatch, isAdmin]);
 
   // Handle search input
   const handleSearchChange = (value: string) => {
@@ -95,7 +108,7 @@ function LibraryInner() {
         </div>
 
         {isAdmin && (
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 16, display: "flex", gap: 12, alignItems: "center" }}>
             <button
               onClick={() => router.push("/library/create")}
               style={{
@@ -110,6 +123,28 @@ function LibraryInner() {
             >
               Create lesson
             </button>
+
+            {/* Tab toggle: All Lessons / Pending Reviews */}
+            <div className="review-tabs">
+              <button
+                className={`review-tab ${activeTab === "all" ? "review-tab--active" : ""}`}
+                onClick={() => setActiveTab("all")}
+              >
+                All Lessons
+              </button>
+              <button
+                className={`review-tab ${activeTab === "pending" ? "review-tab--active" : ""}`}
+                onClick={() => {
+                  setActiveTab("pending");
+                  dispatch(fetchPendingReviewRequest());
+                }}
+              >
+                Pending Reviews
+                {pendingReviewItems.length > 0 && (
+                  <span className="review-tab-count">{pendingReviewItems.length}</span>
+                )}
+              </button>
+            </div>
           </div>
         )}
 
@@ -189,9 +224,87 @@ function LibraryInner() {
           )}
         </div>
 
+        {/* Pending Reviews Tab Content */}
+        {isAdmin && activeTab === "pending" && (
+          <section
+            className="admin-card"
+            style={{ padding: 18, backdropFilter: "blur(4px)", background: "rgba(26,33,30,0.65)", marginBottom: 20 }}
+          >
+            {pendingReviewLoading && <div style={{ color: "#ccc" }}>Loading pending reviews…</div>}
+            {!pendingReviewLoading && pendingReviewItems.length === 0 && (
+              <div style={{ color: "#aaa", padding: "20px 0", textAlign: "center" }}>
+                No lessons pending your review.
+              </div>
+            )}
+            {!pendingReviewLoading && pendingReviewItems.length > 0 && (
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ textAlign: "left", borderBottom: "1px solid rgba(169,142,100,0.25)" }}>
+                    <th style={{ padding: "10px 6px" }}>Title</th>
+                    <th style={{ padding: "10px 6px", width: "150px" }}>Author</th>
+                    <th style={{ padding: "10px 6px", width: "200px" }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingReviewItems.map((lesson) => (
+                    <tr key={lesson.slug} style={{ borderBottom: "1px solid rgba(169,142,100,0.1)" }}>
+                      <td style={{ padding: "10px 6px" }}>
+                        <button
+                          onClick={() => router.push(`/library/${lesson.slug}`)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#f4d18c",
+                            cursor: "pointer",
+                            fontSize: 15,
+                            fontWeight: 600,
+                            padding: 0,
+                          }}
+                        >
+                          {lesson.title || lesson.slug}
+                        </button>
+                      </td>
+                      <td style={{ padding: "10px 6px", color: "#c8c1b4", fontSize: 14 }}>
+                        {lesson.author || "—"}
+                      </td>
+                      <td style={{ padding: "10px 6px" }}>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            className="review-action-btn review-action-btn--approve"
+                            disabled={reviewing}
+                            onClick={() =>
+                              dispatch(reviewLessonRequest({ slug: lesson.slug, action: "approve" }))
+                            }
+                          >
+                            Approve
+                          </button>
+                          <button
+                            className="review-action-btn review-action-btn--reject"
+                            disabled={reviewing}
+                            onClick={() =>
+                              dispatch(reviewLessonRequest({ slug: lesson.slug, action: "reject" }))
+                            }
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+        )}
+
         <section
           className="admin-card"
-          style={{ padding: 18, backdropFilter: "blur(4px)", background: "rgba(26,33,30,0.65)" }}
+          style={{
+            padding: 18,
+            backdropFilter: "blur(4px)",
+            background: "rgba(26,33,30,0.65)",
+            display: activeTab === "pending" && isAdmin ? "none" : "block",
+          }}
         >
           {loading && <div style={{ color: "#ccc" }}>Loading lessons…</div>}
           {error && <div style={{ color: "#f88" }}>{error}</div>}
@@ -202,6 +315,7 @@ function LibraryInner() {
                   <th style={{ padding: "10px 6px", width: "80px" }}>ID</th>
                   <th style={{ padding: "10px 6px" }}>Title</th>
                   <th style={{ padding: "10px 6px", width: "180px" }}>Author</th>
+                  {isAdmin && <th style={{ padding: "10px 6px", width: "140px" }}>Review</th>}
                   <th style={{ padding: "10px 6px", width: "120px" }}>Published</th>
                 </tr>
               </thead>
@@ -257,6 +371,11 @@ function LibraryInner() {
                       <td style={{ padding: "10px 6px", color: isUnpublished ? "#888" : "#c8c1b4", fontSize: 14 }}>
                         {lesson.author || "—"}
                       </td>
+                      {isAdmin && (
+                        <td style={{ padding: "10px 6px" }}>
+                          <ReviewStatusBadge status={lesson.reviewStatus} />
+                        </td>
+                      )}
                       <td style={{ padding: "10px 6px", color: isUnpublished ? "#888" : "#aaa", fontSize: 14 }}>
                         {lesson.publishedDate ? new Date(lesson.publishedDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : "—"}
                       </td>
@@ -265,7 +384,7 @@ function LibraryInner() {
                 })}
                 {lessons.length === 0 && (
                   <tr>
-                    <td colSpan={4} style={{ padding: "10px 6px", color: "#aaa" }}>
+                    <td colSpan={isAdmin ? 5 : 4} style={{ padding: "10px 6px", color: "#aaa" }}>
                       {search ? `No lessons found matching "${search}"` : "No lessons found."}
                     </td>
                   </tr>

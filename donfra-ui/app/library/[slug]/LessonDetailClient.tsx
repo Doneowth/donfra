@@ -11,13 +11,19 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchLessonRequest,
   deleteLessonRequest,
+  submitForReviewRequest,
+  reviewLessonRequest,
+  updateLessonRequest,
 } from "@/features/lessons/lessonsSlice";
 import {
   selectLessonBySlug,
   selectDetailLoading,
   selectDetailError,
   selectDeleting,
+  selectSubmittingForReview,
+  selectReviewing,
 } from "@/features/lessons/lessonsSelectors";
+import ReviewStatusBadge from "@/components/ReviewStatusBadge";
 import { EMPTY_EXCALIDRAW, sanitizeExcalidraw } from "@/lib/utils/excalidraw";
 import Toast from "@/components/Toast";
 import "./lesson-detail.css";
@@ -123,6 +129,8 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
   const loading = useAppSelector(selectDetailLoading);
   const error = useAppSelector(selectDetailError);
   const deleting = useAppSelector(selectDeleting);
+  const submittingForReview = useAppSelector(selectSubmittingForReview);
+  const reviewingLesson = useAppSelector(selectReviewing);
 
   // Local UI state
   const [canRenderDiagram, setCanRenderDiagram] = useState(false);
@@ -131,6 +139,7 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
 
   // Check if user is admin or above via user authentication
   const isAdmin = user?.role === "admin" || user?.role === "god";
+  const isGod = user?.role === "god";
   const isVip = user?.role === "vip" || isAdmin;
 
   const isDeleting = deleting === slug;
@@ -213,11 +222,10 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
             background: "#0f1211",
           }}
         >
-          <h2 style={{ marginTop: 0 }}>
+          <h2 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             {lesson.title || lesson.slug}
             {lesson.isVip && (
               <span style={{
-                marginLeft: 12,
                 fontSize: 14,
                 color: "#ffd700",
                 fontWeight: 700,
@@ -227,6 +235,9 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
               }}>
                 VIP
               </span>
+            )}
+            {isAdmin && lesson.reviewStatus && (
+              <ReviewStatusBadge status={lesson.reviewStatus} />
             )}
           </h2>
           <p
@@ -241,7 +252,7 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
           </p>
 
           {isAdmin && (
-            <div style={{ marginBottom: 12, display: "flex", gap: 10 }}>
+            <div style={{ marginBottom: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button
                 onClick={() => router.push(`/library/${lesson.slug}/edit`)}
                 style={{
@@ -272,6 +283,74 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
               >
                 {isDeleting ? "Deleting…" : "Delete"}
               </button>
+
+              {/* Review workflow buttons */}
+              {/* Submit for Review: available when draft or rejected */}
+              {(lesson.reviewStatus === "draft" || lesson.reviewStatus === "rejected") && (
+                <button
+                  className="review-action-btn review-action-btn--submit"
+                  disabled={submittingForReview}
+                  onClick={() => {
+                    dispatch(submitForReviewRequest(lesson.slug));
+                    setToast({ message: "Submitted for review!", type: "success" });
+                  }}
+                >
+                  {submittingForReview ? "Submitting…" : "Submit for Review"}
+                </button>
+              )}
+
+              {/* Approve/Reject: available to other admins when pending */}
+              {lesson.reviewStatus === "pending_review" &&
+                lesson.submittedBy !== user?.id && (
+                  <>
+                    <button
+                      className="review-action-btn review-action-btn--approve"
+                      disabled={reviewingLesson}
+                      onClick={() => {
+                        dispatch(reviewLessonRequest({ slug: lesson.slug, action: "approve" }));
+                        setToast({ message: "Lesson approved!", type: "success" });
+                      }}
+                    >
+                      {reviewingLesson ? "Processing…" : "Approve"}
+                    </button>
+                    <button
+                      className="review-action-btn review-action-btn--reject"
+                      disabled={reviewingLesson}
+                      onClick={() => {
+                        dispatch(reviewLessonRequest({ slug: lesson.slug, action: "reject" }));
+                        setToast({ message: "Lesson rejected.", type: "error" });
+                      }}
+                    >
+                      Reject
+                    </button>
+                  </>
+                )}
+
+              {/* Publish: available when approved and not yet published */}
+              {lesson.reviewStatus === "approved" && !lesson.isPublished && (
+                <button
+                  className="review-action-btn review-action-btn--publish"
+                  onClick={() => {
+                    dispatch(updateLessonRequest({ slug: lesson.slug, data: { isPublished: true } }));
+                    setToast({ message: "Lesson published!", type: "success" });
+                  }}
+                >
+                  Publish
+                </button>
+              )}
+
+              {/* God users: direct publish bypass */}
+              {isGod && !lesson.isPublished && lesson.reviewStatus !== "approved" && (
+                <button
+                  className="review-action-btn review-action-btn--publish"
+                  onClick={() => {
+                    dispatch(updateLessonRequest({ slug: lesson.slug, data: { isPublished: true } }));
+                    setToast({ message: "Lesson published (god bypass)!", type: "success" });
+                  }}
+                >
+                  Publish (bypass)
+                </button>
+              )}
             </div>
           )}
 

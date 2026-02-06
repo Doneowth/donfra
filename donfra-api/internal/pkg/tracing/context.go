@@ -53,8 +53,9 @@ var (
 	AttrAuthResult = attribute.Key("auth.result")
 
 	// Lesson attributes
-	AttrLessonSlug = attribute.Key("lesson.slug")
-	AttrLessonIsPublished = attribute.Key("lesson.is_published")
+	AttrLessonSlug         = attribute.Key("lesson.slug")
+	AttrLessonIsPublished  = attribute.Key("lesson.is_published")
+	AttrLessonReviewStatus = attribute.Key("lesson.review_status")
 
 	// Room attributes
 	AttrRoomID = attribute.Key("room.id")

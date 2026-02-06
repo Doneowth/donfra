@@ -273,8 +273,19 @@ db-reset:
 	@docker exec -i donfra-db psql -U donfra -d donfra_study < infra/db/002_create_interview_rooms.sql
 	@echo "✅ Interview rooms table loaded!"
 	@echo ""
+	@echo "📥 Loading lesson review migration..."
+	@docker exec -i donfra-db psql -U donfra -d donfra_study < infra/db/003_add_lesson_review.sql
+	@echo "✅ Lesson review migration loaded!"
+	@echo ""
 	@echo "📚 Adding 20 test lessons..."
 	@docker exec -i donfra-db psql -U donfra -d donfra_study < infra/db/999_add_test_lessons.sql
 	@echo "✅ Test lessons loaded!"
 	@echo ""
 	@echo "🎉 Database reset complete! Total lessons: 22 (2 seed + 20 test)"
+
+# ===== Run Review Migration =====
+
+db-migrate-review:
+	@echo "📥 Running lesson review migration..."
+	@docker exec -i donfra-db psql -U donfra -d donfra_study < infra/db/003_add_lesson_review.sql
+	@echo "✅ Lesson review migration complete!"

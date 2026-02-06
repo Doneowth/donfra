@@ -6,6 +6,14 @@ import (
 	"gorm.io/datatypes"
 )
 
+// Review status constants
+const (
+	ReviewStatusDraft         = "draft"
+	ReviewStatusPendingReview = "pending_review"
+	ReviewStatusApproved      = "approved"
+	ReviewStatusRejected      = "rejected"
+)
+
 // Lesson represents an educational lesson in the system.
 type Lesson struct {
 	ID            uint           `gorm:"primaryKey" json:"id"`
@@ -13,12 +21,17 @@ type Lesson struct {
 	Title         string         `gorm:"not null" json:"title"`
 	Markdown      string         `gorm:"type:text;not null" json:"markdown"`
 	Excalidraw    datatypes.JSON `gorm:"type:jsonb;not null" json:"excalidraw"`
-	VideoURL      string         `gorm:"type:text" json:"videoUrl,omitempty"` // S3/CDN URL for video
-	CodeTemplate  datatypes.JSON `gorm:"type:jsonb" json:"codeTemplate,omitempty"` // Code template for interactive coding
+	VideoURL      string         `gorm:"type:text" json:"videoUrl,omitempty"`
+	CodeTemplate  datatypes.JSON `gorm:"type:jsonb" json:"codeTemplate,omitempty"`
 	IsPublished   bool           `gorm:"column:is_published;not null;default:false" json:"isPublished"`
 	IsVip         bool           `gorm:"column:is_vip;not null;default:false" json:"isVip"`
 	Author        string         `gorm:"type:text" json:"author,omitempty"`
 	PublishedDate *Date          `gorm:"type:date" json:"publishedDate,omitempty"`
+	ReviewStatus  string         `gorm:"column:review_status;not null;default:'draft'" json:"reviewStatus"`
+	SubmittedBy   *uint          `gorm:"column:submitted_by" json:"submittedBy,omitempty"`
+	ReviewedBy    *uint          `gorm:"column:reviewed_by" json:"reviewedBy,omitempty"`
+	SubmittedAt   *time.Time     `gorm:"column:submitted_at" json:"submittedAt,omitempty"`
+	ReviewedAt    *time.Time     `gorm:"column:reviewed_at" json:"reviewedAt,omitempty"`
 	CreatedAt     time.Time      `json:"createdAt"`
 	UpdatedAt     time.Time      `json:"updatedAt"`
 }
@@ -65,16 +78,22 @@ type PaginationParams struct {
 	Search   string // Search query for title/slug/author
 }
 
+// ReviewLessonRequest represents an approve/reject action on a lesson.
+type ReviewLessonRequest struct {
+	Action string `json:"action"` // "approve" or "reject"
+}
+
 // LessonSummary is a lightweight version of Lesson for list views.
 // It excludes heavy fields like markdown and excalidraw to reduce payload size.
 type LessonSummary struct {
-	ID            uint   `json:"id"`
-	Slug          string `json:"slug"`
-	Title         string `json:"title"`
-	IsPublished   bool   `json:"isPublished"`
-	IsVip         bool   `json:"isVip"`
-	Author        string `json:"author,omitempty"`
-	PublishedDate *Date  `json:"publishedDate,omitempty"`
+	ID            uint      `json:"id"`
+	Slug          string    `json:"slug"`
+	Title         string    `json:"title"`
+	IsPublished   bool      `json:"isPublished"`
+	IsVip         bool      `json:"isVip"`
+	Author        string    `json:"author,omitempty"`
+	PublishedDate *Date     `json:"publishedDate,omitempty"`
+	ReviewStatus  string    `json:"reviewStatus"`
 	CreatedAt     time.Time `json:"createdAt"`
 	UpdatedAt     time.Time `json:"updatedAt"`
 }

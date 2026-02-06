@@ -1,5 +1,7 @@
 // Types for lessons feature
 
+export type ReviewStatus = 'draft' | 'pending_review' | 'approved' | 'rejected';
+
 export interface LessonSummary {
   id: number;
   slug: string;
@@ -8,6 +10,7 @@ export interface LessonSummary {
   isVip: boolean;
   author?: string;
   publishedDate?: string;
+  reviewStatus: ReviewStatus;
   createdAt: string;
   updatedAt: string;
 }
@@ -25,6 +28,11 @@ export interface Lesson {
   isVip: boolean;
   author?: string;
   publishedDate?: string;
+  reviewStatus: ReviewStatus;
+  submittedBy?: number;
+  reviewedBy?: number;
+  submittedAt?: string;
+  reviewedAt?: string;
 }
 
 export interface LessonCreateData {
@@ -83,4 +91,14 @@ export interface LessonsState {
   saveError: string | null;
   deleting: string | null;
   deleteError: string | null;
+
+  // Review workflow
+  submittingForReview: boolean;
+  submitReviewError: string | null;
+  reviewing: boolean;
+  reviewError: string | null;
+  pendingReviewItems: LessonSummary[];
+  pendingReviewPagination: Pagination;
+  pendingReviewLoading: boolean;
+  pendingReviewError: string | null;
 }

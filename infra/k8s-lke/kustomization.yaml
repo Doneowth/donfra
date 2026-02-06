@@ -29,6 +29,9 @@ resources:
   - 11-grafana-route.yaml
   - 12-prometheus-route.yaml  # 未启用，需要先配置认证
 
+  # 7. RBAC for CI/CD
+  - 99-deploy-rbac.yaml
+
 # 给所有资源加统一标签 (可选)
 commonLabels:
   project: donfra

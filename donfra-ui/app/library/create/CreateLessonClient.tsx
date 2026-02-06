@@ -30,7 +30,7 @@ export default function CreateLessonClient() {
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [markdown, setMarkdown] = useState("");
-  const [isPublished, setIsPublished] = useState(true);
+  const [isPublished, setIsPublished] = useState(false);
   const [isVip, setIsVip] = useState(false);
   const [author, setAuthor] = useState("");
   const [publishedDate, setPublishedDate] = useState("");
@@ -42,6 +42,7 @@ export default function CreateLessonClient() {
 
   // Check if user is admin or above via user authentication
   const isAdmin = user?.role === "admin" || user?.role === "god";
+  const isGod = user?.role === "god";
 
   useEffect(() => {
     if (!isAdmin) {
@@ -187,16 +188,22 @@ export default function CreateLessonClient() {
               placeholder="https://your-cdn.akamai.com/video.mp4 (optional)"
             />
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <input
-              id="isPublished"
-              type="checkbox"
-              checked={isPublished}
-              onChange={(e) => setIsPublished(e.target.checked)}
-              style={{ width: 16, height: 16 }}
-            />
-            <label htmlFor="isPublished" style={{ color: "#ccc", margin: 0 }}>Published</label>
-          </div>
+          {isGod ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                id="isPublished"
+                type="checkbox"
+                checked={isPublished}
+                onChange={(e) => setIsPublished(e.target.checked)}
+                style={{ width: 16, height: 16 }}
+              />
+              <label htmlFor="isPublished" style={{ color: "#ccc", margin: 0 }}>Published</label>
+            </div>
+          ) : (
+            <div style={{ color: "#888", fontSize: 13 }}>
+              Lessons are saved as drafts. Submit for review after creation.
+            </div>
+          )}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <input
               id="isVip"
@@ -272,7 +279,7 @@ export default function CreateLessonClient() {
             onClick={handleSubmit}
             disabled={saving || !slug.trim() || !title.trim()}
           >
-            {saving ? "Creating…" : "Create lesson"}
+            {saving ? "Creating…" : isGod ? "Create lesson" : "Save as Draft"}
           </button>
           <button
             className="btn-cancel"

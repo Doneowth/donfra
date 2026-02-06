@@ -14,8 +14,6 @@ import (
 
 // StudyService defines the interface for lesson operations.
 type StudyService interface {
-	ListPublishedLessons(ctx context.Context, hasVipAccess bool) ([]study.Lesson, error)
-	ListAllLessons(ctx context.Context, hasVipAccess bool) ([]study.Lesson, error)
 	ListPublishedLessonsPaginated(ctx context.Context, hasVipAccess bool, params study.PaginationParams) (*study.PaginatedLessonsResponse, error)
 	ListAllLessonsPaginated(ctx context.Context, hasVipAccess bool, params study.PaginationParams) (*study.PaginatedLessonsResponse, error)
 	ListPublishedLessonsSummaryPaginated(ctx context.Context, params study.PaginationParams) (*study.PaginatedLessonsSummaryResponse, error)
@@ -24,6 +22,9 @@ type StudyService interface {
 	CreateLesson(ctx context.Context, newLesson *study.Lesson) (*study.Lesson, error)
 	UpdateLessonBySlug(ctx context.Context, slug string, updates map[string]any) error
 	DeleteLessonBySlug(ctx context.Context, slug string) error
+	SubmitForReview(ctx context.Context, slug string, submitterUserID uint) error
+	ReviewLesson(ctx context.Context, slug string, reviewerUserID uint, action string) error
+	ListPendingReviewLessonsSummaryPaginated(ctx context.Context, excludeUserID uint, params study.PaginationParams) (*study.PaginatedLessonsSummaryResponse, error)
 }
 
 // UserService defines the interface for user operations.

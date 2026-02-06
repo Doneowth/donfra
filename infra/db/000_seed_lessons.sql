@@ -11,6 +11,11 @@ CREATE TABLE IF NOT EXISTS lessons (
     is_vip BOOLEAN NOT NULL DEFAULT FALSE,
     author TEXT,
     published_date DATE,
+    review_status VARCHAR(20) NOT NULL DEFAULT 'draft',
+    submitted_by INTEGER,
+    reviewed_by INTEGER,
+    submitted_at TIMESTAMPTZ,
+    reviewed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -27,7 +32,10 @@ CREATE INDEX IF NOT EXISTS idx_lessons_author ON lessons(author);
 -- Create index for published date sorting
 CREATE INDEX IF NOT EXISTS idx_lessons_published_date ON lessons(published_date);
 
-INSERT INTO lessons (slug, title, markdown, excalidraw, video_url, code_template, is_published, is_vip, author, published_date)
+-- Create index for review status filtering
+CREATE INDEX IF NOT EXISTS idx_lessons_review_status ON lessons(review_status);
+
+INSERT INTO lessons (slug, title, markdown, excalidraw, video_url, code_template, is_published, is_vip, author, published_date, review_status)
 VALUES
     -- Python Hello World lesson with external code sandbox
     ('python-hello-world',
@@ -61,7 +69,8 @@ Every programmer starts here. It''s a simple program that displays text.
      TRUE,
      FALSE,
      'Donfra Team',
-     '2025-12-30'),
+     '2025-12-30',
+     'approved'),
 
     -- Python Basics lesson
     ('python-basics',
@@ -88,7 +97,8 @@ Click the **Code** tab to open the interactive coding environment!',
      TRUE,
      FALSE,
      'Donfra Team',
-     '2025-12-30'),
+     '2025-12-30',
+     'approved'),
 
     -- Python Functions lesson
     ('python-functions',
@@ -115,7 +125,8 @@ Complete the function to calculate the area of a rectangle.',
      TRUE,
      FALSE,
      'Donfra Team',
-     '2025-12-30'),
+     '2025-12-30',
+     'approved'),
 
     -- Python Lists and Loops lesson
     ('python-lists',
@@ -143,7 +154,8 @@ Modify the code to add more fruits and print them!',
      TRUE,
      FALSE,
      'Donfra Team',
-     '2025-12-30'),
+     '2025-12-30',
+     'approved'),
 
     -- Python Dictionaries lesson
     ('python-dictionaries',
@@ -168,7 +180,8 @@ Run the code to see how dictionaries work!',
      TRUE,
      FALSE,
      'Donfra Team',
-     '2025-12-30'),
+     '2025-12-30',
+     'approved'),
 
     -- Python Conditionals lesson
     ('python-conditionals',
@@ -196,7 +209,8 @@ Modify the temperature value and see different messages!',
      TRUE,
      FALSE,
      'Donfra Team',
-     '2025-12-30'),
+     '2025-12-30',
+     'approved'),
 
     -- Python Math Operations lesson
     ('python-math',
@@ -223,16 +237,17 @@ Experiment with different numbers and operations!',
      TRUE,
      FALSE,
      'Donfra Team',
-     '2025-12-30'),
+     '2025-12-30',
+     'approved'),
 
     -- Sample lessons without code
     ('intro-to-donfra', 'Intro to Donfra', '# Welcome\n\nThis is a sample lesson for testing.',
      '{"type":"excalidraw","version":2,"source":"","elements":[],"appState":{},"files":{}}'::jsonb,
-     NULL, NULL, TRUE, FALSE, 'Donfra Team', '2025-01-15'),
+     NULL, NULL, TRUE, FALSE, 'Donfra Team', '2025-01-15', 'approved'),
 
     ('advanced-collab', 'Advanced Collaboration', '## Collaboration\n\nTesting collaborative editing features.',
      '{"type":"excalidraw","version":2,"source":"","elements":[{"type":"rectangle","version":141,"versionNonce":361174001,"isDeleted":false,"id":"oDVXy8D6rom3H1-LLH2-f","fillStyle":"hachure","strokeWidth":1,"strokeStyle":"solid","roughness":1,"opacity":100,"angle":0,"x":100.50390625,"y":93.67578125,"strokeColor":"#000000","backgroundColor":"transparent","width":186.47265625,"height":141.9765625,"seed":1968410350,"groupIds":[]}],"appState":{"zenModeEnabled":true,"viewBackgroundColor":"#a5d8ff"},"scrollToContent":true,"files":{}}'::jsonb,
-     NULL, NULL, TRUE, FALSE, 'Donfra Team', '2025-01-20')
+     NULL, NULL, TRUE, FALSE, 'Donfra Team', '2025-01-20', 'approved')
 ON CONFLICT (slug) DO UPDATE
 SET
     code_template = EXCLUDED.code_template,

@@ -34,6 +34,18 @@ func isAdminOrAbove(ctx context.Context) bool {
 	return ok && (role == "admin" || role == "god")
 }
 
+// isGod checks if the user has god role
+func isGod(ctx context.Context) bool {
+	role, ok := ctx.Value("user_role").(string)
+	return ok && role == "god"
+}
+
+// getUserID extracts user ID from context
+func getUserID(ctx context.Context) (uint, bool) {
+	id, ok := ctx.Value("user_id").(uint)
+	return id, ok
+}
+
 // isVipOrAbove checks if the user has VIP access (vip, admin, or god role)
 func isVipOrAbove(ctx context.Context) bool {
 	role, ok := ctx.Value("user_role").(string)
@@ -258,6 +270,17 @@ func (h *Handlers) CreateLessonHandler(w http.ResponseWriter, r *http.Request) {
 	decodeSpan.End()
 
 	_, buildSpan := tracing.StartSpan(ctx, "handler.BuildLessonModel")
+
+	// Admin users: force draft status and unpublished. God users: no restrictions.
+	isPublished := req.IsPublished
+	reviewStatus := study.ReviewStatusDraft
+	if !isGod(ctx) {
+		isPublished = false
+		reviewStatus = study.ReviewStatusDraft
+	} else if isPublished {
+		reviewStatus = study.ReviewStatusApproved
+	}
+
 	newLesson := &study.Lesson{
 		Slug:          req.Slug,
 		Title:         req.Title,
@@ -265,10 +288,11 @@ func (h *Handlers) CreateLessonHandler(w http.ResponseWriter, r *http.Request) {
 		Excalidraw:    req.Excalidraw,
 		VideoURL:      req.VideoURL,
 		CodeTemplate:  req.CodeTemplate,
-		IsPublished:   req.IsPublished,
+		IsPublished:   isPublished,
 		IsVip:         req.IsVip,
 		Author:        req.Author,
 		PublishedDate: req.PublishedDate,
+		ReviewStatus:  reviewStatus,
 	}
 	buildSpan.End()
 
@@ -337,6 +361,24 @@ func (h *Handlers) UpdateLessonHandler(w http.ResponseWriter, r *http.Request) {
 		updates["code_template"] = req.CodeTemplate
 	}
 	if req.IsPublished != nil {
+		// Admin users: can only publish if review status is approved
+		if *req.IsPublished && !isGod(ctx) {
+			lesson, err := h.studySvc.GetLessonBySlug(ctx, slug, true)
+			if err != nil {
+				buildSpan.End()
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					httputil.WriteError(w, http.StatusNotFound, "lesson not found")
+					return
+				}
+				httputil.WriteError(w, http.StatusInternalServerError, "failed to check lesson status")
+				return
+			}
+			if lesson.ReviewStatus != study.ReviewStatusApproved {
+				buildSpan.End()
+				httputil.WriteError(w, http.StatusForbidden, "lesson must be approved before publishing")
+				return
+			}
+		}
 		updates["is_published"] = *req.IsPublished
 	}
 	if req.IsVip != nil {
@@ -396,4 +438,142 @@ func (h *Handlers) DeleteLessonHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// SubmitLessonForReviewHandler handles POST /api/lessons/{slug}/submit-review.
+// Submits a draft or rejected lesson for review. Requires AdminOnly middleware.
+func (h *Handlers) SubmitLessonForReviewHandler(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.StartSpan(r.Context(), "handler.SubmitLessonForReview")
+	defer span.End()
+
+	if h.studySvc == nil {
+		httputil.WriteError(w, http.StatusInternalServerError, "study service unavailable")
+		return
+	}
+
+	slug := chi.URLParam(r, "slug")
+	if slug == "" {
+		httputil.WriteError(w, http.StatusBadRequest, "slug is required")
+		return
+	}
+
+	userID, ok := getUserID(ctx)
+	if !ok {
+		httputil.WriteError(w, http.StatusUnauthorized, "user not authenticated")
+		return
+	}
+
+	span.SetAttributes(
+		tracing.AttrLessonSlug.String(slug),
+		tracing.AttrUserID.Int(int(userID)),
+	)
+
+	if err := h.studySvc.SubmitForReview(ctx, slug, userID); err != nil {
+		tracing.RecordError(span, err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			httputil.WriteError(w, http.StatusNotFound, "lesson not found")
+			return
+		}
+		httputil.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{
+		"slug":         slug,
+		"reviewStatus": study.ReviewStatusPendingReview,
+	})
+}
+
+// ReviewLessonHandler handles POST /api/lessons/{slug}/review.
+// Approves or rejects a lesson that is pending review. Requires AdminOnly middleware.
+func (h *Handlers) ReviewLessonHandler(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.StartSpan(r.Context(), "handler.ReviewLesson")
+	defer span.End()
+
+	if h.studySvc == nil {
+		httputil.WriteError(w, http.StatusInternalServerError, "study service unavailable")
+		return
+	}
+
+	slug := chi.URLParam(r, "slug")
+	if slug == "" {
+		httputil.WriteError(w, http.StatusBadRequest, "slug is required")
+		return
+	}
+
+	userID, ok := getUserID(ctx)
+	if !ok {
+		httputil.WriteError(w, http.StatusUnauthorized, "user not authenticated")
+		return
+	}
+
+	var req study.ReviewLessonRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.WriteError(w, http.StatusBadRequest, "invalid JSON body: "+err.Error())
+		return
+	}
+
+	span.SetAttributes(
+		tracing.AttrLessonSlug.String(slug),
+		tracing.AttrUserID.Int(int(userID)),
+		tracing.AttrLessonReviewStatus.String(req.Action),
+	)
+
+	if err := h.studySvc.ReviewLesson(ctx, slug, userID, req.Action); err != nil {
+		tracing.RecordError(span, err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			httputil.WriteError(w, http.StatusNotFound, "lesson not found")
+			return
+		}
+		httputil.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	newStatus := study.ReviewStatusRejected
+	if req.Action == "approve" {
+		newStatus = study.ReviewStatusApproved
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{
+		"slug":         slug,
+		"reviewStatus": newStatus,
+	})
+}
+
+// ListPendingReviewHandler handles GET /api/lessons/pending-review.
+// Returns lessons pending review, excluding the current user's own submissions.
+func (h *Handlers) ListPendingReviewHandler(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.StartSpan(r.Context(), "handler.ListPendingReview")
+	defer span.End()
+
+	if h.studySvc == nil {
+		httputil.WriteError(w, http.StatusInternalServerError, "study service unavailable")
+		return
+	}
+
+	userID, ok := getUserID(ctx)
+	if !ok {
+		httputil.WriteError(w, http.StatusUnauthorized, "user not authenticated")
+		return
+	}
+
+	query := r.URL.Query()
+	page := parsePaginationParam(query.Get("page"), 1)
+	size := parsePaginationParam(query.Get("size"), 10)
+	search := query.Get("search")
+
+	params := study.PaginationParams{
+		Page:   page,
+		Size:   size,
+		Search: search,
+	}
+
+	response, err := h.studySvc.ListPendingReviewLessonsSummaryPaginated(ctx, userID, params)
+	if err != nil {
+		tracing.RecordError(span, err)
+		httputil.WriteError(w, http.StatusInternalServerError, "failed to load pending reviews")
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, response)
 }

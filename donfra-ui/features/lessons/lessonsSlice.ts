@@ -34,6 +34,21 @@ const initialState: LessonsState = {
   saveError: null,
   deleting: null,
   deleteError: null,
+
+  // Review workflow
+  submittingForReview: false,
+  submitReviewError: null,
+  reviewing: false,
+  reviewError: null,
+  pendingReviewItems: [],
+  pendingReviewPagination: {
+    currentPage: 1,
+    pageSize: 10,
+    total: 0,
+    totalPages: 0,
+  },
+  pendingReviewLoading: false,
+  pendingReviewError: null,
 };
 
 const lessonsSlice = createSlice({
@@ -167,6 +182,95 @@ const lessonsSlice = createSlice({
       state.deleteError = action.payload;
     },
 
+    // ============ Submit for Review ============
+    submitForReviewRequest(state, _action: PayloadAction<string>) {
+      state.submittingForReview = true;
+      state.submitReviewError = null;
+    },
+    submitForReviewSuccess(
+      state,
+      action: PayloadAction<{ slug: string; reviewStatus: string }>
+    ) {
+      state.submittingForReview = false;
+      if (state.bySlug[action.payload.slug]) {
+        state.bySlug[action.payload.slug].reviewStatus =
+          action.payload.reviewStatus as any;
+      }
+      const idx = state.items.findIndex(
+        (i) => i.slug === action.payload.slug
+      );
+      if (idx !== -1) {
+        state.items[idx].reviewStatus =
+          action.payload.reviewStatus as any;
+      }
+    },
+    submitForReviewFailure(state, action: PayloadAction<string>) {
+      state.submittingForReview = false;
+      state.submitReviewError = action.payload;
+    },
+
+    // ============ Review (Approve/Reject) ============
+    reviewLessonRequest(
+      state,
+      _action: PayloadAction<{ slug: string; action: "approve" | "reject" }>
+    ) {
+      state.reviewing = true;
+      state.reviewError = null;
+    },
+    reviewLessonSuccess(
+      state,
+      action: PayloadAction<{ slug: string; reviewStatus: string }>
+    ) {
+      state.reviewing = false;
+      state.pendingReviewItems = state.pendingReviewItems.filter(
+        (i) => i.slug !== action.payload.slug
+      );
+      if (state.bySlug[action.payload.slug]) {
+        state.bySlug[action.payload.slug].reviewStatus =
+          action.payload.reviewStatus as any;
+      }
+      const idx = state.items.findIndex(
+        (i) => i.slug === action.payload.slug
+      );
+      if (idx !== -1) {
+        state.items[idx].reviewStatus =
+          action.payload.reviewStatus as any;
+      }
+    },
+    reviewLessonFailure(state, action: PayloadAction<string>) {
+      state.reviewing = false;
+      state.reviewError = action.payload;
+    },
+
+    // ============ Fetch Pending Review ============
+    fetchPendingReviewRequest(state) {
+      state.pendingReviewLoading = true;
+      state.pendingReviewError = null;
+    },
+    fetchPendingReviewSuccess(
+      state,
+      action: PayloadAction<{
+        lessons: LessonSummary[];
+        total: number;
+        page: number;
+        size: number;
+        totalPages: number;
+      }>
+    ) {
+      state.pendingReviewLoading = false;
+      state.pendingReviewItems = action.payload.lessons;
+      state.pendingReviewPagination = {
+        currentPage: action.payload.page,
+        pageSize: action.payload.size,
+        total: action.payload.total,
+        totalPages: action.payload.totalPages,
+      };
+    },
+    fetchPendingReviewFailure(state, action: PayloadAction<string>) {
+      state.pendingReviewLoading = false;
+      state.pendingReviewError = action.payload;
+    },
+
     // ============ Clear Errors ============
     clearListError(state) {
       state.listError = null;
@@ -211,6 +315,16 @@ export const {
   deleteLessonRequest,
   deleteLessonSuccess,
   deleteLessonFailure,
+  // Review workflow
+  submitForReviewRequest,
+  submitForReviewSuccess,
+  submitForReviewFailure,
+  reviewLessonRequest,
+  reviewLessonSuccess,
+  reviewLessonFailure,
+  fetchPendingReviewRequest,
+  fetchPendingReviewSuccess,
+  fetchPendingReviewFailure,
   // Clear Errors
   clearListError,
   clearDetailError,
