@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: doneowth/donfra-api:1.0.9
+          image: doneowth/donfra-api:1.0.10
           ports:
             - containerPort: 8080
               name: http

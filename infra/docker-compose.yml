@@ -1,5 +1,4 @@
 name: donfra
-
 services:
   caddy:
     image: caddy:2
@@ -25,7 +24,8 @@ services:
   api:
     # build:
     #   context: ../donfra-api
-    image: doneowth/donfra-api:1.0.8
+    # image: doneowth/donfra-api:1.0.8
+    image: doneowth/donfra-api:$(API_IMAGE_TAG)
     container_name: donfra-api
     env_file:
       - .env.production
@@ -56,7 +56,8 @@ services:
 
   # ===== UI: Next SSR app =====
   ui:
-    image: doneowth/donfra-ui:1.0.27
+    # image: doneowth/donfra-ui:1.0.27
+    image: doneowth/donfra-ui:$(UI_IMAGE_TAG)
     container_name: donfra-ui
     env_file:
       - .env.production

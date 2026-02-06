@@ -7,11 +7,10 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: linode-block-storage  # Delete policy - volume deleted when PVC deleted
   resources:
     requests:
       storage: 10Gi
-  # LKE uses linode-block-storage-retain by default
-  # storageClassName: linode-block-storage-retain
 
 ---
 apiVersion: apps/v1
