@@ -1,361 +1,294 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code when working with code in this repository.
 
 ## Project Overview
 
-**Donfra** is a full-stack educational/career mentorship platform with real-time collaborative coding capabilities. It's a monorepo with three main services:
+**Donfra** is a full-stack educational/career mentorship platform with real-time collaborative coding, live streaming, and AI-powered code analysis. Monorepo with three services:
 
-- **donfra-api** (Go): REST API for room management, Python code execution, and lesson management
-- **donfra-ws** (Node.js): WebSocket server for real-time collaborative editing using Yjs CRDT
-- **donfra-ui** (Next.js): SSR frontend with Monaco editor, Excalidraw whiteboarding, and Framer Motion
+- **donfra-api** (Go): REST API - user auth, lessons, interview rooms, LiveKit streaming, AI agent
+- **donfra-ws** (Node.js): WebSocket server for real-time collaborative editing (Yjs CRDT)
+- **donfra-ui** (Next.js): SSR frontend with Monaco editor, Excalidraw whiteboarding
 
 ## Common Commands
 
-### Full Stack Development
+### Full Stack (Docker Compose)
 
 ```bash
-# Start all services locally (Docker Compose)
-make localdev-up
-
-# Stop all services
-make localdev-down
-
-# Restart specific services
-make localdev-restart-api
-make localdev-restart-ws
-make localdev-restart-ui
-make localdev-restart-db
-make localdev-restart-redis
-
-# View logs from all services
-make logs
-
-# Check running containers
-make ps
+make localdev-up              # Start all services
+make localdev-down             # Stop all services
+make localdev-restart-api      # Restart API
+make localdev-restart-ws       # Restart WS
+make localdev-restart-ui       # Restart UI
+make localdev-restart-db       # Restart DB
+make localdev-restart-redis    # Restart Redis
+make logs                      # View logs (tail -200)
+make ps                        # List containers
 ```
 
-### Kubernetes (Kind) Local Development
+### Production
 
 ```bash
-# Setup Kind cluster with all services
-make k8s-setup
+make prod-up / prod-down / prod-restart
+make prod-restart-api / prod-restart-caddy
+make prod-logs / prod-ps
 
-# Teardown Kind cluster
-make k8s-teardown
-
-# Rebuild and reload Docker images (after code changes)
-make k8s-rebuild
-
-# Check cluster status
-make k8s-status
-
-# View logs for specific service
-make k8s-logs SERVICE=api    # Options: api, ws, ui, postgres, redis, jaeger
-
-# Restart deployments
-make k8s-restart-api
-make k8s-restart-ws
-make k8s-restart-ui
-
-# Port forward services
-make k8s-portforward-db        # PostgreSQL -> localhost:5432
-make k8s-portforward-jaeger    # Jaeger UI -> localhost:16686
+# Docker Hub
+make docker-build-api API_IMAGE_TAG=1.0.11
+make docker-push-api API_IMAGE_TAG=1.0.11
+make docker-build-ui UI_IMAGE_TAG=1.0.28
+make docker-push-ui UI_IMAGE_TAG=1.0.28
 ```
 
 ### API Development (Go)
 
 ```bash
 cd donfra-api
-
-# Run locally (requires Go 1.24+, Python3)
-make run              # or: go run ./cmd/donfra-api
-
-# Build binary
-make build            # outputs to ./bin/donfra-api
-
-# Format code
-make format           # go fmt ./...
-
-# Clean build artifacts
-make clean
+make run               # go run ./cmd/donfra-api
+make build             # outputs to ./bin/donfra-api
+make test              # Run tests
+make test-coverage     # Coverage report
+make lint              # golangci-lint
+make format            # go fmt ./...
 ```
 
-### UI Development (Next.js)
+### Database
 
 ```bash
-cd donfra-ui
-
-# Development server
-npm run dev           # http://localhost:3000
-
-# Production build
-npm run build
-npm run start
-
-# Build only
-make build
+make load-db-sample          # Load all SQL from infra/db/
+make db-migrate-review       # Run review migration (003)
+make db-reset                # Drop + recreate + seed
+make db-backup               # Timestamped backup
+make db-restore-latest       # Restore latest backup
+make db-list-backups         # List backups
+make add-20-lessons          # Add 20 test lessons
 ```
 
-### WebSocket Server Development
+## API Architecture
 
-```bash
-cd donfra-ws
+### Project Structure
 
-# Start locally (Node.js 16+)
-npm start             # port 6789
-
-# Docker operations
-make up               # docker-compose up -d --build
-make down
-make logs
+```
+donfra-api/
+├── cmd/donfra-api/main.go
+└── internal/
+    ├── config/config.go              # All env vars
+    ├── domain/
+    │   ├── aiagent/                  # DeepSeek AI code analysis + chat
+    │   ├── google/                   # Google OAuth 2.0
+    │   ├── interview/                # Interview room management
+    │   ├── livekit/                  # LiveKit live streaming sessions
+    │   ├── study/                    # Lesson CRUD + review workflow
+    │   ├── user/                     # User auth, roles, password
+    │   └── db/                       # Database initialization
+    ├── http/
+    │   ├── handlers/                 # HTTP endpoint handlers
+    │   ├── middleware/               # Auth, metrics, tracing, CORS, request ID
+    │   └── router/router.go         # Chi router setup
+    └── pkg/
+        ├── httputil/                 # JSON response helpers
+        ├── metrics/                  # Prometheus metrics definitions
+        └── tracing/                  # OpenTelemetry/Jaeger setup
 ```
 
-### Production Commands
+### Domain Models
 
-```bash
-# Start production stack with Caddy
-make prod-up
+**Users** (`users` table):
+- Fields: id, email (unique), password (bcrypt), username, role, is_active, google_id, google_avatar
+- Roles: `user` (default), `vip`, `admin`, `god`
+- `UserPublic` excludes password, adds `can_stealth` (admin/god)
+- Soft delete support
 
-# Stop production stack
-make prod-down
+**Lessons** (`lessons` table):
+- Fields: id, slug (unique), title, markdown, excalidraw (JSONB), video_url, code_template (JSONB), is_published, is_vip, author, published_date
+- Review fields: review_status, submitted_by, reviewed_by, submitted_at, reviewed_at
+- Review workflow: `draft` → `pending_review` → `approved`/`rejected` → publish
+- VIP lessons: non-VIP users see only title/metadata (empty markdown/excalidraw)
+- Pagination with sort (created_at, updated_at, title, id, published_date) and search (title, slug, author)
 
-# Restart production stack
-make prod-restart
+**Interview Rooms** (`interview_rooms` table):
+- Fields: id, room_id (UUID), owner_id (FK), headcount, code_snapshot, invite_link
+- JWT-based invite tokens with configurable expiry
+- Soft delete support
 
-# View production logs
-make prod-logs
+**Live Sessions** (`live_sessions` table - LiveKit):
+- Fields: session_id, owner_id, title, description, session_type, status, max_participants
+- Types: teaching, interview, coding, workshop
+- Status: scheduled, live, ended, cancelled
+- Admin stealth mode (join hidden)
 
-# Restart specific production services
-make prod-restart-api
-make prod-restart-caddy
+### API Endpoints
 
-# Build and push UI to Docker Hub
-make docker-build-ui UI_IMAGE_TAG=1.0.4
-make docker-push-ui UI_IMAGE_TAG=1.0.4
-```
+Base paths: `/api` and `/api/v1`
 
-### Database Operations
+**Auth (public):**
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/auth/register` | Register new user |
+| POST | `/auth/login` | Login (sets auth_token cookie) |
+| POST | `/auth/logout` | Clear auth cookie |
+| GET | `/auth/google/url` | Google OAuth URL + state |
+| GET | `/auth/google/callback` | OAuth callback (redirect) |
+| GET | `/auth/me` | Current user (OptionalAuth) |
+| POST | `/auth/refresh` | Refresh JWT (RequireAuth) |
+| POST | `/auth/update-password` | Update password (RequireAuth) |
 
-```bash
-# Load all SQL files from infra/db/ into database
-make load-db-sample
+**Admin (God only):**
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/admin/users` | List all users |
+| PATCH | `/admin/users/{id}/role` | Update user role |
+| PATCH | `/admin/users/{id}/active` | Toggle active status |
 
-# Create database backup snapshot
-make db-backup
+**Lessons:**
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/lessons/summary` | Lesson summaries (OptionalAuth) |
+| GET | `/lessons` | List lessons (OptionalAuth) |
+| GET | `/lessons/{slug}` | Lesson detail (OptionalAuth) |
+| POST | `/lessons` | Create (Admin+) |
+| PATCH | `/lessons/{slug}` | Update (Admin+) |
+| DELETE | `/lessons/{slug}` | Delete (Admin+) |
+| GET | `/lessons/pending-review` | Pending reviews (Admin+) |
+| POST | `/lessons/{slug}/submit-review` | Submit for review (Admin+) |
+| POST | `/lessons/{slug}/review` | Approve/reject (Admin+) |
 
-# Restore from specific backup
-make db-restore BACKUP_FILE=./db-backups/donfra_backup_YYYYMMDD_HHMMSS.sql
+**Interview Rooms:**
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/interview/init` | Create room (Admin+) |
+| POST | `/interview/join` | Join room (public) |
+| POST | `/interview/close` | Close room (Admin+) |
+| GET | `/interview/my-rooms` | User's rooms (RequireAuth) |
+| GET | `/interview/rooms/{room_id}/status` | Room status (public) |
+| GET | `/interview/rooms/all` | All rooms (Admin+) |
 
-# Restore from latest backup
-make db-restore-latest
+**LiveKit Streaming:**
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/live/create` | Create session (Admin+) |
+| POST | `/live/join` | Join session (OptionalAuth) |
+| POST | `/live/end` | End session (Admin+) |
 
-# List available backups
-make db-list-backups
+**AI Agent (VIP+):**
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/ai/analyze` | Analyze code |
+| POST | `/ai/chat` | Chat with history |
+| POST | `/ai/chat/stream` | SSE streaming chat |
 
-# Add 20 test lessons (mixed published/unpublished and VIP)
-make add-20-lessons
-```
+**System:**
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/healthz` | Health check |
+| GET | `/metrics` | Prometheus metrics |
 
-### Jaeger Tracing
+### Middleware Stack
 
-```bash
-# Open Jaeger UI info
-make jaeger-ui
+Applied globally (in order):
+1. `Tracing("donfra-api")` - OpenTelemetry spans
+2. `Metrics` - HTTP request metrics
+3. `CORS` - with `X-Request-Id` exposed
+4. `RequestID` - unique request ID
 
-# View Jaeger logs (local)
-make jaeger-logs
+Per-route auth middleware:
+- `RequireAuth(userSvc)` - JWT from cookie, rejects without auth
+- `OptionalAuth(userSvc)` - validates JWT if present
+- `RequireAdminOrAbove()` - admin/god
+- `RequireVIPOrAbove()` - vip/admin/god
+- `RequireGodUser()` - god only
 
-# View Jaeger logs (production)
-make jaeger-logs-prod
+Context values: `user_id` (uint), `user_email` (string), `user_role` (string)
 
-# Generate Caddy Basic Auth password hash
-make jaeger-hash-password
-```
+### Observability
 
-## Architecture & Key Patterns
+**Prometheus Metrics:**
+- HTTP: `donfra_http_requests_total`, `donfra_http_request_duration_seconds`, `donfra_http_requests_in_flight`
+- Business: `donfra_lessons_total`, `donfra_lessons_published`, `donfra_users_total`, `donfra_interview_rooms_active`
+- Auth: `donfra_auth_login_total`, `donfra_auth_register_total`
+- DB: `donfra_db_query_duration_seconds`
+- AI: `donfra_ai_requests_total`
 
-### Room-Based Access Control
-- The core concept is a single "room" that can be opened/closed with a passcode
-- Opening a room generates a JWT token for creating invite links
-- Users join via invite token and receive a `room_access` cookie
-- All Python code execution requires an active room session
+**Tracing:** OpenTelemetry → OTLP HTTP → Jaeger (local) or Grafana Cloud Tempo (K8s)
 
-### Python Code Execution
-- Code runs in sandboxed subprocess: `python3 -I -u -`
-- Hard timeout of 5 seconds per execution
-- Returns stdout/stderr to the collaborative editor
-- Located in [donfra-api/internal/domain/run/](../donfra-api/internal/domain/run/)
+### Environment Variables (`donfra-api`)
 
-### Real-Time Collaboration (CRDT)
-- Uses Yjs library for conflict-free replicated data types
-- WebSocket connection to `donfra-ws` server
-- Monaco Editor bindings via `y-monaco`
-- Peer awareness shows online users with assigned colors
-- All collaboration state is ephemeral (in-memory only)
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ADDR` | `:8080` | Listen address |
+| `DATABASE_URL` | - | PostgreSQL connection string |
+| `JWT_SECRET` | `donfra-secret` | JWT signing secret |
+| `JWT_EXPIRY_HOURS` | `168` (7d) | JWT token lifetime |
+| `COOKIE_MAX_AGE_DAYS` | `7` | Auth cookie lifetime |
+| `CORS_ORIGIN` | `http://localhost:3000` | Allowed CORS origin |
+| `BASE_URL` | - | Frontend URL for invite links |
+| `FRONTEND_URL` | `http://localhost` | OAuth redirect target |
+| `REDIS_ADDR` | `redis:6379` | Redis address |
+| `USE_REDIS` | `false` | Enable Redis |
+| `JAEGER_ENDPOINT` | - | OTLP HTTP endpoint (e.g. `jaeger:4318`) |
+| `GOOGLE_CLIENT_ID` | - | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | - | Google OAuth secret |
+| `GOOGLE_REDIRECT_URL` | `http://localhost:8080/api/auth/google/callback` | OAuth redirect |
+| `OAUTH_STATE_EXPIRY_MINS` | `10` | OAuth state TTL |
+| `DEEPSEEK_API_KEY` | - | DeepSeek API key |
+| `LIVEKIT_API_KEY` | dev key | LiveKit API key |
+| `LIVEKIT_API_SECRET` | dev secret | LiveKit API secret |
+| `LIVEKIT_SERVER_URL` | `ws://livekit:7880` | LiveKit internal URL |
+| `LIVEKIT_PUBLIC_URL` | `/livekit` | LiveKit public URL |
+| `INVITE_TOKEN_EXPIRY_HOURS` | `24` | Interview invite token expiry |
+| `LIVEKIT_TOKEN_EXPIRY_HOURS` | `24` | LiveKit token expiry |
+
+## Database
+
+- PostgreSQL 16 with GORM
+- Container: `donfra-db`, user: `donfra`, database: `donfra_study`
+- Migrations in `infra/db/` numbered sequentially:
+  - `000_seed_lessons.sql` - lessons table + seed data
+  - `001_create_users_table.sql` - users table with roles, OAuth
+  - `002_create_interview_rooms.sql` - interview rooms table
+  - `003_add_lesson_review.sql` - review workflow columns
+
+## Infrastructure
 
 ### Service Communication
 
 **Production (Docker Compose + Caddy):**
-- Caddy reverse proxy routes traffic to services
-  - `/api/*` → Go API (port 8080)
-  - `/yjs/*` and `/ws/*` → Node.js WebSocket server (port 6789)
-  - Everything else → Next.js UI (port 3000)
-- Docker network name: `donfra`
+- Caddy routes: `/api/*` → API:8080, `/yjs/*` `/ws/*` → WS:6789, `/*` → UI:3000
+- Docker network: `donfra`
 
 **Local dev (Docker Compose):**
-- Services exposed directly on localhost ports
-- No reverse proxy
+- Services exposed directly on localhost ports, no reverse proxy
 
-**Kubernetes (Kind):**
-- Istio Ambient mesh with Gateway API for traffic routing
-- Services deployed in `donfra` namespace
-- Gateway routes traffic similar to Caddy configuration
-- Local access via `donfra.local` (requires `/etc/hosts` entry)
-- Observability stack: Prometheus, Grafana, Loki, Jaeger, OpenTelemetry Collector
+**Kubernetes (LKE):**
+- Linode Kubernetes Engine, namespace `donfra-eng`
+- Envoy Gateway + cert-manager for TLS (Let's Encrypt + Cloudflare DNS-01)
+- Gateway API HTTPRoutes for path-based routing on `donfra.dev`
+- Sealed secrets for sensitive config
+- Grafana Alloy DaemonSet → Grafana Cloud (Loki, Prometheus, Tempo)
 
-### Database & Lessons
-- PostgreSQL 16 with GORM ORM
-- Single `lessons` table with columns: `id`, `slug`, `title`, `markdown`, `excalidraw` (JSONB), `is_published`, timestamps
-- Seeded via [infra/db/seed_lessons.sql](../infra/db/seed_lessons.sql)
-- CRUD operations in [donfra-api/internal/domain/study/](../donfra-api/internal/domain/study/)
+### Grafana Cloud Observability (K8s)
 
-### Redis Integration
-- Used for caching and session management
-- Deployed in both Docker Compose and Kubernetes environments
-- Configured via environment variables in API service
+Grafana Alloy agent collects and forwards:
+- **Logs** → Grafana Cloud Loki (all pod logs)
+- **Metrics** → Grafana Cloud Prometheus (kubelet, cAdvisor, donfra-eng pods)
+- **Traces** → Grafana Cloud Tempo (OTLP from API via `alloy.monitoring.svc.cluster.local:4318`)
 
-### Observability
-- **Jaeger**: Distributed tracing for request flows
-- **Prometheus**: Metrics collection from all services
-- **Grafana**: Dashboards for metrics and logs visualization
-- **Loki**: Log aggregation
-- **OpenTelemetry Collector**: Unified telemetry collection and export
+### Key Technologies
 
-## Project Structure
-
-```
-donfra/
-├── claude_md/                        # Claude Code documentation
-│   └── CLAUDE.md                     # This file
-├── donfra-api/
-│   ├── cmd/donfra-api/main.go       # Entry point
-│   └── internal/
-│       ├── config/                   # Env var configuration
-│       ├── domain/
-│       │   ├── auth/                 # JWT generation/validation
-│       │   ├── room/                 # Room state (in-memory)
-│       │   ├── run/                  # Python subprocess execution
-│       │   ├── study/                # Lesson CRUD
-│       │   └── db/                   # Database initialization
-│       ├── http/
-│       │   ├── router/               # Chi router setup
-│       │   ├── handlers/             # API endpoint handlers
-│       │   └── middleware/           # CORS, request ID, auth
-│       └── pkg/                      # Shared utilities
-├── donfra-ws/
-│   └── demo-server.js                # Yjs WebSocket server + API proxy
-├── donfra-ui/
-│   ├── app/                          # Next.js App Router pages
-│   │   ├── coding/                   # Collaborative code editor
-│   │   ├── library/                  # Lesson library & detail pages
-│   │   └── admin-dashboard/          # Admin panel
-│   ├── components/CodePad.tsx        # Main collaborative editor component
-│   ├── lib/api.ts                    # API client utilities
-│   └── public/styles/main.css        # ALL styling (CSS only, no CSS-in-JS)
-└── infra/
-    ├── docker-compose.yml            # Production setup with Caddy
-    ├── docker-compose.local.yml      # Local dev setup
-    ├── caddy/Caddyfile               # Reverse proxy routing
-    ├── db/seed_lessons.sql           # Database initialization
-    └── k8s/                          # Kubernetes manifests
-        ├── base/                     # Base K8s resources
-        ├── kind-config.yaml          # Kind cluster configuration
-        ├── setup-kind.sh             # Cluster setup script
-        ├── teardown-kind.sh          # Cluster teardown script
-        ├── rebuild-images.sh         # Image rebuild script
-        ├── logs.sh                   # Log viewing script
-        └── verify-setup.sh           # Setup verification script
-```
-
-## Critical Configuration
-
-### API Environment Variables (`donfra-api`)
-- `ADDR`: Listen address (default: `:8080`)
-- `PASSCODE`: Room opening passcode (default: `7777`)
-- `ADMIN_PASS`: Admin authentication (default: `7777`)
-- `JWT_SECRET`: JWT signing secret (default: `don-secret`)
-- `DATABASE_URL`: PostgreSQL connection string
-- `CORS_ORIGIN`: Allowed frontend origin (default: `http://localhost:3000`)
-- `BASE_URL`: Frontend URL for generating invite links
-- `REDIS_ADDR`: Redis server address (optional)
-
-### UI Environment Variables (`donfra-ui`)
-- `NEXT_PUBLIC_API_BASE_URL`: API endpoint (default: `/api`)
-- `NEXT_PUBLIC_COLLAB_WS`: WebSocket endpoint (default: `/yjs`)
-- `API_PROXY_TARGET`: Internal API proxy (default: `http://api:8080`)
-- `WS_PROXY_TARGET`: Internal WS proxy (default: `http://ws:6789`)
-
-### WS Environment Variables (`donfra-ws`)
-- `PORT`: Listen port (default: `6789`)
-- `PRODUCTION`: Enable production mode (caching, gzip)
-- `WS_PATH`: WebSocket path (default: `/ws`)
-- `ROOM_UPDATE_URL`: API endpoint for posting active user counts
-- `API_TARGET`: API forward target for `/api/*` proxy
-
-## API Endpoints
-
-All paths accessible via `/api` or `/api/v1`:
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| POST | `/room/init` | Open room (requires passcode), returns invite link |
-| GET | `/room/status` | Check if room is open |
-| POST | `/room/join` | Join room (requires token), sets `room_access` cookie |
-| POST | `/room/close` | Close room |
-| POST | `/run` | Execute Python code (requires active room) |
-| GET/POST | `/lessons` | Lesson CRUD operations |
-| GET | `/lessons/:slug` | Get specific lesson by slug |
-
-## Development Workflow
-
-1. **Local development (Docker Compose)**: Use `make localdev-up` to start all services
-2. **Local development (Kubernetes)**: Use `make k8s-setup` to start Kind cluster
-3. **API changes**: Room state is in-memory and resets on restart
-4. **UI changes**: Next.js hot-reloads automatically in dev mode
-5. **Database changes**: Modify `infra/db/seed_lessons.sql` and run `make localdev-restart-db` (Docker) or `make k8s-rebuild` (K8s)
-6. **Styling**: All CSS in `/donfra-ui/public/styles/main.css` (no CSS-in-JS)
-7. **TypeScript**: Strict mode enabled with path aliasing (`@/*` → `./`)
-8. **K8s image updates**: After changing code, run `make k8s-rebuild` to rebuild images and reload into cluster
-
-## Key Technologies
-
-- **Backend**: Go 1.24, Chi router v5.1.0, GORM ORM, JWT authentication
-- **Frontend**: Next.js 14 (App Router), React 18, TypeScript 5.5.4 (strict mode)
-- **Real-time**: Yjs 13.6.27, y-websocket, y-monaco, WebSocket (ws library)
-- **UI Components**: Monaco Editor 0.55.1, Excalidraw 0.18.0, Framer Motion 11.2.10
-- **Infrastructure**: Docker, Docker Compose, Kubernetes (Kind), Caddy 2, PostgreSQL 16, Redis
-- **Service Mesh**: Istio Ambient mode with Gateway API
-- **Observability**: Jaeger, Prometheus, Grafana, Loki, OpenTelemetry Collector
+- **Backend**: Go 1.24, Chi v5.1.0, GORM, JWT, Google OAuth, DeepSeek AI
+- **Frontend**: Next.js 14, React 18, TypeScript 5.5.4, Monaco Editor, Excalidraw
+- **Real-time**: Yjs CRDT, y-websocket, y-monaco, LiveKit (video/audio)
+- **Infrastructure**: Docker Compose, LKE (K8s), Caddy 2, Envoy Gateway, cert-manager
+- **Data**: PostgreSQL 16, Redis 7
+- **Observability**: OpenTelemetry, Jaeger (local), Grafana Cloud (prod)
 - **Styling**: Plain CSS only (no Tailwind, no CSS-in-JS)
 
 ## Important Notes
 
-- Room state is **ephemeral** (in-memory) and resets when API restarts
+- Room state and collaboration state are **ephemeral** (in-memory, reset on restart)
+- Only lesson/user/interview data persisted to PostgreSQL
 - Python execution is **sandboxed** with 5-second timeout
-- Collaborative editing state is **ephemeral** (not persisted to database)
-- Only lesson content (`markdown`, `excalidraw`) is persisted to PostgreSQL
-- All CSS must be in `/donfra-ui/public/styles/main.css`
-- TypeScript path aliases: `@/` resolves to `./` in donfra-ui
-- CORS headers now expose `X-Request-Id` for request tracing
-- Kubernetes setup uses Istio Ambient mesh for traffic management and observability
-
-## Kubernetes Notes
-
-- Kind cluster config: [infra/k8s/kind-config.yaml](../infra/k8s/kind-config.yaml)
-- All K8s manifests in [infra/k8s/base/](../infra/k8s/base/)
-- Services run in `donfra` namespace
-- Gateway API used for ingress routing (Istio Ambient)
-- Local access via `donfra.local` (add to `/etc/hosts`: `127.0.0.1 donfra.local`)
-- Observability dashboards accessible via port-forwarding or ingress
-- Persistent volumes for PostgreSQL and Redis data
+- All CSS in `/donfra-ui/public/styles/main.css`
+- TypeScript path aliases: `@/` → `./` in donfra-ui
+- Review workflow: mutual review enforced (can't review own), god bypasses review
+- When adding methods to service interfaces, update corresponding mock structs in `*_test.go`
