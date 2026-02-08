@@ -9,6 +9,7 @@ import (
 
 	"donfra-api/internal/domain/aiagent"
 	"donfra-api/internal/pkg/httputil"
+	"donfra-api/internal/pkg/metrics"
 )
 
 // AnalyzeCodeRequest represents the request body for code analysis
@@ -54,10 +55,12 @@ func (h *Handlers) AIChat(w http.ResponseWriter, r *http.Request) {
 	// Call AI service with conversation history
 	resp, err := h.aiAgentSvc.Chat(r.Context(), req.CodeContent, req.Question, history)
 	if err != nil {
+		metrics.RecordAIRequest("chat", false)
 		httputil.WriteError(w, http.StatusInternalServerError, fmt.Sprintf("AI chat failed: %v", err))
 		return
 	}
 
+	metrics.RecordAIRequest("chat", true)
 	httputil.WriteJSON(w, http.StatusOK, resp)
 }
 
@@ -89,9 +92,11 @@ func (h *Handlers) AIChatStream(w http.ResponseWriter, r *http.Request) {
 	// Call AI service with streaming
 	resp, err := h.aiAgentSvc.ChatStream(r.Context(), req.CodeContent, req.Question, history)
 	if err != nil {
+		metrics.RecordAIRequest("chat_stream", false)
 		httputil.WriteError(w, http.StatusInternalServerError, fmt.Sprintf("AI chat stream failed: %v", err))
 		return
 	}
+	metrics.RecordAIRequest("chat_stream", true)
 	defer resp.Body.Close()
 
 	// Set SSE headers
@@ -176,9 +181,11 @@ func (h *Handlers) AIAnalyzeCode(w http.ResponseWriter, r *http.Request) {
 	// Call AI service
 	resp, err := h.aiAgentSvc.AnalyzeCode(r.Context(), req.CodeContent, req.Question)
 	if err != nil {
+		metrics.RecordAIRequest("analyze", false)
 		httputil.WriteError(w, http.StatusInternalServerError, fmt.Sprintf("AI analysis failed: %v", err))
 		return
 	}
 
+	metrics.RecordAIRequest("analyze", true)
 	httputil.WriteJSON(w, http.StatusOK, resp)
 }

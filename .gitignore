@@ -10,6 +10,7 @@ donfra-api/.env.local
 # k8s secrets
 infra/k8s-lke/01-secrets.yaml
 infra/k8s-lke/09-cloudflare-secret.yaml
+infra/k8s-lke/13-alloy.yaml
 
 # Docker volumes
 infra/caddy_data/

@@ -13,6 +13,7 @@ import (
 
 	"donfra-api/internal/domain/study"
 	"donfra-api/internal/pkg/httputil"
+	"donfra-api/internal/pkg/metrics"
 	"donfra-api/internal/pkg/tracing"
 )
 
@@ -307,6 +308,11 @@ func (h *Handlers) CreateLessonHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	metrics.LessonsTotal.Inc()
+	if created.IsPublished {
+		metrics.LessonsPublished.Inc()
+	}
+
 	_, jsonSpan := tracing.StartSpan(ctx, "handler.SerializeJSON")
 	httputil.WriteJSON(w, http.StatusCreated, created)
 	jsonSpan.End()
@@ -437,6 +443,7 @@ func (h *Handlers) DeleteLessonHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	metrics.LessonsTotal.Dec()
 	w.WriteHeader(http.StatusNoContent)
 }
 

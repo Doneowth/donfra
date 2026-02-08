@@ -9,6 +9,7 @@ import (
 
 	"donfra-api/internal/domain/interview"
 	"donfra-api/internal/pkg/httputil"
+	"donfra-api/internal/pkg/metrics"
 	"donfra-api/internal/pkg/tracing"
 )
 
@@ -46,6 +47,7 @@ func (h *Handlers) InitInterviewRoomHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	metrics.ActiveInterviewRooms.Inc()
 	httputil.WriteJSON(w, http.StatusCreated, resp)
 }
 
@@ -145,6 +147,8 @@ func (h *Handlers) CloseInterviewRoomHandler(w http.ResponseWriter, r *http.Requ
 		}
 		return
 	}
+
+	metrics.ActiveInterviewRooms.Dec()
 
 	// Clear room_access cookie
 	http.SetCookie(w, &http.Cookie{

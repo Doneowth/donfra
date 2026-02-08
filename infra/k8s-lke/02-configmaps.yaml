@@ -24,8 +24,8 @@ data:
   # Public URL for client connections (via Gateway)
   LIVEKIT_PUBLIC_URL: "wss://donfra.dev/livekit"
 
-  # Jaeger (optional - comment out if not using)
-  # JAEGER_ENDPOINT: "jaeger:4318"
+  # Traces via Alloy → Grafana Cloud Tempo
+  JAEGER_ENDPOINT: "alloy.monitoring.svc.cluster.local:4318"
 
 ---
 apiVersion: v1

@@ -10,6 +10,7 @@ import (
 
 	"donfra-api/internal/domain/user"
 	"donfra-api/internal/pkg/httputil"
+	"donfra-api/internal/pkg/metrics"
 )
 
 // Register handles user registration requests.
@@ -26,6 +27,7 @@ func (h *Handlers) Register(w http.ResponseWriter, r *http.Request) {
 	// Register user
 	newUser, err := h.userSvc.Register(ctx, &req)
 	if err != nil {
+		metrics.RecordRegister(false)
 		switch {
 		case errors.Is(err, user.ErrInvalidEmail):
 			httputil.WriteError(w, http.StatusBadRequest, err.Error())
@@ -38,6 +40,9 @@ func (h *Handlers) Register(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
+	metrics.RecordRegister(true)
+	metrics.UsersTotal.Inc()
 
 	// Return user without token (client can login separately)
 	httputil.WriteJSON(w, http.StatusCreated, map[string]interface{}{
@@ -59,6 +64,7 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 	// Authenticate user
 	authenticatedUser, token, err := h.userSvc.Login(ctx, &req)
 	if err != nil {
+		metrics.RecordLogin(false)
 		switch {
 		case errors.Is(err, user.ErrInvalidCredentials):
 			httputil.WriteError(w, http.StatusUnauthorized, err.Error())
@@ -69,6 +75,8 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
+	metrics.RecordLogin(true)
 
 	// Set JWT token as HTTP-only cookie
 	http.SetCookie(w, &http.Cookie{
@@ -270,6 +278,7 @@ func (h *Handlers) GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		userInfo.Picture,
 	)
 	if err != nil {
+		metrics.RecordLogin(false)
 		switch {
 		case errors.Is(err, user.ErrUserInactive):
 			httputil.WriteError(w, http.StatusForbidden, err.Error())
@@ -278,6 +287,8 @@ func (h *Handlers) GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
+	metrics.RecordLogin(true)
 
 	// Set JWT token as HTTP-only cookie
 	http.SetCookie(w, &http.Cookie{
