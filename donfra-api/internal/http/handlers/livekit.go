@@ -3,6 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+
+	"donfra-api/internal/pkg/httputil"
 )
 
 // CreateLiveSession creates a new live streaming session
@@ -15,28 +17,27 @@ func (h *Handlers) CreateLiveSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if req.Title == "" {
-		http.Error(w, "Title is required", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "Title is required")
 		return
 	}
 
 	if req.OwnerName == "" {
-		http.Error(w, "Owner name is required", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "Owner name is required")
 		return
 	}
 
 	resp, err := h.livekitSvc.CreateSession(ctx, req.Title, req.OwnerName)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "Failed to create session")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	httputil.WriteJSON(w, http.StatusOK, resp)
 }
 
 // JoinLiveSession allows a user to join an existing session
@@ -51,17 +52,17 @@ func (h *Handlers) JoinLiveSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if req.SessionID == "" {
-		http.Error(w, "Session ID is required", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "Session ID is required")
 		return
 	}
 
 	if req.UserName == "" {
-		http.Error(w, "User name is required", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "User name is required")
 		return
 	}
 
@@ -79,12 +80,11 @@ func (h *Handlers) JoinLiveSession(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.livekitSvc.JoinSession(ctx, req.SessionID, req.UserName, req.IsHost, isHidden, canStealth)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "Failed to join session")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	httputil.WriteJSON(w, http.StatusOK, resp)
 }
 
 // EndLiveSession ends a live streaming session
@@ -96,21 +96,20 @@ func (h *Handlers) EndLiveSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if req.SessionID == "" {
-		http.Error(w, "Session ID is required", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "Session ID is required")
 		return
 	}
 
 	resp, err := h.livekitSvc.EndSession(ctx, req.SessionID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "Failed to end session")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	httputil.WriteJSON(w, http.StatusOK, resp)
 }

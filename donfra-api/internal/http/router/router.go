@@ -36,16 +36,15 @@ func New(cfg config.Config, studySvc *study.Service, userSvc *user.Service, goog
 	}))
 	root.Use(middleware.RequestID)
 
-	root.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+	h := handlers.New(studySvc, userSvc, googleSvc, interviewSvc, livekitSvc, aiAgentSvc)
+	v1 := chi.NewRouter()
+
+	// System endpoints
+	v1.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
-
-	// Prometheus metrics endpoint
-	root.Handle("/metrics", promhttp.Handler())
-
-	h := handlers.New(studySvc, userSvc, googleSvc, interviewSvc, livekitSvc, aiAgentSvc)
-	v1 := chi.NewRouter()
+	v1.Handle("/metrics", promhttp.Handler())
 
 	// ===== User Authentication Routes (Public) =====
 	v1.Post("/auth/register", h.Register)
