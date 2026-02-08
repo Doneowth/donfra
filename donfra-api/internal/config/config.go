@@ -6,13 +6,11 @@ import (
 )
 
 type Config struct {
-	Addr                 string
-	Passcode             string
-	BaseURL              string
-	FrontendURL          string
-	CORSOrigin           string
-	AdminPass            string
-	JWTSecret            string
+	Addr        string
+	BaseURL     string
+	FrontendURL string
+	CORSOrigin  string
+	JWTSecret   string
 	DatabaseURL          string
 	JaegerEndpoint       string
 	RedisAddr            string
@@ -48,13 +46,11 @@ func getenvInt(k string, def int) int {
 
 func Load() Config {
 	return Config{
-		Addr:             getenv("ADDR", ":8080"),
-		Passcode:         getenv("PASSCODE", "7777"),
-		BaseURL:          getenv("BASE_URL", ""),
-		FrontendURL:      getenv("FRONTEND_URL", "http://localhost"),
-		CORSOrigin:       getenv("CORS_ORIGIN", "http://localhost:3000"),
-		AdminPass:        getenv("ADMIN_PASS", "admin"),
-		JWTSecret:        getenv("JWT_SECRET", "donfra-secret"),
+		Addr:        getenv("ADDR", ":8080"),
+		BaseURL:     getenv("BASE_URL", ""),
+		FrontendURL: getenv("FRONTEND_URL", "http://localhost"),
+		CORSOrigin:  getenv("CORS_ORIGIN", "http://localhost:3000"),
+		JWTSecret:   getenv("JWT_SECRET", "donfra-secret"),
 		DatabaseURL:      getenv("DATABASE_URL", "postgres://donfra:arfnod@localhost:5432/donfra_study?sslmode=disable"),
 		JaegerEndpoint:   getenv("JAEGER_ENDPOINT", ""), // e.g., "jaeger:4318" or "localhost:4318"
 		RedisAddr:        getenv("REDIS_ADDR", ""),      // e.g., "redis:6379" or "localhost:6379"

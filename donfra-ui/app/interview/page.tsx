@@ -16,45 +16,60 @@ function InterviewContent() {
   useEffect(() => {
     const joinRoom = async () => {
       try {
-        // Get invite token from URL query params
         const token = searchParams.get("token");
 
-        if (!token) {
-          setError("Missing invite token. Please use a valid invite link.");
+        if (token) {
+          // Join via invite token
+          const response = await fetch("/api/interview/join", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ invite_token: token }),
+            credentials: "include",
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Failed to join room: ${response.status}`);
+          }
+
+          const data = await response.json();
+          setRoomId(data.room_id);
+
+          // Check ownership
+          try {
+            const [userResponse, roomStatus] = await Promise.all([
+              api.auth.me(),
+              api.interview.getRoomStatus(data.room_id)
+            ]);
+            setIsOwner(userResponse.user?.id === roomStatus.owner_id);
+          } catch (err) {
+            console.log("[Interview] Could not fetch ownership info, assuming non-owner");
+            setIsOwner(false);
+          }
+
           setLoading(false);
           return;
         }
 
-        // Join the room via API
-        const response = await fetch("/api/interview/join", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ invite_token: token }),
-          credentials: "include", // Important for cookies
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `Failed to join room: ${response.status}`);
+        // No token — check if logged in and has an active room
+        const userResponse = await api.auth.me();
+        if (!userResponse.user) {
+          setError("Please log in or use a valid invite link to join an interview.");
+          setLoading(false);
+          return;
         }
 
-        const data = await response.json();
-        setRoomId(data.room_id);
-
-        // Check if current user is the room owner by comparing user_id with owner_id
-        try {
-          const [userResponse, roomStatus] = await Promise.all([
-            api.auth.me(),
-            api.interview.getRoomStatus(data.room_id)
-          ]);
-          setIsOwner(userResponse.user?.id === roomStatus.owner_id);
-        } catch (err) {
-          console.log("[Interview] Could not fetch ownership info, assuming non-owner");
-          setIsOwner(false);
+        const myRooms = await api.interview.getMyRooms();
+        if (!myRooms.rooms || myRooms.rooms.length === 0) {
+          setError("You do not have any active interview rooms. Create one from the admin dashboard or use an invite link.");
+          setLoading(false);
+          return;
         }
 
+        // Use the most recent room
+        const room = myRooms.rooms[0];
+        setRoomId(room.room_id);
+        setIsOwner(true);
         setLoading(false);
       } catch (err: any) {
         console.error("Error joining room:", err);
