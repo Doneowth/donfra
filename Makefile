@@ -9,7 +9,11 @@ PROD_COMPOSE_FILE ?= infra/docker-compose.yml
 # UI Image Tag
 UI_IMAGE_TAG ?= 1.0.28
 # API Image Tag
-API_IMAGE_TAG ?= 1.0.10
+API_IMAGE_TAG ?= 1.0.12
+# Runner Image Tag
+RUNNER_IMAGE_TAG ?= 1.0.0
+# WS Image Tag
+WS_IMAGE_TAG ?= 1.0.0
 # Allow overriding compose command (support `docker-compose` or `docker compose`)
 DOCKER_COMPOSE ?= docker-compose
 
@@ -22,9 +26,11 @@ PROD = $(DOCKER_COMPOSE) -f $(PROD_COMPOSE_FILE)
 .PHONY: localdev-up-db localdev-down-db localdev-restart-db
 .PHONY: localdev-up-ui localdev-down-ui localdev-restart-ui
 .PHONY: localdev-up-redis localdev-restart-redis localdev-logs-redis
+.PHONY: localdev-up-runner localdev-restart-runner localdev-logs-runner
 .PHONY: prod-up prod-down prod-restart prod-logs prod-ps
 .PHONY: jaeger-ui jaeger-logs jaeger-hash-password
 .PHONY: db-backup db-restore db-restore-latest db-list-backups load-db-sample db-reset
+.PHONY: docker-build-runner docker-push-runner docker-build-ws docker-push-ws
 
 
 localdev-up:
@@ -60,6 +66,18 @@ localdev-down-ws:
 localdev-restart-ws:
 	@echo "Restarting WS container"
 	$(DC) restart ws
+
+localdev-up-runner:
+	@echo "Starting Runner container"
+	$(DC) up -d --build runner
+
+localdev-restart-runner:
+	@echo "Restarting Runner container"
+	$(DC) stop runner && $(DC) up --build -d runner
+
+localdev-logs-runner:
+	@echo "Viewing Runner logs"
+	$(DC) logs -f runner
 
 localdev-seed-db:
 	@echo "Seeding the database with initial data"
@@ -122,13 +140,21 @@ docker-push-api:
 	@echo "Pushing API container to Docker Hub"
 	cd donfra-api ; docker push doneowth/donfra-api:$(API_IMAGE_TAG)
 
-docker-build-api:
-	@echo "Building API container"
-	cd donfra-api ; docker build -t doneowth/donfra-api:$(API_IMAGE_TAG) .
+docker-build-ws:
+	@echo "Building WS container"
+	cd donfra-ws ; docker build -t doneowth/donfra-ws:$(WS_IMAGE_TAG) .
 
-docker-push-api:
-	@echo "Pushing API container to Docker Hub"
-	cd donfra-api ; docker push doneowth/donfra-api:$(API_IMAGE_TAG)
+docker-push-ws:
+	@echo "Pushing WS container to Docker Hub"
+	cd donfra-ws ; docker push doneowth/donfra-ws:$(WS_IMAGE_TAG)
+
+docker-build-runner:
+	@echo "Building Runner container"
+	cd donfra-runner ; docker build -t doneowth/donfra-runner:$(RUNNER_IMAGE_TAG) .
+
+docker-push-runner:
+	@echo "Pushing Runner container to Docker Hub"
+	cd donfra-runner ; docker push doneowth/donfra-runner:$(RUNNER_IMAGE_TAG)
 
 # ===== Production Commands =====
 

@@ -9,6 +9,8 @@ services:
     container_name: donfra-api
     env_file:
       - .env.local
+    environment:
+      - RUNNER_URL=http://runner:8090
     ports:
       - "8080:8080"
     depends_on:
@@ -16,6 +18,7 @@ services:
       - jaeger
       - redis
       - ws
+      - runner
     networks:
       - donfra-local
 
@@ -27,10 +30,37 @@ services:
     container_name: donfra-ws
     env_file:
       - .env.local
+    environment:
+      - RUNNER_URL=http://runner:8090
     ports:
       - "6789:6789"
     depends_on:
       - redis
+      - runner
+    networks:
+      - donfra-local
+
+  # ===== Runner: Sandboxed Code Execution =====
+  runner:
+    build:
+      context: ../donfra-runner
+    image: donfra-runner:dev
+    container_name: donfra-runner
+    environment:
+      - ADDR=:8090
+      - MAX_CONCURRENT=4
+      - DEFAULT_TIMEOUT_MS=5000
+      - MAX_TIMEOUT_MS=10000
+      - MAX_OUTPUT_BYTES=65536
+      - NSJAIL_CONFIG_DIR=/etc/nsjail
+      - SANDBOX_MODE=direct
+    ports:
+      - "8090:8090"
+    cap_add:
+      - SYS_ADMIN
+      - SYS_CHROOT
+    security_opt:
+      - apparmor:unconfined
     networks:
       - donfra-local
 

@@ -126,7 +126,7 @@ func TestListLessons_AsAdmin(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(mockStudy, nil, nil, nil, nil, nil)
+	h := handlers.New(mockStudy, nil, nil, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons", nil)
 	// Simulate admin user by setting user_role in context
@@ -166,7 +166,7 @@ func TestListLessons_AsRegularUser(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(mockStudy, nil, nil, nil, nil, nil)
+	h := handlers.New(mockStudy, nil, nil, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons", nil)
 	w := httptest.NewRecorder()
@@ -193,7 +193,7 @@ func TestListLessons_DatabaseError(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(mockStudy, nil, nil, nil, nil, nil)
+	h := handlers.New(mockStudy, nil, nil, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons", nil)
 	w := httptest.NewRecorder()
@@ -222,7 +222,7 @@ func TestGetLessonBySlug_Published(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(mockStudy, nil, nil, nil, nil, nil)
+	h := handlers.New(mockStudy, nil, nil, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons/test-lesson", nil)
 	rctx := chi.NewRouteContext()
@@ -258,7 +258,7 @@ func TestGetLessonBySlug_UnpublishedAsRegularUser(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(mockStudy, nil, nil, nil, nil, nil)
+	h := handlers.New(mockStudy, nil, nil, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons/unpublished-lesson", nil)
 	rctx := chi.NewRouteContext()
@@ -288,7 +288,7 @@ func TestGetLessonBySlug_UnpublishedAsAdmin(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(mockStudy, nil, nil, nil, nil, nil)
+	h := handlers.New(mockStudy, nil, nil, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons/unpublished-lesson", nil)
 	rctx := chi.NewRouteContext()
@@ -314,7 +314,7 @@ func TestGetLessonBySlug_NotFound(t *testing.T) {
 		},
 	}
 
-	h := handlers.New(mockStudy, nil, nil, nil, nil, nil)
+	h := handlers.New(mockStudy, nil, nil, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/lessons/nonexistent", nil)
 	rctx := chi.NewRouteContext()

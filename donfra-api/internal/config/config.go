@@ -19,6 +19,7 @@ type Config struct {
 	LiveKitAPISecret     string
 	LiveKitServerURL     string
 	LiveKitPublicURL     string
+	RunnerURL            string
 
 	// Token expiration settings
 	JWTExpiryHours          int // User JWT token expiry in hours (default: 168 = 7 days)
@@ -59,6 +60,7 @@ func Load() Config {
 		LiveKitAPISecret: getenv("LIVEKIT_API_SECRET", "APISECRETdevkeyAPISECRETdevkeyAPISECRETdevkey"),
 		LiveKitServerURL: getenv("LIVEKIT_SERVER_URL", "ws://livekit:7880"),
 		LiveKitPublicURL: getenv("LIVEKIT_PUBLIC_URL", "/livekit"),
+		RunnerURL:        getenv("RUNNER_URL", "http://runner:8090"),
 
 		// Token expiration settings
 		JWTExpiryHours:          getenvInt("JWT_EXPIRY_HOURS", 168),          // 7 days

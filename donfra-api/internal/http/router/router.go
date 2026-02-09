@@ -12,13 +12,14 @@ import (
 	"donfra-api/internal/domain/google"
 	"donfra-api/internal/domain/interview"
 	"donfra-api/internal/domain/livekit"
+	"donfra-api/internal/domain/runner"
 	"donfra-api/internal/domain/study"
 	"donfra-api/internal/domain/user"
 	"donfra-api/internal/http/handlers"
 	"donfra-api/internal/http/middleware"
 )
 
-func New(cfg config.Config, studySvc *study.Service, userSvc *user.Service, googleSvc *google.GoogleOAuthService, interviewSvc interview.Service, livekitSvc *livekit.Service, aiAgentSvc *aiagent.Service) http.Handler {
+func New(cfg config.Config, studySvc *study.Service, userSvc *user.Service, googleSvc *google.GoogleOAuthService, interviewSvc interview.Service, livekitSvc *livekit.Service, aiAgentSvc *aiagent.Service, runnerClient *runner.Client) http.Handler {
 	root := chi.NewRouter()
 
 	// Tracing middleware (must be first to capture all requests)
@@ -36,7 +37,7 @@ func New(cfg config.Config, studySvc *study.Service, userSvc *user.Service, goog
 	}))
 	root.Use(middleware.RequestID)
 
-	h := handlers.New(studySvc, userSvc, googleSvc, interviewSvc, livekitSvc, aiAgentSvc)
+	h := handlers.New(studySvc, userSvc, googleSvc, interviewSvc, livekitSvc, aiAgentSvc, runnerClient)
 	v1 := chi.NewRouter()
 
 	// System endpoints
@@ -99,6 +100,9 @@ func New(cfg config.Config, studySvc *study.Service, userSvc *user.Service, goog
 	v1.With(middleware.RequireAuth(userSvc), middleware.RequireAdminOrAbove()).Post("/live/end", h.EndLiveSession)
 	// Public: anyone can join with session ID (OptionalAuth to detect admin/god for stealth capability)
 	v1.With(middleware.OptionalAuth(userSvc)).Post("/live/join", h.JoinLiveSession)
+
+	// ===== Code Execution Routes =====
+	v1.With(middleware.RequireAuth(userSvc)).Post("/execute", h.ExecuteCode)
 
 	// ===== AI Agent Routes =====
 	// VIP and Admin only: AI-powered code analysis and chat

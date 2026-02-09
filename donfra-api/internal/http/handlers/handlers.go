@@ -8,6 +8,7 @@ import (
 	"donfra-api/internal/domain/google"
 	"donfra-api/internal/domain/interview"
 	"donfra-api/internal/domain/livekit"
+	"donfra-api/internal/domain/runner"
 	"donfra-api/internal/domain/study"
 	"donfra-api/internal/domain/user"
 )
@@ -85,10 +86,11 @@ type Handlers struct {
 	interviewSvc InterviewService
 	livekitSvc   LiveKitService
 	aiAgentSvc   AIAgentService
+	runnerClient *runner.Client
 }
 
 // New creates a new Handlers instance with the given services.
-func New(studySvc StudyService, userSvc UserService, googleSvc GoogleService, interviewSvc InterviewService, livekitSvc LiveKitService, aiAgentSvc AIAgentService) *Handlers {
+func New(studySvc StudyService, userSvc UserService, googleSvc GoogleService, interviewSvc InterviewService, livekitSvc LiveKitService, aiAgentSvc AIAgentService, runnerClient *runner.Client) *Handlers {
 	return &Handlers{
 		studySvc:     studySvc,
 		userSvc:      userSvc,
@@ -96,5 +98,6 @@ func New(studySvc StudyService, userSvc UserService, googleSvc GoogleService, in
 		interviewSvc: interviewSvc,
 		livekitSvc:   livekitSvc,
 		aiAgentSvc:   aiAgentSvc,
+		runnerClient: runnerClient,
 	}
 }

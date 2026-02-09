@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: ws
-          image: doneowth/donfra-ws:1.0.0
+          image: doneowth/donfra-ws:1.0.1
           ports:
             - containerPort: 6789
               name: ws
@@ -33,6 +33,10 @@ spec:
               value: "http://api:8080/api/room/update-count"
             - name: API_TARGET
               value: "http://api:8080"
+            - name: RUNNER_URL
+              value: "http://runner:8090"
+            - name: REDIS_ADDR
+              value: "redis:6379"
           resources:
             requests:
               memory: "128Mi"

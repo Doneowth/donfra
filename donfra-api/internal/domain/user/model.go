@@ -14,7 +14,7 @@ type User struct {
 	Username     string         `gorm:"index" json:"username"`
 	Role         string         `gorm:"not null;default:'user'" json:"role"` // user, admin, mentor
 	IsActive     bool           `gorm:"not null;default:true" json:"isActive"`
-	GoogleID     string         `gorm:"uniqueIndex" json:"-"` // Google OAuth ID (unique identifier)
+	GoogleID     string         `json:"-"` // Google OAuth ID (uniqueness enforced via partial index in SQL migration)
 	GoogleAvatar string         `json:"-"`                    // Google profile picture URL
 	CreatedAt    time.Time      `json:"createdAt"`
 	UpdatedAt    time.Time      `json:"updatedAt"`

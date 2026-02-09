@@ -4,7 +4,6 @@
  */
 const WebSocket = require('ws')
 const http = require('http')
-const { spawn } = require('child_process')
 const ywsUtils = require('y-websocket/bin/utils')
 const setupWSConnection = ywsUtils.setupWSConnection
 const docs = ywsUtils.docs
@@ -13,6 +12,7 @@ const redis = require('redis')
 const production = process.env.PRODUCTION != null
 const port = process.env.PORT || 6789
 const redisAddr = process.env.REDIS_ADDR || 'localhost:6379'
+const runnerUrl = process.env.RUNNER_URL || 'http://runner:8090'
 
 // Initialize Redis publisher client
 let redisPublisher = null
@@ -52,8 +52,7 @@ initRedis().catch(err => {
 })
 
 /**
- * Execute code in a sandboxed subprocess
- * Supports Python (71) and JavaScript (63)
+ * Execute code via donfra-runner service
  */
 async function executeCode(req) {
   const { source_code, language_id, stdin = '' } = req
@@ -62,71 +61,19 @@ async function executeCode(req) {
     throw new Error('source_code and language_id are required')
   }
 
-  let command, args
-  switch (language_id) {
-    case 71: // Python
-      command = 'python3'
-      args = ['-c', source_code]
-      break
-    case 63: // JavaScript (Node.js)
-      command = 'node'
-      args = ['-e', source_code]
-      break
-    default:
-      throw new Error(`Unsupported language_id: ${language_id}`)
+  const resp = await fetch(`${runnerUrl}/execute`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source_code, language_id, stdin, timeout_ms: 5000 }),
+    signal: AbortSignal.timeout(12000)
+  })
+
+  if (!resp.ok) {
+    const body = await resp.text()
+    throw new Error(`Runner error ${resp.status}: ${body}`)
   }
 
-  return new Promise((resolve, reject) => {
-    const proc = spawn(command, args, {
-      timeout: 5000, // 5 second timeout
-      killSignal: 'SIGKILL'
-    })
-
-    let stdout = ''
-    let stderr = ''
-
-    proc.stdout.on('data', (data) => {
-      stdout += data.toString()
-    })
-
-    proc.stderr.on('data', (data) => {
-      stderr += data.toString()
-    })
-
-    // Send stdin if provided
-    if (stdin) {
-      proc.stdin.write(stdin)
-      proc.stdin.end()
-    } else {
-      proc.stdin.end()
-    }
-
-    proc.on('close', (code) => {
-      const result = {
-        token: 'ws-exec',
-        status: {
-          id: code === 0 ? 3 : 11,
-          description: code === 0 ? 'Accepted' : 'Runtime Error'
-        }
-      }
-
-      if (stdout.trim()) {
-        result.stdout = stdout.trim()
-      }
-      if (stderr.trim()) {
-        result.stderr = stderr.trim()
-      }
-      if (code !== 0) {
-        result.message = `Process exited with code ${code}`
-      }
-
-      resolve(result)
-    })
-
-    proc.on('error', (err) => {
-      reject(new Error(`Execution failed: ${err.message}`))
-    })
-  })
+  return resp.json()
 }
 
 const server = http.createServer(async (request, response) => {
@@ -135,6 +82,7 @@ const server = http.createServer(async (request, response) => {
     response.end(JSON.stringify({
       status: 'ok',
       redis: redisConnected,
+      runner: runnerUrl,
       rooms: docs.size,
       connections: Array.from(docs.values()).reduce((sum, doc) => sum + doc.conns.size, 0)
     }))
@@ -327,6 +275,7 @@ server.listen(port, '0.0.0.0')
 console.log(`[${new Date().toISOString()}] 🚀 Yjs WebSocket Server listening on http://0.0.0.0:${port}`)
 console.log(`[${new Date().toISOString()}] 📝 Mode: ${production ? 'PRODUCTION' : 'DEVELOPMENT'}`)
 console.log(`[${new Date().toISOString()}] 💾 Redis: ${redisAddr}`)
+console.log(`[${new Date().toISOString()}] 🏃 Runner: ${runnerUrl}`)
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {

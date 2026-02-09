@@ -24,6 +24,9 @@ data:
   # Public URL for client connections (via Gateway)
   LIVEKIT_PUBLIC_URL: "wss://donfra.dev/livekit"
 
+  # Runner (internal service URL)
+  RUNNER_URL: "http://runner:8090"
+
   # Traces via Alloy → Grafana Cloud Tempo
   JAEGER_ENDPOINT: "alloy.monitoring.svc.cluster.local:4318"
 

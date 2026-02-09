@@ -23,6 +23,7 @@ resources:
   - 06-api.yaml
   - 07-ws.yaml
   - 08-ui.yaml
+  - 11-runner.yaml
 
   # 6. Gateway & Routes
   - 10-gateway-api.yaml

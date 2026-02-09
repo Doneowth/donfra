@@ -7,7 +7,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: linode-block-storage  # Delete policy - volume deleted when PVC deleted
+  storageClassName: linode-block-storage-retain  # Delete policy - volume deleted when PVC deleted
   resources:
     requests:
       storage: 10Gi
@@ -74,6 +74,8 @@ spec:
                 - pg_isready
                 - -U
                 - donfra
+                - -d
+                - donfra_study
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
@@ -82,6 +84,8 @@ spec:
                 - pg_isready
                 - -U
                 - donfra
+                - -d
+                - donfra_study
             initialDelaySeconds: 5
             periodSeconds: 5
       volumes:

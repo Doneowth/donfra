@@ -15,6 +15,7 @@ import (
 	"donfra-api/internal/domain/google"
 	"donfra-api/internal/domain/interview"
 	"donfra-api/internal/domain/livekit"
+	"donfra-api/internal/domain/runner"
 	"donfra-api/internal/domain/study"
 	"donfra-api/internal/domain/user"
 	"donfra-api/internal/http/router"
@@ -93,7 +94,11 @@ func main() {
 	aiAgentSvc := aiagent.NewService(deepSeekAPIKey)
 	log.Println("[donfra-api] AI agent service initialized")
 
-	r := router.New(cfg, studySvc, userSvc, googleSvc, interviewSvc, livekitSvc, aiAgentSvc)
+	// Initialize runner client
+	runnerClient := runner.NewClient(cfg.RunnerURL)
+	log.Printf("[donfra-api] runner client initialized (url: %s)", cfg.RunnerURL)
+
+	r := router.New(cfg, studySvc, userSvc, googleSvc, interviewSvc, livekitSvc, aiAgentSvc, runnerClient)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
