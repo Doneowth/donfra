@@ -1,0 +1,35 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: runner
+  namespace: donfra-eng
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: runner-job-manager
+  namespace: donfra-eng
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: runner-job-manager-binding
+  namespace: donfra-eng
+subjects:
+  - kind: ServiceAccount
+    name: runner
+    namespace: donfra-eng
+roleRef:
+  kind: Role
+  name: runner-job-manager
+  apiGroup: rbac.authorization.k8s.io

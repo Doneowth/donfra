@@ -11,9 +11,11 @@ UI_IMAGE_TAG ?= 1.0.28
 # API Image Tag
 API_IMAGE_TAG ?= 1.0.12
 # Runner Image Tag
-RUNNER_IMAGE_TAG ?= 1.0.0
+RUNNER_IMAGE_TAG ?= 1.0.1
 # WS Image Tag
 WS_IMAGE_TAG ?= 1.0.0
+# Jail Image Tag
+JAIL_IMAGE_TAG ?= 1.0.2
 # Allow overriding compose command (support `docker-compose` or `docker compose`)
 DOCKER_COMPOSE ?= docker-compose
 
@@ -30,7 +32,7 @@ PROD = $(DOCKER_COMPOSE) -f $(PROD_COMPOSE_FILE)
 .PHONY: prod-up prod-down prod-restart prod-logs prod-ps
 .PHONY: jaeger-ui jaeger-logs jaeger-hash-password
 .PHONY: db-backup db-restore db-restore-latest db-list-backups load-db-sample db-reset
-.PHONY: docker-build-runner docker-push-runner docker-build-ws docker-push-ws
+.PHONY: docker-build-runner docker-push-runner docker-build-ws docker-push-ws docker-build-jail docker-push-jail
 
 
 localdev-up:
@@ -155,6 +157,14 @@ docker-build-runner:
 docker-push-runner:
 	@echo "Pushing Runner container to Docker Hub"
 	cd donfra-runner ; docker push doneowth/donfra-runner:$(RUNNER_IMAGE_TAG)
+
+docker-build-jail:
+	@echo "Building Jail container"
+	cd donfra-jail ; docker build -t doneowth/donfra-jail:$(JAIL_IMAGE_TAG) .
+
+docker-push-jail:
+	@echo "Pushing Jail container to Docker Hub"
+	cd donfra-jail ; docker push doneowth/donfra-jail:$(JAIL_IMAGE_TAG)
 
 # ===== Production Commands =====
 

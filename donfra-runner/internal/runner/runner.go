@@ -9,7 +9,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"time"
 )
 
@@ -20,20 +19,18 @@ const (
 	StatusRuntimeError      = 11
 )
 
-// SandboxMode controls how code is executed.
-//   - "nsjail": full sandbox via nsjail (production)
+// JailMode controls how code is executed.
 //   - "direct": timeout command + context cancel (local dev)
-type SandboxMode string
+//   - "k8s": K8s Job per execution (production)
+type JailMode string
 
 const (
-	SandboxNsjail SandboxMode = "nsjail"
-	SandboxDirect SandboxMode = "direct"
+	JailDirect JailMode = "direct"
+	JailK8sJob JailMode = "k8s"
 )
 
 type Config struct {
-	SandboxMode    SandboxMode
-	NsjailPath     string // path to nsjail binary (nsjail mode only)
-	ConfigDir      string // directory containing .cfg files (nsjail mode only)
+	JailMode       JailMode
 	MaxTimeoutMs   int
 	DefaultTimeout int
 	MaxOutputBytes int
@@ -61,12 +58,13 @@ type ExecuteResult struct {
 }
 
 type Runner struct {
-	cfg     Config
-	limiter *Limiter
+	cfg         Config
+	limiter     *Limiter
+	k8sExecutor *K8sExecutor
 }
 
-func New(cfg Config, limiter *Limiter) *Runner {
-	return &Runner{cfg: cfg, limiter: limiter}
+func New(cfg Config, limiter *Limiter, k8sExecutor *K8sExecutor) *Runner {
+	return &Runner{cfg: cfg, limiter: limiter, k8sExecutor: k8sExecutor}
 }
 
 func (r *Runner) Execute(ctx context.Context, req ExecuteRequest) ExecuteResult {
@@ -109,16 +107,17 @@ func (r *Runner) Execute(ctx context.Context, req ExecuteRequest) ExecuteResult 
 	}
 	defer os.Remove(tmpFile)
 
-	start := time.Now()
-	var result ExecuteResult
-
-	switch r.cfg.SandboxMode {
-	case SandboxNsjail:
-		result = r.executeNsjail(ctx, lang, tmpFile, req.Stdin, timeout)
-	default:
-		result = r.executeDirect(ctx, lang, tmpFile, req.Stdin, timeout)
+	// K8s mode skips temp file — source code is passed via env var.
+	if r.cfg.JailMode == JailK8sJob {
+		if r.k8sExecutor == nil {
+			return errorResult("k8s executor not initialized")
+		}
+		os.Remove(tmpFile)
+		return r.k8sExecutor.Execute(ctx, lang, req, timeout)
 	}
 
+	start := time.Now()
+	result := r.executeDirect(ctx, lang, tmpFile, req.Stdin, timeout)
 	result.ExecutionTimeMs = time.Since(start).Milliseconds()
 	return result
 }
@@ -129,21 +128,6 @@ func (r *Runner) executeDirect(ctx context.Context, lang Language, codePath stri
 	defer cancel()
 
 	cmd := exec.CommandContext(execCtx, lang.Interpreter, codePath)
-	return r.runCmd(execCtx, cmd, stdin)
-}
-
-// executeNsjail runs code inside nsjail sandbox (production).
-func (r *Runner) executeNsjail(ctx context.Context, lang Language, codePath string, stdin string, timeoutMs int) ExecuteResult {
-	execCtx, cancel := context.WithTimeout(ctx, time.Duration(timeoutMs)*time.Millisecond)
-	defer cancel()
-
-	cfgPath := filepath.Join(r.cfg.ConfigDir, lang.NsjailCfg)
-	args := []string{
-		"--config", cfgPath,
-		"--", lang.Interpreter, codePath,
-	}
-
-	cmd := exec.CommandContext(execCtx, r.cfg.NsjailPath, args...)
 	return r.runCmd(execCtx, cmd, stdin)
 }
 
