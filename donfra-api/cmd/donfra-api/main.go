@@ -69,7 +69,7 @@ func main() {
 	log.Printf("[donfra-api] interview room service initialized (invite token expiry: %d hours)", cfg.InviteTokenExpiryHours)
 
 	// Initialize LiveKit service (use PublicURL for client connections)
-	livekitSvc := livekit.NewService(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret, cfg.LiveKitPublicURL, cfg.LiveKitTokenExpiryHours)
+	livekitSvc := livekit.NewService(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret, cfg.LiveKitPublicURL, cfg.LiveKitTokenExpiryHours, redisClient)
 	log.Printf("[donfra-api] livekit service initialized (token expiry: %d hours)", cfg.LiveKitTokenExpiryHours)
 
 	// Initialize Google OAuth service
@@ -97,6 +97,17 @@ func main() {
 	// Initialize runner client
 	runnerClient := runner.NewClient(cfg.RunnerURL)
 	log.Printf("[donfra-api] runner client initialized (url: %s)", cfg.RunnerURL)
+
+	// Start background cleanup of empty rooms every 30 seconds
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			if err := livekitSvc.CleanupEmptyRooms(context.Background()); err != nil {
+				log.Printf("[livekit] cleanup error: %v", err)
+			}
+		}
+	}()
 
 	r := router.New(cfg, studySvc, userSvc, googleSvc, interviewSvc, livekitSvc, aiAgentSvc, runnerClient)
 

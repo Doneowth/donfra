@@ -37,13 +37,56 @@ function LivePageContent() {
   const [canStealth, setCanStealth] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
 
-  // Check if user has stealth permission
+  // Active sessions
+  const [currentUser, setCurrentUser] = useState<{ username: string } | null>(null);
+  const [activeSessions, setActiveSessions] = useState<
+    Array<{ session_id: string; title: string; owner_name: string; created_at: string }>
+  >([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+
+  // Check if user has stealth permission and setup session streaming
   useEffect(() => {
-    fetch("/api/auth/me", { credentials: "include" })
-      .then(res => res.json())
+    api.auth.me()
       .then(data => {
         if (data.user?.canStealth) {
           setCanStealth(true);
+        }
+        if (data.user) {
+          setCurrentUser(data.user);
+
+          // Fetch active sessions initially
+          setSessionsLoading(true);
+          api.live
+            .list()
+            .then(res => setActiveSessions(res.sessions))
+            .catch(() => {})
+            .finally(() => setSessionsLoading(false));
+
+          // Subscribe to session changes via EventSource
+          const apiBase = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+          const es = new EventSource(`${apiBase}/live/sessions/stream`, { withCredentials: true });
+
+          es.onmessage = (e) => {
+            try {
+              const event = JSON.parse(e.data) as
+                | { type: "created"; session: { session_id: string; title: string; owner_name: string; created_at: string } }
+                | { type: "ended"; session_id: string };
+
+              if (event.type === "created") {
+                setActiveSessions(prev => [...prev, event.session]);
+              } else if (event.type === "ended") {
+                setActiveSessions(prev => prev.filter(s => s.session_id !== event.session_id));
+              }
+            } catch (err) {
+              console.error("Failed to parse session event:", err);
+            }
+          };
+
+          es.onerror = () => {
+            es.close();
+          };
+
+          return () => es.close();
         }
       })
       .catch(() => {});
@@ -113,6 +156,11 @@ function LivePageContent() {
     router.push("/live");
   };
 
+  const handleSessionClick = (sessionId: string) => {
+    setMode("join");
+    setFormData(prev => ({ ...prev, sessionId }));
+  };
+
   if (view === "room" && roomData) {
     return (
       <LiveRoom
@@ -138,6 +186,34 @@ function LivePageContent() {
           <h1 className="display h2 live-title">
             Live Stream
           </h1>
+
+          {currentUser && (
+            <div className="live-sessions">
+              <h3 className="live-sessions-heading">Active Sessions</h3>
+              {sessionsLoading ? (
+                <p className="live-sessions-empty">Loading...</p>
+              ) : activeSessions.length === 0 ? (
+                <p className="live-sessions-empty">No active sessions right now.</p>
+              ) : (
+                <ul className="live-sessions-list">
+                  {activeSessions.map(s => (
+                    <li key={s.session_id} className="live-session-item">
+                      <div className="live-session-info">
+                        <span className="live-session-title">{s.title}</span>
+                        <span className="live-session-host">by {s.owner_name}</span>
+                      </div>
+                      <button
+                        className="live-session-join-btn"
+                        onClick={() => handleSessionClick(s.session_id)}
+                      >
+                        Join
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           <div className="live-tabs">
             <button

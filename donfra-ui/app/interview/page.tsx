@@ -20,19 +20,7 @@ function InterviewContent() {
 
         if (token) {
           // Join via invite token
-          const response = await fetch("/api/interview/join", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ invite_token: token }),
-            credentials: "include",
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `Failed to join room: ${response.status}`);
-          }
-
-          const data = await response.json();
+          const data = await api.interview.join(token);
           setRoomId(data.room_id);
 
           // Check ownership

@@ -100,6 +100,9 @@ func New(cfg config.Config, studySvc *study.Service, userSvc *user.Service, goog
 	v1.With(middleware.RequireAuth(userSvc), middleware.RequireAdminOrAbove()).Post("/live/end", h.EndLiveSession)
 	// Public: anyone can join with session ID (OptionalAuth to detect admin/god for stealth capability)
 	v1.With(middleware.OptionalAuth(userSvc)).Post("/live/join", h.JoinLiveSession)
+	// Logged-in users: list active sessions + stream changes
+	v1.With(middleware.RequireAuth(userSvc)).Get("/live/sessions", h.ListLiveSessions)
+	v1.With(middleware.RequireAuth(userSvc)).Get("/live/sessions/stream", h.StreamLiveSessions)
 
 	// ===== Code Execution Routes =====
 	v1.With(middleware.RequireAuth(userSvc)).Post("/execute", h.ExecuteCode)

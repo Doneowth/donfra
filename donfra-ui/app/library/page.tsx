@@ -27,6 +27,7 @@ import {
   selectReviewing,
 } from "@/features/lessons/lessonsSelectors";
 import ReviewStatusBadge from "@/components/ReviewStatusBadge";
+import { VipBadge } from "@/components/ui/VipBadge";
 
 export default function LibraryPage() {
   return (
@@ -348,24 +349,7 @@ function LibraryInner() {
                               <span style={{ marginLeft: 8, fontSize: 12, color: "#666" }}>(unpublished)</span>
                             )}
                           </button>
-                          {isVipOnly && (
-                            <span style={{
-                              fontSize: 12,
-                              color: "#ffd700",
-                              fontWeight: 700,
-                              background: "linear-gradient(135deg, rgba(255,215,0,0.2) 0%, rgba(255,215,0,0.1) 100%)",
-                              padding: "3px 8px",
-                              borderRadius: 8,
-                              border: "1px solid rgba(255,215,0,0.3)",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 4,
-                              boxShadow: "0 2px 4px rgba(255,215,0,0.1)",
-                            }}>
-                              <span style={{ fontSize: 14 }}>👑</span>
-                              VIP
-                            </span>
-                          )}
+                          {isVipOnly && <VipBadge />}
                         </div>
                       </td>
                       <td style={{ padding: "10px 6px", color: isUnpublished ? "#888" : "#c8c1b4", fontSize: 14 }}>

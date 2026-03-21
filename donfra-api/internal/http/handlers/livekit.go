@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"donfra-api/internal/pkg/httputil"
@@ -112,4 +113,45 @@ func (h *Handlers) EndLiveSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httputil.WriteJSON(w, http.StatusOK, resp)
+}
+
+// ListLiveSessions lists all active live streaming sessions
+func (h *Handlers) ListLiveSessions(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	resp, err := h.livekitSvc.ListActiveSessions(ctx)
+	if err != nil {
+		httputil.WriteError(w, http.StatusInternalServerError, "Failed to list sessions")
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, resp)
+}
+
+// StreamLiveSessions streams live session changes via Server-Sent Events
+func (h *Handlers) StreamLiveSessions(w http.ResponseWriter, r *http.Request) {
+	// Set SSE headers
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		httputil.WriteError(w, http.StatusInternalServerError, "streaming not supported")
+		return
+	}
+
+	ctx := r.Context()
+	ch, err := h.livekitSvc.StreamSessionChanges(ctx)
+	if err != nil {
+		fmt.Fprintf(w, "event: error\ndata: %s\n\n", err.Error())
+		flusher.Flush()
+		return
+	}
+
+	for msg := range ch {
+		fmt.Fprintf(w, "data: %s\n\n", msg)
+		flusher.Flush()
+	}
 }

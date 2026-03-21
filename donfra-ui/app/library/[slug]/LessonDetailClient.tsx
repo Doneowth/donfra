@@ -24,6 +24,7 @@ import {
   selectReviewing,
 } from "@/features/lessons/lessonsSelectors";
 import ReviewStatusBadge from "@/components/ReviewStatusBadge";
+import { VipBadge } from "@/components/ui/VipBadge";
 import { EMPTY_EXCALIDRAW, sanitizeExcalidraw } from "@/lib/utils/excalidraw";
 import Toast from "@/components/Toast";
 import "./lesson-detail.css";
@@ -224,18 +225,7 @@ export default function LessonDetailClient({ slug }: { slug: string }) {
         >
           <h2 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             {lesson.title || lesson.slug}
-            {lesson.isVip && (
-              <span style={{
-                fontSize: 14,
-                color: "#ffd700",
-                fontWeight: 700,
-                background: "rgba(255,215,0,0.15)",
-                padding: "4px 10px",
-                borderRadius: 6,
-              }}>
-                VIP
-              </span>
-            )}
+            {lesson.isVip && <VipBadge />}
             {isAdmin && lesson.reviewStatus && (
               <ReviewStatusBadge status={lesson.reviewStatus} />
             )}

@@ -5,19 +5,9 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { InterviewRoom } from "@/types/models";
 import Toast, { ToastType } from "@/components/Toast";
 import ConfirmModal from "@/components/ConfirmModal";
-
-interface InterviewRoom {
-  id: number;
-  room_id: string;
-  owner_id: number;
-  headcount: number;
-  code_snapshot: string;
-  invite_link: string;
-  created_at: string;
-  updated_at: string;
-}
 
 export default function UserPage() {
   const router = useRouter();

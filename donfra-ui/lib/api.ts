@@ -1,25 +1,15 @@
 // lib/api.ts
 // Use proxy for both browser and SSR to maintain same-origin for cookies
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api";
+import type { User, InterviewRoom } from '@/types/models';
+import type { LessonSummary, Lesson } from '@/features/lessons/lessonsTypes';
 
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api";
 
 type JsonBody = Record<string, any>;
 
-async function postJSON<T>(path: string, body: JsonBody, token?: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    credentials: "include", // 关键：让后端能设置/带上 cookie
-    body: JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-  return data as T;
-}
-
+/**
+ * GET request helper
+ */
 async function getJSON<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "GET",
@@ -30,36 +20,74 @@ async function getJSON<T>(path: string): Promise<T> {
   return data as T;
 }
 
+/**
+ * POST request helper
+ */
+async function postJSON<T>(path: string, body: JsonBody, token?: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  return data as T;
+}
+
+/**
+ * PATCH request helper
+ */
+async function patchJSON<T>(path: string, body: JsonBody): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  return data as T;
+}
+
+/**
+ * DELETE request helper
+ */
+async function deleteJSON<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  return data as T;
+}
+
 export const api = {
   admin: {
     users: {
-      list: () => getJSON<{ users: Array<{ id: number; email: string; username: string; role: string; isActive: boolean; createdAt: string }> }>("/admin/users"),
+      list: async () => {
+        const res = await getJSON<{ users: Array<{ id: number; email: string; username: string; role: string; isActive: boolean; createdAt: string }> }>("/admin/users");
+        return {
+          users: res.users.map(u => ({
+            ...u,
+            role: u.role as User['role'],
+          })) as User[],
+        };
+      },
       updateRole: (userId: number, role: string) =>
-        fetch(`${API_BASE}/admin/users/${userId}/role`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ role }),
-        }).then(async (res) => {
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-          return data;
-        }),
+        patchJSON<any>(`/admin/users/${userId}/role`, { role }),
       updateActiveStatus: (userId: number, isActive: boolean) =>
-        fetch(`${API_BASE}/admin/users/${userId}/active`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ is_active: isActive }),
-        }).then(async (res) => {
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-          return data;
-        }),
+        patchJSON<any>(`/admin/users/${userId}/active`, { is_active: isActive }),
     },
   },
   study: {
-    listSummary: (page?: number, size?: number, sortBy?: string, sortDesc?: boolean, search?: string) => {
+    listSummary: async (page?: number, size?: number, sortBy?: string, sortDesc?: boolean, search?: string) => {
       const params = new URLSearchParams();
       if (page !== undefined) params.append("page", page.toString());
       if (size !== undefined) params.append("size", size.toString());
@@ -67,100 +95,107 @@ export const api = {
       if (sortDesc !== undefined) params.append("sort_desc", sortDesc.toString());
       if (search) params.append("search", search);
       const query = params.toString();
-      return getJSON<{
+      const res = await getJSON<{
         lessons: Array<{ id: number; slug: string; title: string; isPublished: boolean; isVip: boolean; author?: string; publishedDate?: string; reviewStatus: string; createdAt: string; updatedAt: string }>;
         total: number;
         page: number;
         size: number;
         totalPages: number;
       }>(`/lessons/summary${query ? `?${query}` : ""}`);
+      return {
+        ...res,
+        lessons: res.lessons.map(l => ({
+          ...l,
+          reviewStatus: l.reviewStatus as LessonSummary['reviewStatus'],
+        })) as LessonSummary[],
+      };
     },
     get: (slug: string) =>
       getJSON<{ slug: string; title: string; markdown: string; excalidraw: any; videoUrl?: string; codeTemplate?: any; createdAt: string; updatedAt: string; isPublished: boolean; isVip: boolean; author?: string; publishedDate?: string; reviewStatus: string; submittedBy?: number; reviewedBy?: number; submittedAt?: string; reviewedAt?: string }>(`/lessons/${slug}`),
     create: (data: { slug: string; title: string; markdown: string; excalidraw: any; videoUrl?: string; codeTemplate?: any; isPublished?: boolean; isVip?: boolean; author?: string; publishedDate?: string }) =>
-      fetch(`${API_BASE}/lessons`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          slug: data.slug,
-          title: data.title,
-          markdown: data.markdown,
-          excalidraw: data.excalidraw,
-          videoUrl: data.videoUrl,
-          codeTemplate: data.codeTemplate,
-          isPublished: data.isPublished ?? true,
-          isVip: data.isVip ?? false,
-          author: data.author,
-          publishedDate: data.publishedDate,
-        }),
-      }).then(async (res) => {
-        const body = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
-        return body;
+      postJSON<any>("/lessons", {
+        slug: data.slug,
+        title: data.title,
+        markdown: data.markdown,
+        excalidraw: data.excalidraw,
+        videoUrl: data.videoUrl,
+        codeTemplate: data.codeTemplate,
+        isPublished: data.isPublished ?? true,
+        isVip: data.isVip ?? false,
+        author: data.author,
+        publishedDate: data.publishedDate,
       }),
     update: (slug: string, data: { title?: string; markdown?: string; excalidraw?: any; videoUrl?: string; codeTemplate?: any; isPublished?: boolean; isVip?: boolean; author?: string; publishedDate?: string }) =>
-      fetch(`${API_BASE}/lessons/${slug}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          ...(data.title !== undefined ? { title: data.title } : {}),
-          ...(data.markdown !== undefined ? { markdown: data.markdown } : {}),
-          ...(data.excalidraw !== undefined ? { excalidraw: data.excalidraw } : {}),
-          ...(data.videoUrl !== undefined ? { videoUrl: data.videoUrl } : {}),
-          ...(data.codeTemplate !== undefined ? { codeTemplate: data.codeTemplate } : {}),
-          ...(data.isPublished !== undefined ? { isPublished: data.isPublished } : {}),
-          ...(data.isVip !== undefined ? { isVip: data.isVip } : {}),
-          ...(data.author !== undefined ? { author: data.author } : {}),
-          ...(data.publishedDate !== undefined ? { publishedDate: data.publishedDate } : {}),
-        }),
-      }).then(async (res) => {
-        const body = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
-        return body;
+      patchJSON<any>(`/lessons/${slug}`, {
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.markdown !== undefined ? { markdown: data.markdown } : {}),
+        ...(data.excalidraw !== undefined ? { excalidraw: data.excalidraw } : {}),
+        ...(data.videoUrl !== undefined ? { videoUrl: data.videoUrl } : {}),
+        ...(data.codeTemplate !== undefined ? { codeTemplate: data.codeTemplate } : {}),
+        ...(data.isPublished !== undefined ? { isPublished: data.isPublished } : {}),
+        ...(data.isVip !== undefined ? { isVip: data.isVip } : {}),
+        ...(data.author !== undefined ? { author: data.author } : {}),
+        ...(data.publishedDate !== undefined ? { publishedDate: data.publishedDate } : {}),
       }),
     delete: (slug: string) =>
-      fetch(`${API_BASE}/lessons/${slug}`, {
-        method: "DELETE",
-        credentials: "include",
-      }).then(async (res) => {
-        const body = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
-        return body;
-      }),
+      deleteJSON<any>(`/lessons/${slug}`),
     submitForReview: (slug: string) =>
       postJSON<{ slug: string; reviewStatus: string }>(`/lessons/${slug}/submit-review`, {}),
     review: (slug: string, action: 'approve' | 'reject') =>
       postJSON<{ slug: string; reviewStatus: string }>(`/lessons/${slug}/review`, { action }),
-    listPendingReview: (page?: number, size?: number, search?: string) => {
+    listPendingReview: async (page?: number, size?: number, search?: string) => {
       const params = new URLSearchParams();
       if (page !== undefined) params.append("page", page.toString());
       if (size !== undefined) params.append("size", size.toString());
       if (search) params.append("search", search);
       const query = params.toString();
-      return getJSON<{
+      const res = await getJSON<{
         lessons: Array<{ id: number; slug: string; title: string; isPublished: boolean; isVip: boolean; author?: string; publishedDate?: string; reviewStatus: string; createdAt: string; updatedAt: string }>;
         total: number;
         page: number;
         size: number;
         totalPages: number;
       }>(`/lessons/pending-review${query ? `?${query}` : ""}`);
+      return {
+        ...res,
+        lessons: res.lessons.map(l => ({
+          ...l,
+          reviewStatus: l.reviewStatus as LessonSummary['reviewStatus'],
+        })) as LessonSummary[],
+      };
     },
   },
   auth: {
-    register: (email: string, password: string, username?: string) =>
-      postJSON<{ user: { id: number; email: string; username: string; role: string; isActive: boolean; createdAt: string } }>("/auth/register", { email, password, username }),
-    login: (email: string, password: string) =>
-      postJSON<{ user: { id: number; email: string; username: string; role: string; isActive: boolean; createdAt: string }; token: string }>("/auth/login", { email, password }),
+    register: async (email: string, password: string, username?: string) => {
+      const res = await postJSON<{ user: { id: number; email: string; username: string; role: string; isActive: boolean; createdAt: string } }>("/auth/register", { email, password, username });
+      return {
+        user: {
+          ...res.user,
+          role: res.user.role as User['role'],
+        },
+      };
+    },
+    login: async (email: string, password: string) => {
+      const res = await postJSON<{ user: { id: number; email: string; username: string; role: string; isActive: boolean; createdAt: string }; token: string }>("/auth/login", { email, password });
+      return {
+        ...res,
+        user: {
+          ...res.user,
+          role: res.user.role as User['role'],
+        },
+      };
+    },
     logout: () =>
       postJSON<{ message: string }>("/auth/logout", {}),
-    me: () =>
-      getJSON<{ user: { id: number; email: string; username: string; role: string; isActive: boolean; createdAt: string } | null }>("/auth/me"),
+    me: async () => {
+      const res = await getJSON<{ user: { id: number; email: string; username: string; role: string; isActive: boolean; createdAt: string; canStealth?: boolean } | null }>("/auth/me");
+      return {
+        user: res.user ? {
+          ...res.user,
+          role: res.user.role as User['role'],
+        } : null,
+      };
+    },
     updatePassword: (currentPassword: string, newPassword: string) =>
       postJSON<{ message: string }>("/auth/update-password", { current_password: currentPassword, new_password: newPassword }),
     googleAuthURL: () =>
@@ -187,6 +222,17 @@ export const api = {
       postJSON<{ session_id: string; access_token: string; server_url: string; role: string; can_publish: boolean; can_subscribe: boolean; message: string }>("/live/join", { session_id: sessionId, user_name: userName, is_host: isHost, is_hidden: isHidden }),
     end: (sessionId: string) =>
       postJSON<{ session_id: string; ended_at: string; message: string }>("/live/end", { session_id: sessionId }),
+    list: () =>
+      getJSON<{
+        sessions: Array<{
+          session_id: string;
+          title: string;
+          owner_name: string;
+          created_at: string;
+          status: string;
+        }>;
+        total_count: number;
+      }>("/live/sessions"),
   },
   ai: {
     chatStream: async (

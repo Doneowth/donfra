@@ -69,6 +69,8 @@ type LiveKitService interface {
 	CreateSession(ctx context.Context, title string, ownerName string) (*livekit.CreateSessionResponse, error)
 	JoinSession(ctx context.Context, sessionID, userName string, isHost, isHidden, canStealth bool) (*livekit.JoinSessionResponse, error)
 	EndSession(ctx context.Context, sessionID string) (*livekit.EndSessionResponse, error)
+	ListActiveSessions(ctx context.Context) (*livekit.ListSessionsResponse, error)
+	StreamSessionChanges(ctx context.Context) (<-chan string, error)
 }
 
 // AIAgentService defines the interface for AI code analysis operations.

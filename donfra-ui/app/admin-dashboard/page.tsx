@@ -3,29 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { User, InterviewRoom } from "@/types/models";
 import ConfirmModal from "@/components/ConfirmModal";
 import UserCard from "@/components/admin/UserCard";
 import Toast, { ToastType } from "@/components/Toast";
-
-type InterviewRoom = {
-  id: number;
-  room_id: string;
-  owner_id: number;
-  headcount: number;
-  code_snapshot: string;
-  invite_link: string;
-  created_at: string;
-  updated_at: string;
-};
-
-type User = {
-  id: number;
-  email: string;
-  username: string;
-  role: string;
-  isActive: boolean;
-  createdAt: string;
-};
 
 type Tab = "rooms" | "users";
 

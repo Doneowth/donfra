@@ -51,7 +51,7 @@ function* fetchLessonsSaga() {
       search || undefined
     );
 
-    yield put(fetchLessonsSuccess(result as any));
+    yield put(fetchLessonsSuccess(result));
   } catch (error) {
     yield put(
       fetchLessonsFailure(
@@ -193,7 +193,7 @@ function* fetchPendingReviewSaga() {
 
     const result: Awaited<ReturnType<typeof api.study.listPendingReview>> =
       yield call(api.study.listPendingReview, currentPage, pageSize);
-    yield put(fetchPendingReviewSuccess(result as any));
+    yield put(fetchPendingReviewSuccess(result));
   } catch (error) {
     yield put(
       fetchPendingReviewFailure(
