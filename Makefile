@@ -7,9 +7,9 @@ COMPOSE_FILE ?= infra/docker-compose.local.yml
 PROD_COMPOSE_FILE ?= infra/docker-compose.yml
 
 # UI Image Tag
-UI_IMAGE_TAG ?= 1.0.28
+UI_IMAGE_TAG ?= 1.0.29
 # API Image Tag
-API_IMAGE_TAG ?= 1.0.12
+API_IMAGE_TAG ?= 1.0.13
 # Runner Image Tag
 RUNNER_IMAGE_TAG ?= 1.0.1
 # WS Image Tag
