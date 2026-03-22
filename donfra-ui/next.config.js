@@ -7,8 +7,8 @@ const nextConfig = {
   // SSR build for docker runtime.
   output: 'standalone',
   trailingSlash: false,
-  // Transpile ESM-only Yjs packages so webpack generates valid chunks for dynamic imports
-  transpilePackages: ['yjs', 'y-monaco', 'y-websocket', 'y-protocols', 'lib0'],
+  // Transpile ESM-only packages so webpack generates valid chunks for dynamic imports
+  transpilePackages: ['yjs', 'y-monaco', 'y-websocket', 'y-protocols', 'lib0', '@excalidraw/excalidraw'],
   async rewrites() {
     return [
       { source: '/api/:path*', destination: `${API_PROXY_TARGET}/api/:path*` },
